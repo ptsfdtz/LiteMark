@@ -1,0 +1,29 @@
+/* src/components/Toolbar/Toolbar.module.css */
+.toolbar {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background-color: var(--toolbar-bg, #f3f3f3);
+}
+
+button {
+  font-weight: bold;
+  padding: 0.3rem 0.6rem;
+  cursor: pointer;
+  border: none;
+  border-radius: 4px;
+  background-color: var(--sidebar-bg, white);
+  color: var(--text-color, #333);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+button:hover {
+  background-color: var(--toolbar-bg, #eee);
+}
+
+button svg {
+  width: 1rem;
+  height: 1rem;
+}

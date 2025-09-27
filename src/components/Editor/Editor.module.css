@@ -1,0 +1,15 @@
+.editor {
+  width: 100%;
+  height: 100%;
+  resize: none;
+  border: none;
+  outline: none;
+  padding: 1rem;
+  font-family: var(--monospace-font);
+  font-size: 14px;
+  line-height: 1.6;
+  background-color: var(--editor-bg, #ffffff);
+  color: var(--editor-text, #000000);
+  box-sizing: border-box;
+  /* border-right: var(--blockquote-text) 1px solid; */
+}

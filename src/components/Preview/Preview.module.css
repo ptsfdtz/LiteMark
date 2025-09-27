@@ -1,0 +1,145 @@
+/* src/components/Preview/Preview.module.css */
+.preview {
+  padding: 1rem;
+  overflow: auto;
+  background-color: var(--preview-bg, #ffffff);
+  color: var(--preview-text, #000000);
+  height: 100%;
+  box-sizing: border-box;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
+    "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
+    sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+/* 表格样式 */
+.preview table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1rem 0;
+}
+
+.preview th,
+.preview td {
+  border: 1px solid var(--table-border, #ddd);
+  padding: 0.5rem;
+  text-align: left;
+}
+
+.preview th {
+  background-color: var(--table-header-bg, #f5f5f5);
+  font-weight: bold;
+  color: var(--table-header-text, #000);
+}
+
+.preview tr:nth-child(even) {
+  background-color: var(--table-even-row-bg, #f9f9f9);
+}
+
+.preview tr:nth-child(odd) {
+  background-color: var(--table-odd-row-bg, #fff);
+}
+
+/* 其他 Markdown 元素样式 */
+.preview h1,
+.preview h2,
+.preview h3,
+.preview h4,
+.preview h5,
+.preview h6 {
+  margin-top: 1.5rem;
+  margin-bottom: 1rem;
+  font-family: inherit;
+}
+
+.preview p {
+  margin: 0.8rem 0;
+}
+
+.preview pre {
+  background-color: var(--code-block-bg, #f5f5f5);
+  padding: 0 !important;
+  overflow: visible !important;
+  border-radius: 4px;
+  margin: 1rem 0;
+}
+
+.preview code {
+  background-color: var(--inline-code-bg, #f5f5f5);
+  padding: 0.2rem 0.4rem;
+  border-radius: 3px;
+  font-family: var(--monospace-font);
+  font-size: 14px;
+}
+
+.preview blockquote {
+  border-left: 4px solid var(--blockquote-border, #ddd);
+  padding-left: 1rem;
+  margin: 1rem 0;
+  color: var(--blockquote-text, #666);
+}
+
+/* 图片样式 */
+.preview img {
+  max-width: 100%;
+  height: auto;
+  margin: 0.5rem 0;
+}
+
+/* 代码块样式 */
+.codeBlock {
+  background-color: var(--code-block-bg, #f6f8fa);
+  border-radius: 6px;
+  padding: 0;
+  overflow: auto;
+  margin: 0;
+}
+
+.codeBlock code {
+  padding: 1rem;
+  background: none;
+  border-radius: 0;
+  font-family: var(--monospace-font);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--code-text, inherit);
+}
+
+/* src/components/Preview/Preview.module.css */
+
+/* 数学公式块样式 */
+.preview .math-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 1rem;
+  text-align: center;
+}
+
+.preview .math-inline {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+/* 新增链接样式 */
+
+.preview a {
+  color: #0066cc;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.preview a:hover {
+  color: #004499;
+  border-bottom-color: #004499;
+  text-decoration: none;
+}
+
+.preview a:visited {
+  color: #660099;
+}
+
+.preview a:active {
+  color: #cc0000;
+}

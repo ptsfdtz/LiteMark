@@ -1,0 +1,141 @@
+/* src/App.css */
+
+@import url("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css");
+
+:root {
+  --background-color: #f6f6f6;
+  --text-color: #0f0f0f;
+  --sidebar-bg: #ffffff;
+  --editor-bg: #ffffff;
+  --editor-text: #000000;
+  --preview-bg: #ffffff;
+  --preview-text: #000000;
+  --toolbar-bg: #f3f3f3;
+  --table-border: #ddd;
+  --table-header-bg: #f5f5f5;
+  --table-header-text: #000;
+  --table-even-row-bg: #f9f9f9;
+  --table-odd-row-bg: #ffffff;
+  --code-block-bg: #f5f5f5;
+  --inline-code-bg: #f5f5f5;
+  --blockquote-border: #ddd;
+  --blockquote-text: #666;
+  --code-text: inherit;
+  --editor-border: #ddd;
+  --scrollbar-thumb: #c1c1c1;
+  --scrollbar-track: #f1f1f1;
+  --link-color: #0066cc;
+  --link-hover-color: #004499;
+  --link-visited-color: #660099;
+  --link-active-color: #cc0000;
+  --monospace-font: "Consolas", "Menlo", "Monaco", "Courier New", monospace;
+}
+
+[data-theme="dark"] {
+  --background-color: #2f2f2f;
+  --text-color: #f6f6f6;
+  --sidebar-bg: #1f1f1f;
+  --editor-bg: #1f1f1f;
+  --editor-text: #f6f6f6;
+  --preview-bg: #1f1f1f;
+  --preview-text: #f6f6f6;
+  --toolbar-bg: #3f3f3f;
+  --table-border: #555;
+  --table-header-bg: #333;
+  --table-header-text: #f6f6f6;
+  --table-even-row-bg: #333;
+  --table-odd-row-bg: #1f1f1f;
+  --code-block-bg: #333;
+  --inline-code-bg: #333;
+  --blockquote-border: #555;
+  --blockquote-text: #aaa;
+  --code-text: #f6f6f6;
+  --editor-border: #555;
+  --scrollbar-thumb: #555;
+  --scrollbar-track: #2a2a2a;
+  --link-color: #4da6ff;
+  --link-hover-color: #66b3ff;
+  --link-visited-color: #b366ff;
+  --link-active-color: #ff4d4d;
+}
+
+/* 滚动条样式 */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb);
+}
+
+body {
+  background-color: var(--background-color);
+  color: var(--text-color);
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
+    "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  height: 100vh;
+}
+
+.editormd-logo {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>')
+    no-repeat center center;
+  background-size: contain;
+  vertical-align: middle;
+}
+
+.editormd-logo-2x {
+  font-size: 2em;
+}
+
+.editormd-logo-3x {
+  font-size: 3em;
+}
+
+.editormd-logo-4x {
+  font-size: 4em;
+}
+
+.editormd-logo-5x {
+  font-size: 5em;
+}
+
+a {
+  color: var(--link-color);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+
+a:hover {
+  color: var(--link-hover-color);
+  border-bottom-color: var(--link-hover-color);
+  text-decoration: none;
+}
+
+a:visited {
+  color: var(--link-visited-color);
+}
+
+a:active {
+  color: var(--link-active-color);
+}
