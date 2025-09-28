@@ -50,24 +50,9 @@ my-markdown-editor/
 ├─ public/                           # 静态资源（favicon、logo 等）
 ├─ src/
 │  ├─ components/
-│  │  ├─ Sidebar/
-│  │  │   ├─ Sidebar.tsx
-│  │  │   └─ Sidebar.css
-│  │  ├─ Editor/
-│  │  │   ├─ Editor.tsx
-│  │  │   └─ Editor.css
-│  │  ├─ Preview/
-│  │  │   ├─ Preview.tsx
-│  │  │   └─ Preview.css
-│  │  ├─ Toolbar/
-│  │  │   ├─ Toolbar.tsx
-│  │  │   └─ Toolbar.css
 │  │  ├─ Layout/
 │  │  │   ├─ Layout.tsx
 │  │  │   └─ Layout.css
-│  │  └─ Setting/
-│  │      ├─ Setting.tsx
-│  │      └─ Setting.css
 │  ├─ types/
 │  │  ├─ file.ts                     # 文件/目录类型
 │  │  ├─ markdown.ts                 # Markdown 类型
