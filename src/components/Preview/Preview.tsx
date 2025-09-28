@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
@@ -7,10 +7,10 @@ import rehypeHighlight from "rehype-highlight";
 import rehypeRaw from "rehype-raw";
 import rehypeKatex from "rehype-katex";
 import rehypeSanitize from "rehype-sanitize";
-import styles from "./Preview.module.css";
-
-import "katex/dist/katex.min.css";
+import "./Preview.css";
+import hljs from "highlight.js";
 import "highlight.js/styles/github.css";
+import "katex/dist/katex.min.css";
 
 interface PreviewProps {
   content: string;
@@ -28,9 +28,32 @@ const processSpecialEmojis = (content: string): string => {
 const Preview = React.forwardRef<HTMLDivElement, PreviewProps>(
   ({ content }, ref) => {
     const processedContent = processSpecialEmojis(content);
+    useEffect(() => {
+      (window as any).hljs = hljs;
+      const highlightCode = () => {
+        document
+          .querySelectorAll("pre code:not([data-highlighted])")
+          .forEach((block) => {
+            try {
+              hljs.highlightElement(block as HTMLElement);
+            } catch (e) {
+              console.warn("Highlight error:", e);
+            }
+          });
+      };
+      highlightCode();
+      const timers = [
+        setTimeout(highlightCode, 10),
+        setTimeout(highlightCode, 100),
+        setTimeout(highlightCode, 500),
+      ];
+      return () => {
+        timers.forEach((timer) => clearTimeout(timer));
+      };
+    }, [content]);
 
     return (
-      <div ref={ref} className={styles.preview}>
+      <div ref={ref} className="preview-container">
         <ReactMarkdown
           remarkPlugins={[remarkGfm, remarkMath, remarkEmoji]}
           rehypePlugins={[
@@ -47,21 +70,6 @@ const Preview = React.forwardRef<HTMLDivElement, PreviewProps>(
                 alt={props.alt || "图片"}
               />
             ),
-            code({ node, className, children, ...props }) {
-              const match = /language-(\w+)/.exec(className || "");
-              const isInline = !node?.properties?.className;
-              return !isInline && match ? (
-                <pre className={styles.codeBlock}>
-                  <code className={className} {...props}>
-                    {children}
-                  </code>
-                </pre>
-              ) : (
-                <code className={className} {...props}>
-                  {children}
-                </code>
-              );
-            },
           }}
         >
           {processedContent}
