@@ -1,5 +1,3 @@
-// src/utils/scrollSync.ts
-
 export class ScrollSync {
   syncEditorToPreview(editor: HTMLElement, preview: HTMLElement): void {
     const editorScrollTop = editor.scrollTop;

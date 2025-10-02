@@ -1,13 +1,7 @@
 // src/components/Settings/Settings.tsx
 import React, { useEffect, useState } from "react";
 import styles from "./Settings.module.css";
-
-interface SettingsProps {
-  theme: "light" | "dark" | "system";
-  setTheme: (theme: "light" | "dark" | "system") => void;
-  onClose: () => void;
-}
-
+import { SettingsProps } from "../../types/settings";
 const Settings: React.FC<SettingsProps> = ({ theme, setTheme, onClose }) => {
   const [systemTheme, setSystemTheme] = useState<"light" | "dark">("light");
 
@@ -48,19 +42,7 @@ const Settings: React.FC<SettingsProps> = ({ theme, setTheme, onClose }) => {
         <div className={styles.content}>
           <div className={styles.settingGroup}>
             <div className={styles.switchContainer}>
-              <div className={styles.switchWrapper}>
-                {/* <div
-                  className={`${styles.switchTrack} ${
-                    activeTheme === "light"
-                      ? styles.light
-                      : activeTheme === "dark"
-                      ? styles.dark
-                      : styles.system
-                  }`}
-                >
-                  <div className={`${styles.switchThumb}`}></div>
-                </div> */}
-              </div>
+              <div className={styles.switchWrapper}></div>
               <div className={styles.switchOptions}>
                 <button
                   className={`${styles.switchButton} ${

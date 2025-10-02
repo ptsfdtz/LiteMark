@@ -1,4 +1,3 @@
-// src/hooks/useTheme.ts
 import { useEffect } from 'react';
 
 export const useTheme = (theme: 'light' | 'dark' | 'system') => {

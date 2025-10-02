@@ -1,11 +1,6 @@
 import React from "react";
 import styles from "./Editor.module.css";
-
-interface EditorProps {
-  value: string;
-  onChange: (newValue: string) => void;
-  onSelectionChange?: (start: number, end: number) => void;
-}
+import { EditorProps } from "../../types/editor";
 
 const Editor = React.forwardRef<HTMLTextAreaElement, EditorProps>(
   ({ value, onChange, onSelectionChange }, ref) => {

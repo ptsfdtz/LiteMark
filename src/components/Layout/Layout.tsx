@@ -1,4 +1,3 @@
-// src/components/Layout/Layout.tsx
 import React, { useState, useEffect, useRef } from "react";
 import Editor from "../Editor/Editor";
 import Preview from "../Preview/Preview";
@@ -8,12 +7,23 @@ import Settings from "../Settings/Settings";
 import styles from "./Layout.module.css";
 import SettingsButton from "../SettingsButton/SettingsButton";
 import { ScrollSync } from "../../hooks/useScrollSync";
+import RecentFilesSidebar from "../RecentFilesSidebar/RecentFilesSidebar";
+import { RecentFile } from "../../types/recentFiles";
 
 const Layout: React.FC = () => {
   const [markdown, setMarkdown] = useState("");
   const [selection, setSelection] = useState({ start: 0, end: 0 });
   const [showSettings, setShowSettings] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark" | "system">("system");
+  const [showRecentFiles, setShowRecentFiles] = useState(false);
+  const [recentFiles, setRecentFiles] = useState<RecentFile[]>([]);
+
+  // 模拟获取最近文件数据
+  useEffect(() => {
+    const mockFiles: RecentFile[] = [];
+    setRecentFiles(mockFiles);
+  }, []);
+
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const scrollSyncRef = useRef<ScrollSync>(new ScrollSync());
@@ -68,6 +78,21 @@ const Layout: React.FC = () => {
     };
   }, []);
 
+  const handleOpenFolder = () => {
+    setShowRecentFiles(true);
+  };
+
+  const handleSelectFile = (file: RecentFile) => {
+    // 这里可以添加实际的文件加载逻辑
+    console.log("打开文件:", file.name);
+    // 可以在这里调用 Tauri API 来读取文件内容
+    setShowRecentFiles(false);
+  };
+
+  const handleCloseSidebar = () => {
+    setShowRecentFiles(false);
+  };
+
   return (
     <div className={styles.container}>
       <div style={{ position: "relative" }}>
@@ -76,9 +101,19 @@ const Layout: React.FC = () => {
           setValue={setMarkdown}
           selectionStart={selection.start}
           selectionEnd={selection.end}
+          onOpenFolder={handleOpenFolder}
         />
         <SettingsButton onClick={() => setShowSettings(true)} />
       </div>
+
+      {/* 添加侧边栏 */}
+      <RecentFilesSidebar
+        files={recentFiles}
+        onSelectFile={handleSelectFile}
+        onClose={handleCloseSidebar}
+        isOpen={showRecentFiles}
+      />
+
       <div className={styles.editorPreview}>
         <Editor
           ref={editorRef}

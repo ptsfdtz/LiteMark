@@ -1,3 +1,4 @@
+// src/components/Toolbar/Toolbar.tsx
 import React from "react";
 import styles from "./Toolbar.module.css";
 import {
@@ -26,6 +27,7 @@ import {
   FaListOl,
   FaTable,
   FaImage,
+  FaFolderOpen,
 } from "react-icons/fa";
 
 interface ToolbarProps {
@@ -33,6 +35,7 @@ interface ToolbarProps {
   setValue: (newValue: string) => void;
   selectionStart: number;
   selectionEnd: number;
+  onOpenFolder?: () => void;
 }
 
 const Toolbar: React.FC<ToolbarProps> = ({
@@ -40,9 +43,19 @@ const Toolbar: React.FC<ToolbarProps> = ({
   setValue,
   selectionStart,
   selectionEnd,
+  onOpenFolder,
 }) => {
   return (
     <div className={styles.toolbar}>
+      {onOpenFolder && (
+        <button
+          onClick={onOpenFolder}
+          title="最近的文件"
+          className={styles.folderButton}
+        >
+          <FaFolderOpen />
+        </button>
+      )}
       <button
         onClick={() => setValue(applyBold(value, selectionStart, selectionEnd))}
         title="粗体 (Ctrl+B)"
