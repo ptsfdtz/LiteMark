@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "tauri-get-start",
+  "productName": "mark-daily",
   "version": "0.1.0",
   "identifier": "com.ptsfdtz.tauri-get-start",
   "build": {
@@ -12,9 +12,10 @@
   "app": {
     "windows": [
       {
-        "title": "tauri-get-start",
-        "width": 1000,
-        "height": 800
+        "title": "mark-daily",
+        "width": 1200,
+        "height": 800,
+        "center": true
       }
     ],
     "security": {

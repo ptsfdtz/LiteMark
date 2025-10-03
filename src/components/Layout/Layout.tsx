@@ -92,7 +92,6 @@ const Layout: React.FC = () => {
       const containerWidth = containerRect.width;
       const mouseX = e.clientX - containerRect.left;
 
-      // 计算编辑器宽度百分比 (限制在 20% 到 80% 之间)
       const newWidth = Math.min(
         Math.max((mouseX / containerWidth) * 100, 20),
         80

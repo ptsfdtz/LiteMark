@@ -27,7 +27,7 @@
 }
 
 .resizer {
-  width: 3px;
+  width: 5px;
   background: var(--editor-border, #ddd);
   cursor: col-resize;
   position: relative;

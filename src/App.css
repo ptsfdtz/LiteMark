@@ -66,7 +66,7 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--scrollbar-track);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
@@ -76,6 +76,12 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--scrollbar-thumb);
+  cursor: auto;
+}
+
+::-webkit-scrollbar-track:hover {
+  background: var(--scrollbar-track);
+  cursor: auto;
 }
 
 body {
