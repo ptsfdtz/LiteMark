@@ -23,7 +23,6 @@ const RecentFilesSidebar: React.FC<RecentFilesSidebarProps> = ({
         <button onClick={onClose} className={styles.closeButton}>
           ×
         </button>
-        <h3>最近的文件</h3>
       </div>
       <div className={styles.filesList}>
         {files.length === 0 ? (

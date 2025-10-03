@@ -1,3 +1,4 @@
+// src/components/Layout/Layout.tsx
 import React, { useState, useEffect, useRef } from "react";
 import Editor from "../Editor/Editor";
 import Preview from "../Preview/Preview";
@@ -17,6 +18,10 @@ const Layout: React.FC = () => {
   const [theme, setTheme] = useState<"light" | "dark" | "system">("system");
   const [showRecentFiles, setShowRecentFiles] = useState(false);
   const [recentFiles, setRecentFiles] = useState<RecentFile[]>([]);
+  const [scrollSyncEnabled, setScrollSyncEnabled] = useState(true);
+  const [previewMode, setPreviewMode] = useState(false);
+  const [editorWidth, setEditorWidth] = useState(50);
+  const [isResizing, setIsResizing] = useState(false);
 
   // 模拟获取最近文件数据
   useEffect(() => {
@@ -27,6 +32,7 @@ const Layout: React.FC = () => {
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const scrollSyncRef = useRef<ScrollSync>(new ScrollSync());
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -59,7 +65,7 @@ const Layout: React.FC = () => {
     const previewElement = previewRef.current;
     const scrollSync = scrollSyncRef.current;
 
-    if (!editorElement || !previewElement) return;
+    if (!editorElement || !previewElement || !scrollSyncEnabled) return;
 
     const handleEditorScroll = () => {
       scrollSync.syncEditorToPreview(editorElement, previewElement);
@@ -76,8 +82,38 @@ const Layout: React.FC = () => {
       editorElement.removeEventListener("scroll", handleEditorScroll);
       previewElement.removeEventListener("scroll", handlePreviewScroll);
     };
-  }, []);
+  }, [scrollSyncEnabled]);
 
+  +useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing || !containerRef.current) return;
+
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const containerWidth = containerRect.width;
+      const mouseX = e.clientX - containerRect.left;
+
+      // 计算编辑器宽度百分比 (限制在 20% 到 80% 之间)
+      const newWidth = Math.min(
+        Math.max((mouseX / containerWidth) * 100, 20),
+        80
+      );
+      setEditorWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    if (isResizing) {
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isResizing]);
   const handleOpenFolder = () => {
     setShowRecentFiles(true);
   };
@@ -93,6 +129,23 @@ const Layout: React.FC = () => {
     setShowRecentFiles(false);
   };
 
+  const toggleScrollSync = () => {
+    setScrollSyncEnabled(!scrollSyncEnabled);
+  };
+
+  const enterPreviewMode = () => {
+    setPreviewMode(true);
+  };
+
+  const exitPreviewMode = () => {
+    setPreviewMode(false);
+  };
+
+  const startResizing = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+  };
+
   return (
     <div className={styles.container}>
       <div style={{ position: "relative" }}>
@@ -105,23 +158,50 @@ const Layout: React.FC = () => {
         />
         <SettingsButton onClick={() => setShowSettings(true)} />
       </div>
-
-      {/* 添加侧边栏 */}
       <RecentFilesSidebar
         files={recentFiles}
         onSelectFile={handleSelectFile}
         onClose={handleCloseSidebar}
         isOpen={showRecentFiles}
       />
-
-      <div className={styles.editorPreview}>
-        <Editor
-          ref={editorRef}
-          value={markdown}
-          onChange={setMarkdown}
-          onSelectionChange={(start, end) => setSelection({ start, end })}
-        />
-        <Preview ref={previewRef} content={markdown} />
+      <div
+        ref={containerRef}
+        className={styles.editorPreview}
+        style={{ cursor: isResizing ? "col-resize" : "default" }}
+      >
+        {!previewMode && (
+          <>
+            <div
+              className={styles.editorPanel}
+              style={{ width: `${editorWidth}%` }}
+            >
+              <Editor
+                ref={editorRef}
+                value={markdown}
+                onChange={setMarkdown}
+                onSelectionChange={(start, end) => setSelection({ start, end })}
+              />
+            </div>
+            <div className={styles.resizer} onMouseDown={startResizing} />
+          </>
+        )}
+        <div
+          className={styles.previewPanel}
+          style={{
+            width: previewMode ? "100%" : `calc(${100 - editorWidth}% - 5px)`,
+          }}
+        >
+          <Preview
+            ref={previewRef}
+            content={markdown}
+            scrollSyncEnabled={scrollSyncEnabled}
+            onScrollSyncToggle={toggleScrollSync}
+            previewMode={previewMode}
+            onExitPreviewMode={exitPreviewMode}
+            onEnterPreviewMode={enterPreviewMode}
+            isPreviewOnly={previewMode}
+          />
+        </div>
       </div>
       <KeyboardShortcuts
         value={markdown}

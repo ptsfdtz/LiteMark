@@ -9,9 +9,27 @@
   display: flex;
   flex: 1;
   overflow: hidden;
+  position: relative;
 }
 
-.editorPreview > * {
-  flex: 1;
+.editorPanel {
+  height: 100%;
   overflow: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.previewPanel {
+  height: 100%;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.resizer {
+  width: 3px;
+  background: var(--editor-border, #ddd);
+  cursor: col-resize;
+  position: relative;
+  z-index: 10;
 }

@@ -1,3 +1,4 @@
+// src/components/Preview/Preview.tsx
 import React, { useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -11,9 +12,16 @@ import "./Preview.css";
 import hljs from "highlight.js";
 import "highlight.js/styles/github.css";
 import "katex/dist/katex.min.css";
+import { FaLink, FaUnlink, FaEye, FaTimes } from "react-icons/fa";
 
 interface PreviewProps {
   content: string;
+  scrollSyncEnabled?: boolean;
+  onScrollSyncToggle?: () => void;
+  previewMode?: boolean;
+  onExitPreviewMode?: () => void;
+  onEnterPreviewMode?: () => void;
+  isPreviewOnly?: boolean;
 }
 
 const processSpecialEmojis = (content: string): string => {
@@ -26,7 +34,18 @@ const processSpecialEmojis = (content: string): string => {
 };
 
 const Preview = React.forwardRef<HTMLDivElement, PreviewProps>(
-  ({ content }, ref) => {
+  (
+    {
+      content,
+      scrollSyncEnabled = true,
+      onScrollSyncToggle,
+      // previewMode = false,
+      onExitPreviewMode,
+      onEnterPreviewMode,
+      isPreviewOnly,
+    },
+    ref
+  ) => {
     const processedContent = processSpecialEmojis(content);
     useEffect(() => {
       (window as any).hljs = hljs;
@@ -54,6 +73,24 @@ const Preview = React.forwardRef<HTMLDivElement, PreviewProps>(
 
     return (
       <div ref={ref} className="preview-container">
+        {!isPreviewOnly && onEnterPreviewMode && (
+          <button
+            className="previewModeButton enter"
+            onClick={onEnterPreviewMode}
+            title="进入预览模式"
+          >
+            <FaEye />
+          </button>
+        )}
+        {isPreviewOnly && onExitPreviewMode && (
+          <button
+            className="previewModeButton exit"
+            onClick={onExitPreviewMode}
+            title="退出预览模式"
+          >
+            <FaTimes />
+          </button>
+        )}
         <ReactMarkdown
           remarkPlugins={[remarkGfm, remarkMath, remarkEmoji]}
           rehypePlugins={[
@@ -74,6 +111,15 @@ const Preview = React.forwardRef<HTMLDivElement, PreviewProps>(
         >
           {processedContent}
         </ReactMarkdown>
+        {onScrollSyncToggle && (
+          <button
+            className={`scrollSyncButton ${scrollSyncEnabled ? "active" : ""}`}
+            onClick={onScrollSyncToggle}
+            title={scrollSyncEnabled ? "禁用滚动同步" : "启用滚动同步"}
+          >
+            {scrollSyncEnabled ? <FaLink /> : <FaUnlink />}
+          </button>
+        )}
       </div>
     );
   }

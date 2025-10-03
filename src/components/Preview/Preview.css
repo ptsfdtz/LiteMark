@@ -2,6 +2,7 @@
 .preview-container {
   padding: 1rem;
   overflow: auto;
+  position: relative;
   background-color: var(--preview-bg, #ffffff);
   color: var(--preview-text, #000000);
   height: 100%;
@@ -159,4 +160,41 @@
 
 .editormd-logo-5x {
   font-size: 5em;
+}
+
+.scrollSyncButton,
+.previewModeButton {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: none;
+  border-radius: 18px;
+  width: 36px;
+  height: 36px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  transition: all 0.2s ease;
+}
+
+.scrollSyncButton:hover,
+.previewModeButton:hover {
+  background-color: var(--toolbar-bg, #eee);
+}
+
+.scrollSyncButton svg,
+.previewModeButton svg {
+  width: 18px;
+  height: 18px;
+  color: var(--text-color, #333);
+}
+
+.previewModeButton.enter {
+  bottom: 60px;
+}
+
+.previewModeButton.exit {
+  bottom: 60px;
 }
