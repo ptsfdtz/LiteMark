@@ -1,6 +1,6 @@
 [package]
 name = "mark-daily"
-version = "0.1.0"
+version = "0.1.2"
 description = "editor for markdown"
 authors = ["PTSFDTZ pitousanfadetuzi@gmail.com"]
 edition = "2021"
