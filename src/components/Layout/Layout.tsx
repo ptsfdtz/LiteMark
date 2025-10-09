@@ -10,6 +10,7 @@ import SettingsButton from "../SettingsButton/SettingsButton";
 import { ScrollSync } from "../../hooks/useScrollSync";
 import RecentFilesSidebar from "../RecentFilesSidebar/RecentFilesSidebar";
 import { RecentFile } from "../../types/recentFiles";
+import { invoke } from "@tauri-apps/api/core";
 
 const Layout: React.FC = () => {
   const [markdown, setMarkdown] = useState("");
@@ -118,10 +119,33 @@ const Layout: React.FC = () => {
   };
 
   const handleSelectFile = (file: RecentFile) => {
-    // 这里可以添加实际的文件加载逻辑
     console.log("打开文件:", file.name);
-    // 可以在这里调用 Tauri API 来读取文件内容
-    setShowRecentFiles(false);
+    (async () => {
+      try {
+        const content = await invoke<string>("read_text_file", {
+          path: file.path,
+        });
+        setMarkdown(content);
+        setShowRecentFiles(false);
+      } catch (err) {
+        console.error("读取文件失败:", err);
+      }
+    })();
+  };
+
+  const handleLoadFile = (path: string, content: string) => {
+    setMarkdown(content);
+    const name = path.split(/[/\\]/).pop() || path;
+    const newItem: RecentFile = {
+      id: path,
+      name,
+      path,
+      modified: new Date(),
+    };
+    setRecentFiles((prev) => {
+      const withoutDup = prev.filter((f) => f.path !== path);
+      return [newItem, ...withoutDup].slice(0, 50);
+    });
   };
 
   const handleCloseSidebar = () => {
@@ -162,6 +186,10 @@ const Layout: React.FC = () => {
         onSelectFile={handleSelectFile}
         onClose={handleCloseSidebar}
         isOpen={showRecentFiles}
+        onLoadFile={handleLoadFile}
+        onLoadDir={(files) => {
+          setRecentFiles(files);
+        }}
       />
       <div
         ref={containerRef}

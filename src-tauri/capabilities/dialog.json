@@ -1,0 +1,12 @@
+{
+  "$schema": "https://schema.tauri.app/config/2.0/capabilities.json",
+  "identifier": "dialog",
+  "description": "Enable open/save dialogs",
+  "windows": ["main"],
+  "permissions": [
+    "dialog:default",
+    "dialog:allow-open"
+  ]
+}
+
+
