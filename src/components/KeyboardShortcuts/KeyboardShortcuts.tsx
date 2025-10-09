@@ -18,6 +18,8 @@ interface KeyboardShortcutsProps {
   setValue: (newValue: string) => void;
   selectionStart: number;
   selectionEnd: number;
+  onSave?: () => void;
+  onSaveAs?: () => void;
 }
 
 const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({
@@ -25,10 +27,30 @@ const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({
   setValue,
   selectionStart,
   selectionEnd,
+  onSave,
+  onSaveAs,
 }) => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!(e.target instanceof HTMLTextAreaElement)) return;
+
+      // Ctrl/Cmd + S 保存
+      if ((e.ctrlKey || e.metaKey) && (e.key === "s" || e.key === "S")) {
+        e.preventDefault();
+        onSave?.();
+        return;
+      }
+
+      // Ctrl/Cmd + Shift + S 另存为
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        e.shiftKey &&
+        (e.key === "s" || e.key === "S")
+      ) {
+        e.preventDefault();
+        onSaveAs?.();
+        return;
+      }
 
       if (!e.ctrlKey && !e.metaKey) return;
 

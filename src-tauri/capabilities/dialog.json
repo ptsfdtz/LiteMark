@@ -5,7 +5,8 @@
   "windows": ["main"],
   "permissions": [
     "dialog:default",
-    "dialog:allow-open"
+    "dialog:allow-open",
+    "dialog:allow-save"
   ]
 }
 

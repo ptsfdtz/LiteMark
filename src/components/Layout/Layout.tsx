@@ -11,6 +11,8 @@ import { ScrollSync } from "../../hooks/useScrollSync";
 import RecentFilesSidebar from "../RecentFilesSidebar/RecentFilesSidebar";
 import { RecentFile } from "../../types/recentFiles";
 import { invoke } from "@tauri-apps/api/core";
+import { loadRecentFiles, saveRecentFiles } from "../../utils/recentStore";
+import { save as saveDialog, message } from "@tauri-apps/plugin-dialog";
 
 const Layout: React.FC = () => {
   const [markdown, setMarkdown] = useState("");
@@ -23,12 +25,34 @@ const Layout: React.FC = () => {
   const [previewMode, setPreviewMode] = useState(false);
   const [editorWidth, setEditorWidth] = useState(50);
   const [isResizing, setIsResizing] = useState(false);
+  const [currentFilePath, setCurrentFilePath] = useState<string | null>(null);
 
-  // 模拟获取最近文件数据
+  // 启动时从 AppData 读取最近文件（Tauri fs）
   useEffect(() => {
-    const mockFiles: RecentFile[] = [];
-    setRecentFiles(mockFiles);
+    (async () => {
+      const persisted = await loadRecentFiles();
+      const restored: RecentFile[] = persisted.map((f) => ({
+        id: f.id,
+        name: f.name,
+        path: f.path,
+        modified: new Date(f.modified),
+      }));
+      setRecentFiles(restored);
+    })();
   }, []);
+
+  // recentFiles 变更时写回 AppData（Tauri fs）
+  useEffect(() => {
+    (async () => {
+      const toStore = recentFiles.map((f) => ({
+        id: f.id,
+        name: f.name,
+        path: f.path,
+        modified: f.modified.toISOString(),
+      }));
+      await saveRecentFiles(toStore);
+    })();
+  }, [recentFiles]);
 
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
@@ -85,7 +109,7 @@ const Layout: React.FC = () => {
     };
   }, [scrollSyncEnabled]);
 
-  +useEffect(() => {
+  useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizing || !containerRef.current) return;
 
@@ -127,14 +151,31 @@ const Layout: React.FC = () => {
         });
         setMarkdown(content);
         setShowRecentFiles(false);
+        setCurrentFilePath(file.path);
+        // 读取成功后将该文件置顶到最近列表
+        setRecentFiles((prev) => {
+          const withoutDup = prev.filter((f) => f.path !== file.path);
+          const bumped: RecentFile = {
+            id: file.path,
+            name: file.name,
+            path: file.path,
+            modified: new Date(),
+          };
+          return [bumped, ...withoutDup].slice(0, 50);
+        });
       } catch (err) {
         console.error("读取文件失败:", err);
+        // 从最近文件列表中移除该文件
+        setRecentFiles((prev) => prev.filter((f) => f.path !== file.path));
+        // 显示错误对话框
+        await message("文件不存在或无法访问", { title: "错误" });
       }
     })();
   };
 
   const handleLoadFile = (path: string, content: string) => {
     setMarkdown(content);
+    setCurrentFilePath(path);
     const name = path.split(/[/\\]/).pop() || path;
     const newItem: RecentFile = {
       id: path,
@@ -148,8 +189,71 @@ const Layout: React.FC = () => {
     });
   };
 
+  const handleSave = async () => {
+    try {
+      let path = currentFilePath;
+      if (!path) {
+        const selected = await saveDialog({
+          filters: [
+            { name: "Markdown", extensions: ["md", "markdown", "txt"] },
+            { name: "All Files", extensions: ["*"] },
+          ],
+          defaultPath: "note.md",
+        });
+        if (!selected) return;
+        path = selected as string;
+        setCurrentFilePath(path);
+      }
+      await invoke("write_text_file", { path, content: markdown });
+      const name = path.split(/[/\\]/).pop() || path;
+      const item: RecentFile = {
+        id: path,
+        name,
+        path,
+        modified: new Date(),
+      };
+      setRecentFiles((prev) => {
+        const withoutDup = prev.filter((f) => f.path !== path);
+        return [item, ...withoutDup].slice(0, 50);
+      });
+    } catch (err) {
+      console.error("保存失败:", err);
+    }
+  };
+
   const handleCloseSidebar = () => {
     setShowRecentFiles(false);
+  };
+
+  const handleSaveAs = async () => {
+    try {
+      const selected = await saveDialog({
+        filters: [
+          { name: "Markdown", extensions: ["md", "markdown", "txt"] },
+          { name: "All Files", extensions: ["*"] },
+        ],
+        defaultPath:
+          (currentFilePath && currentFilePath.split(/[/\\]/).pop()) ||
+          "note.md",
+      });
+      if (!selected) return;
+      const path = selected as string;
+      await invoke("write_text_file", { path, content: markdown });
+      setCurrentFilePath(path);
+      const name = path.split(/[/\\]/).pop() || path;
+      const item: RecentFile = {
+        id: path,
+        name,
+        path,
+        modified: new Date(),
+      };
+      setRecentFiles((prev) => {
+        const withoutDup = prev.filter((f) => f.path !== path);
+        return [item, ...withoutDup].slice(0, 50);
+      });
+    } catch (err) {
+      console.error("另存为失败:", err);
+    }
   };
 
   const toggleScrollSync = () => {
@@ -178,6 +282,8 @@ const Layout: React.FC = () => {
           selectionStart={selection.start}
           selectionEnd={selection.end}
           onOpenFolder={handleOpenFolder}
+          onSave={handleSave}
+          onSaveAs={handleSaveAs}
         />
         <SettingsButton onClick={() => setShowSettings(true)} />
       </div>
@@ -189,6 +295,21 @@ const Layout: React.FC = () => {
         onLoadFile={handleLoadFile}
         onLoadDir={(files) => {
           setRecentFiles(files);
+        }}
+        onNewFile={(path, content) => {
+          setMarkdown(content);
+          setCurrentFilePath(path);
+          const name = path.split(/[/\\]/).pop() || path;
+          const item: RecentFile = {
+            id: path,
+            name,
+            path,
+            modified: new Date(),
+          };
+          setRecentFiles((prev) => {
+            const withoutDup = prev.filter((f) => f.path !== path);
+            return [item, ...withoutDup].slice(0, 50);
+          });
         }}
       />
       <div
@@ -235,6 +356,8 @@ const Layout: React.FC = () => {
         setValue={setMarkdown}
         selectionStart={selection.start}
         selectionEnd={selection.end}
+        onSave={handleSave}
+        onSaveAs={handleSaveAs}
       />
       {showSettings && (
         <Settings

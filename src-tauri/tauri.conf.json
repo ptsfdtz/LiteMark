@@ -20,7 +20,7 @@
     ],
     "security": {
       "csp": null,
-      "capabilities": ["dialog"]
+      "capabilities": ["dialog", "store"]
     }
   },
   "bundle": {

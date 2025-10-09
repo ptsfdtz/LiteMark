@@ -1,8 +1,9 @@
 import React from "react";
 import styles from "./RecentFilesSidebar.module.css";
 import { RecentFile } from "../../types/recentFiles";
-import { open } from "@tauri-apps/plugin-dialog";
+import { open, save } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
+import { FaFolderOpen, FaFile, FaFileAlt } from "react-icons/fa";
 
 interface RecentFilesSidebarProps {
   files: RecentFile[];
@@ -13,6 +14,7 @@ interface RecentFilesSidebarProps {
   onLoadDir?: (
     files: { id: string; name: string; path: string; modified: Date }[]
   ) => void;
+  onNewFile?: (path: string, content: string) => void;
 }
 
 const RecentFilesSidebar: React.FC<RecentFilesSidebarProps> = ({
@@ -22,6 +24,7 @@ const RecentFilesSidebar: React.FC<RecentFilesSidebarProps> = ({
   isOpen,
   onLoadFile,
   onLoadDir,
+  onNewFile,
 }) => {
   const handleOpenFile = async () => {
     try {
@@ -44,6 +47,28 @@ const RecentFilesSidebar: React.FC<RecentFilesSidebarProps> = ({
       onClose();
     } catch (err) {
       console.error("打开文件失败:", err);
+    }
+  };
+
+  const handleNewFile = async () => {
+    try {
+      const target = await save({
+        filters: [
+          { name: "Markdown", extensions: ["md", "markdown", "txt"] },
+          { name: "All Files", extensions: ["*"] },
+        ],
+        defaultPath: "untitled.md",
+      });
+      if (!target) return;
+      const initialContent = "# 新建文档\n\n";
+      await invoke("write_text_file", {
+        path: target,
+        content: initialContent,
+      });
+      if (onNewFile) onNewFile(target, initialContent);
+      onClose();
+    } catch (err) {
+      console.error("新建文件失败:", err);
     }
   };
 
@@ -73,13 +98,36 @@ const RecentFilesSidebar: React.FC<RecentFilesSidebarProps> = ({
       className={`${styles.sidebar} ${isOpen ? styles.open : styles.closed}`}
     >
       <div className={styles.header}>
-        <button onClick={handleOpenDirectory} className={styles.openButton}>
-          打开文件夹
+        <button
+          onClick={handleOpenDirectory}
+          className={styles.openButton}
+          title="打开文件夹"
+          aria-label="打开文件夹"
+        >
+          <FaFolderOpen />
         </button>
-        <button onClick={handleOpenFile} className={styles.openButton}>
-          打开文件
+        <button
+          onClick={handleOpenFile}
+          className={styles.openButton}
+          title="打开文件"
+          aria-label="打开文件"
+        >
+          <FaFile />
         </button>
-        <button onClick={onClose} className={styles.closeButton}>
+        <button
+          onClick={handleNewFile}
+          className={styles.openButton}
+          title="新建文件"
+          aria-label="新建文件"
+        >
+          <FaFileAlt />
+        </button>
+        <button
+          onClick={onClose}
+          className={styles.closeButton}
+          title="关闭"
+          aria-label="关闭"
+        >
           ×
         </button>
       </div>

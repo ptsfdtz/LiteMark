@@ -28,6 +28,8 @@ import {
   FaTable,
   FaImage,
   FaFolderOpen,
+  FaSave,
+  FaCopy,
 } from "react-icons/fa";
 
 interface ToolbarProps {
@@ -36,6 +38,8 @@ interface ToolbarProps {
   selectionStart: number;
   selectionEnd: number;
   onOpenFolder?: () => void;
+  onSave?: () => void;
+  onSaveAs?: () => void;
 }
 
 const Toolbar: React.FC<ToolbarProps> = ({
@@ -44,6 +48,8 @@ const Toolbar: React.FC<ToolbarProps> = ({
   selectionStart,
   selectionEnd,
   onOpenFolder,
+  onSave,
+  onSaveAs,
 }) => {
   return (
     <div className={styles.toolbar}>
@@ -54,6 +60,16 @@ const Toolbar: React.FC<ToolbarProps> = ({
           className={styles.folderButton}
         >
           <FaFolderOpen />
+        </button>
+      )}
+      {onSave && (
+        <button onClick={onSave} title="保存 (Ctrl+S)">
+          <FaSave />
+        </button>
+      )}
+      {onSaveAs && (
+        <button onClick={onSaveAs} title="另存为 (Ctrl+Shift+S)">
+          <FaCopy />
         </button>
       )}
       <button
