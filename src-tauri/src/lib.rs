@@ -43,6 +43,17 @@ fn is_text_extension(path: &Path) -> bool {
     }
 }
 
+/// Delete a file at an absolute path.
+#[tauri::command]
+fn delete_file(path: String) -> Result<(), String> {
+    let file_path = PathBuf::from(path);
+    if file_path.exists() && file_path.is_file() {
+        std::fs::remove_file(file_path).map_err(|e| e.to_string())
+    } else {
+        Err("file does not exist or is not a file".to_string())
+    }
+}
+
 /// List markdown/text files in a directory (non-recursive), sorted by modified time desc.
 #[tauri::command]
 fn list_text_files(dir_path: String) -> Result<Vec<FileInfo>, String> {
@@ -88,7 +99,8 @@ pub fn run() {
             greet,
             read_text_file,
             write_text_file,
-            list_text_files
+            list_text_files,
+            delete_file
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

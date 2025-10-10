@@ -12,15 +12,28 @@
 }
 
 .modal {
-  background: var(--sidebar-bg, #ffffff);
-  border-radius: 8px;
-  width: 90%;
-  max-width: 500px;
-  max-height: 90vh;
-  overflow: hidden;
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 300px;
+  min-width: 250px; /* 设置最小宽度 */
+  max-width: 90vw; /* 设置最大宽度 */
+  height: 100%;
+  background-color: var(--background-color);
+  transform: translateX(100%);
+  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  transition: transform 0.3s ease;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.modal.open {
+  transform: translateX(0);
+}
+
+.modal.closed {
+  transform: translateX(100%);
 }
 
 .header {

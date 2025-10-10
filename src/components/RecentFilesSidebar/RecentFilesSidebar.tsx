@@ -1,20 +1,30 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import styles from "./RecentFilesSidebar.module.css";
 import { RecentFile } from "../../types/recentFiles";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
-import { FaFolderOpen, FaFile, FaFileAlt } from "react-icons/fa";
+import {
+  FaFolderOpen,
+  FaFile,
+  FaFileAlt,
+  FaTimes,
+  FaTrash,
+} from "react-icons/fa";
 
 interface RecentFilesSidebarProps {
   files: RecentFile[];
   onSelectFile: (file: RecentFile) => void;
-  onClose: () => void;
+  /** Deprecated: use onRequestClose + onCloseComplete for animated close. */
+  onClose?: () => void;
   isOpen: boolean;
+  onRequestClose?: () => void;
+  onCloseComplete?: () => void;
   onLoadFile?: (path: string, content: string) => void;
   onLoadDir?: (
     files: { id: string; name: string; path: string; modified: Date }[]
   ) => void;
   onNewFile?: (path: string, content: string) => void;
+  onDeleteFile?: (id: string) => void;
 }
 
 const RecentFilesSidebar: React.FC<RecentFilesSidebarProps> = ({
@@ -22,10 +32,29 @@ const RecentFilesSidebar: React.FC<RecentFilesSidebarProps> = ({
   onSelectFile,
   onClose,
   isOpen,
+  onRequestClose,
+  onCloseComplete,
   onLoadFile,
   onLoadDir,
   onNewFile,
+  onDeleteFile,
 }) => {
+  const sidebarRef = useRef<HTMLDivElement | null>(null);
+
+  // Close when clicking outside the sidebar
+  useEffect(() => {
+    if (!isOpen) return;
+    const onDocMouseDown = (e: MouseEvent) => {
+      if (!sidebarRef.current) return;
+      const target = e.target as Node;
+      if (!sidebarRef.current.contains(target)) {
+        if (onRequestClose) onRequestClose();
+        else if (onClose) onClose();
+      }
+    };
+    document.addEventListener("mousedown", onDocMouseDown);
+    return () => document.removeEventListener("mousedown", onDocMouseDown);
+  }, [isOpen, onRequestClose, onClose]);
   const handleOpenFile = async () => {
     try {
       console.log("[RecentFilesSidebar] 点击 打开文件");
@@ -44,7 +73,8 @@ const RecentFilesSidebar: React.FC<RecentFilesSidebarProps> = ({
       });
       console.log("[RecentFilesSidebar] 读取完成, 长度:", content?.length);
       if (onLoadFile) onLoadFile(selected, content);
-      onClose();
+      if (onRequestClose) onRequestClose();
+      if (onClose) onClose();
     } catch (err) {
       console.error("打开文件失败:", err);
     }
@@ -66,7 +96,8 @@ const RecentFilesSidebar: React.FC<RecentFilesSidebarProps> = ({
         content: initialContent,
       });
       if (onNewFile) onNewFile(target, initialContent);
-      onClose();
+      if (onRequestClose) onRequestClose();
+      if (onClose) onClose();
     } catch (err) {
       console.error("新建文件失败:", err);
     }
@@ -95,7 +126,12 @@ const RecentFilesSidebar: React.FC<RecentFilesSidebarProps> = ({
   };
   return (
     <div
+      ref={sidebarRef}
       className={`${styles.sidebar} ${isOpen ? styles.open : styles.closed}`}
+      onTransitionEnd={(e) => {
+        if (e.currentTarget !== e.target) return;
+        if (!isOpen && onCloseComplete) onCloseComplete();
+      }}
     >
       <div className={styles.header}>
         <button
@@ -123,12 +159,15 @@ const RecentFilesSidebar: React.FC<RecentFilesSidebarProps> = ({
           <FaFileAlt />
         </button>
         <button
-          onClick={onClose}
+          onClick={() => {
+            if (onRequestClose) onRequestClose();
+            if (onClose) onClose();
+          }}
           className={styles.closeButton}
           title="关闭"
           aria-label="关闭"
         >
-          ×
+          <FaTimes />
         </button>
       </div>
       <div className={styles.filesList}>
@@ -136,16 +175,27 @@ const RecentFilesSidebar: React.FC<RecentFilesSidebarProps> = ({
           <div className={styles.noFiles}>暂无最近文件</div>
         ) : (
           files.map((file) => (
-            <div
-              key={file.id}
-              className={styles.fileItem}
-              onClick={() => onSelectFile(file)}
-            >
-              <div className={styles.fileName}>{file.name}</div>
-              <div className={styles.filePath}>{file.path}</div>
-              <div className={styles.fileModified}>
-                {file.modified.toLocaleString()}
+            <div key={file.id} className={styles.fileItem}>
+              <div
+                className={styles.fileContent}
+                onClick={() => onSelectFile(file)}
+              >
+                <div className={styles.fileName}>{file.name}</div>
+                <div className={styles.filePath}>{file.path}</div>
+                <div className={styles.fileModified}>
+                  {file.modified.toLocaleString()}
+                </div>
               </div>
+              <button
+                className={styles.trashButton}
+                title="删除"
+                aria-label={`删除 ${file.name}`}
+                onClick={() => {
+                  if (onDeleteFile) onDeleteFile(file.id);
+                }}
+              >
+                <FaTrash />
+              </button>
             </div>
           ))
         )}

@@ -18,8 +18,10 @@ const Layout: React.FC = () => {
   const [markdown, setMarkdown] = useState("");
   const [selection, setSelection] = useState({ start: 0, end: 0 });
   const [showSettings, setShowSettings] = useState(false);
+  const [settingsClosing, setSettingsClosing] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark" | "system">("system");
   const [showRecentFiles, setShowRecentFiles] = useState(false);
+  const [recentClosing, setRecentClosing] = useState(false);
   const [recentFiles, setRecentFiles] = useState<RecentFile[]>([]);
   const [scrollSyncEnabled, setScrollSyncEnabled] = useState(true);
   const [previewMode, setPreviewMode] = useState(false);
@@ -27,7 +29,6 @@ const Layout: React.FC = () => {
   const [isResizing, setIsResizing] = useState(false);
   const [currentFilePath, setCurrentFilePath] = useState<string | null>(null);
 
-  // 启动时从 AppData 读取最近文件（Tauri fs）
   useEffect(() => {
     (async () => {
       const persisted = await loadRecentFiles();
@@ -41,7 +42,6 @@ const Layout: React.FC = () => {
     })();
   }, []);
 
-  // recentFiles 变更时写回 AppData（Tauri fs）
   useEffect(() => {
     (async () => {
       const toStore = recentFiles.map((f) => ({
@@ -152,7 +152,6 @@ const Layout: React.FC = () => {
         setMarkdown(content);
         setShowRecentFiles(false);
         setCurrentFilePath(file.path);
-        // 读取成功后将该文件置顶到最近列表
         setRecentFiles((prev) => {
           const withoutDup = prev.filter((f) => f.path !== file.path);
           const bumped: RecentFile = {
@@ -165,9 +164,7 @@ const Layout: React.FC = () => {
         });
       } catch (err) {
         console.error("读取文件失败:", err);
-        // 从最近文件列表中移除该文件
         setRecentFiles((prev) => prev.filter((f) => f.path !== file.path));
-        // 显示错误对话框
         await message("文件不存在或无法访问", { title: "错误" });
       }
     })();
@@ -187,6 +184,20 @@ const Layout: React.FC = () => {
       const withoutDup = prev.filter((f) => f.path !== path);
       return [newItem, ...withoutDup].slice(0, 50);
     });
+  };
+
+  const handleDeleteRecentFile = async (id: string) => {
+    const file = recentFiles.find((f) => f.id === id);
+    if (!file) return;
+    try {
+      await invoke("delete_file", { path: file.path });
+      setRecentFiles((prev) => prev.filter((f) => f.id !== id));
+    } catch (err) {
+      console.error("删除文件失败:", err);
+      await message("删除文件失败，可能没有权限或文件正在被使用", {
+        title: "错误",
+      });
+    }
   };
 
   const handleSave = async () => {
@@ -285,13 +296,27 @@ const Layout: React.FC = () => {
           onSave={handleSave}
           onSaveAs={handleSaveAs}
         />
-        <SettingsButton onClick={() => setShowSettings(true)} />
+        <SettingsButton
+          onClick={() => {
+            setShowSettings(true);
+            setSettingsClosing(false);
+          }}
+        />
       </div>
       <RecentFilesSidebar
         files={recentFiles}
-        onSelectFile={handleSelectFile}
+        onSelectFile={(f) => {
+          handleSelectFile(f);
+          // start closing animation for recent files
+          setRecentClosing(true);
+        }}
         onClose={handleCloseSidebar}
-        isOpen={showRecentFiles}
+        isOpen={showRecentFiles && !recentClosing}
+        onRequestClose={() => setRecentClosing(true)}
+        onCloseComplete={() => {
+          setShowRecentFiles(false);
+          setRecentClosing(false);
+        }}
         onLoadFile={handleLoadFile}
         onLoadDir={(files) => {
           setRecentFiles(files);
@@ -311,6 +336,7 @@ const Layout: React.FC = () => {
             return [item, ...withoutDup].slice(0, 50);
           });
         }}
+        onDeleteFile={handleDeleteRecentFile}
       />
       <div
         ref={containerRef}
@@ -363,7 +389,12 @@ const Layout: React.FC = () => {
         <Settings
           theme={theme}
           setTheme={setTheme}
-          onClose={() => setShowSettings(false)}
+          isClosing={settingsClosing}
+          onRequestClose={() => setSettingsClosing(true)}
+          onCloseComplete={() => {
+            setShowSettings(false);
+            setSettingsClosing(false);
+          }}
         />
       )}
     </div>

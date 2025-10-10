@@ -29,7 +29,6 @@
   align-items: center;
   padding: 1rem;
   border-bottom: 1px solid var(--editor-border, #ddd);
-  flex-shrink: 0;
 }
 
 .header h3 {
@@ -41,7 +40,8 @@
   text-overflow: ellipsis;
 }
 
-.closeButton {
+.closeButton,
+.openButton {
   background: none;
   border: none;
   font-size: 1.5rem;
@@ -74,6 +74,30 @@
   cursor: pointer;
   transition: background-color 0.2s ease;
   word-wrap: break-word;
+  position: relative;
+}
+
+.fileContent {
+  /* make room for the trash button */
+  padding-right: 2.4rem;
+}
+
+.trashButton {
+  position: absolute;
+  right: 0.6rem;
+  bottom: 0.6rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-color, #0f0f0f);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.trashButton:hover {
+  color: var(--error-color, #ff4d4f);
+  transition: color 0.2s ease;
 }
 
 .fileItem:hover {
@@ -104,64 +128,4 @@
   text-align: center;
   color: var(--blockquote-text, #666);
   padding: 2rem;
-}
-
-/* 响应式设计 - 平板设备 */
-@media (max-width: 768px) {
-  .sidebar {
-    width: 250px;
-    max-width: 95vw;
-  }
-
-  .header h3 {
-    font-size: 1.1rem;
-  }
-
-  .fileItem {
-    padding: 0.6rem;
-  }
-
-  .fileName {
-    font-size: 0.95rem;
-  }
-
-  .filePath {
-    font-size: 0.85rem;
-  }
-
-  .fileModified {
-    font-size: 0.75rem;
-  }
-}
-
-/* 响应式设计 - 手机设备 */
-@media (max-width: 480px) {
-  .sidebar {
-    width: 220px;
-    max-width: 100vw;
-  }
-
-  .header {
-    padding: 0.8rem;
-  }
-
-  .header h3 {
-    font-size: 1rem;
-  }
-
-  .fileItem {
-    padding: 0.5rem;
-  }
-
-  .fileName {
-    font-size: 0.9rem;
-  }
-
-  .filePath {
-    font-size: 0.8rem;
-  }
-
-  .fileModified {
-    font-size: 0.7rem;
-  }
 }

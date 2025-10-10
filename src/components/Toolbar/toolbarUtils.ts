@@ -105,7 +105,7 @@ export const applyOrderedList = (text: string, start: number, end: number): stri
 };
 
 export const applyTable = (text: string, position: number): string => {
-  const table = `\n| 列1 | 列2 | 列3 |\n| --- | --- | --- |\n| 内容1 | 内容2 | 内容3 |\n`;
+  const table = `\n| 列 | 列 | 列 |\n| --- | --- | --- |\n| 内容 | 内容 | 内容 |\n`;
   
   const before = text.slice(0, position);
   const after = text.slice(position);
