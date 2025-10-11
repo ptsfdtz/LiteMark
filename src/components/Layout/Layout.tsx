@@ -100,14 +100,19 @@ const Layout: React.FC = () => {
       scrollSync.syncPreviewToEditor(editorElement, previewElement);
     };
 
-    editorElement.addEventListener("scroll", handleEditorScroll);
-    previewElement.addEventListener("scroll", handlePreviewScroll);
+    editorElement.removeEventListener("scroll", handleEditorScroll);
+    previewElement.removeEventListener("scroll", handlePreviewScroll);
+
+    if (!previewMode) {
+      editorElement.addEventListener("scroll", handleEditorScroll);
+      previewElement.addEventListener("scroll", handlePreviewScroll);
+    }
 
     return () => {
       editorElement.removeEventListener("scroll", handleEditorScroll);
       previewElement.removeEventListener("scroll", handlePreviewScroll);
     };
-  }, [scrollSyncEnabled]);
+  }, [scrollSyncEnabled, previewMode]);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -307,7 +312,6 @@ const Layout: React.FC = () => {
         files={recentFiles}
         onSelectFile={(f) => {
           handleSelectFile(f);
-          // start closing animation for recent files
           setRecentClosing(true);
         }}
         onClose={handleCloseSidebar}
@@ -385,6 +389,11 @@ const Layout: React.FC = () => {
         onSave={handleSave}
         onSaveAs={handleSaveAs}
       />
+      {currentFilePath && (
+        <div className={styles.currentFileName}>
+          {currentFilePath.split(/[/\\]/).pop()}
+        </div>
+      )}
       {showSettings && (
         <Settings
           theme={theme}
