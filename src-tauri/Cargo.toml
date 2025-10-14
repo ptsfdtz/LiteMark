@@ -4,6 +4,7 @@ version = "0.1.3"
 description = "editor for markdown"
 authors = ["PTSFDTZ pitousanfadetuzi@gmail.com"]
 edition = "2021"
+license = "MIT"
 
 [lib]
 name = "tauri_get_start_lib"

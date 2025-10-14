@@ -82,4 +82,9 @@ my-markdown-editor/
 - CSS 模块化 / 变量支持主题切换
 
 
+## License
+
+本项目使用 MIT 许可证发布。详情请查看根目录的 LICENSE 文件。
+
+
 
