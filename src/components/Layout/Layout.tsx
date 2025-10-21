@@ -13,6 +13,7 @@ import { RecentFile } from "../../types/recentFiles";
 import { invoke } from "@tauri-apps/api/core";
 import { loadRecentFiles, saveRecentFiles } from "../../utils/recentStore";
 import { save as saveDialog, message } from "@tauri-apps/plugin-dialog";
+import { loadWorkDir, saveWorkDir } from "../../utils/workDirStore";
 
 const Layout: React.FC = () => {
   const [markdown, setMarkdown] = useState("");
@@ -28,6 +29,21 @@ const Layout: React.FC = () => {
   const [editorWidth, setEditorWidth] = useState(50);
   const [isResizing, setIsResizing] = useState(false);
   const [currentFilePath, setCurrentFilePath] = useState<string | null>(null);
+  const [workDir, setWorkDirState] = useState("");
+
+  // 加载个人工作文件夹
+  useEffect(() => {
+    (async () => {
+      const dir = await loadWorkDir();
+      setWorkDirState(dir);
+    })();
+  }, []);
+
+  // 持久化个人工作文件夹
+  const setWorkDir = (dir: string) => {
+    setWorkDirState(dir);
+    saveWorkDir(dir);
+  };
 
   useEffect(() => {
     (async () => {
@@ -341,6 +357,7 @@ const Layout: React.FC = () => {
           });
         }}
         onDeleteFile={handleDeleteRecentFile}
+        workDir={workDir}
       />
       <div
         ref={containerRef}
@@ -398,6 +415,8 @@ const Layout: React.FC = () => {
         <Settings
           theme={theme}
           setTheme={setTheme}
+          workDir={workDir}
+          setWorkDir={setWorkDir}
           isClosing={settingsClosing}
           onRequestClose={() => setSettingsClosing(true)}
           onCloseComplete={() => {

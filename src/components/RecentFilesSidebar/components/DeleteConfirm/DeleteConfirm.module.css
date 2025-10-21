@@ -1,0 +1,67 @@
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: var(--toolbar-bg, #f5f5f5);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.dialog {
+  background: var(--background-color, #fff);
+  border-radius: var(--border-radius, 12px);
+  box-shadow: var(--dialog-shadow, 0 2px 16px rgba(0, 0, 0, 0.18));
+  padding: 1rem;
+  width: 72px;
+  height: 72px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  justify-content: center;
+  align-items: stretch;
+  width: 100%;
+}
+
+.confirm {
+  background: var(--error-color, #ff4d4f);
+  color: var(--text-color, #fff);
+  border: none;
+  border-radius: var(--button-radius, 8px);
+  padding: 0.5rem 1.2rem;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s;
+  min-width: 0;
+  width: 100%;
+  text-align: center;
+}
+.confirm:hover {
+  background: var(--danger-hover, #e04444);
+}
+.cancel {
+  background: var(--blockquote-border, #eee);
+  color: var(--text-color, #333);
+  border: none;
+  border-radius: var(--button-radius, 8px);
+  padding: 0.5rem 1.2rem;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s;
+  min-width: 0;
+  width: 100%;
+  text-align: center;
+}
+.cancel:hover {
+  background: var(--cancel-hover, #ccc);
+}

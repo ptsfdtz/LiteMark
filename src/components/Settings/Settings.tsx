@@ -2,17 +2,27 @@
 import React, { useEffect, useState, useRef } from "react";
 import styles from "./Settings.module.css";
 import { SettingsProps } from "../../types/settings";
-import { FiSun, FiMoon, FiRepeat } from "react-icons/fi";
+import { open } from "@tauri-apps/plugin-dialog";
+import { FiSun, FiMoon, FiRepeat, FiMoreHorizontal } from "react-icons/fi";
 import { FaCog, FaTimes } from "react-icons/fa";
 
 const Settings: React.FC<SettingsProps> = ({
   theme,
   setTheme,
+  workDir,
+  setWorkDir,
   onClose,
   onCloseComplete,
   onRequestClose,
   isClosing: externalIsClosing,
 }) => {
+  // 选择个人工作文件夹
+  const handleChooseWorkDir = async () => {
+    const selected = await open({ directory: true, multiple: false });
+    if (selected && typeof selected === "string") {
+      setWorkDir(selected);
+    }
+  };
   const [systemTheme, setSystemTheme] = useState<"light" | "dark">("light");
   const [isClosing, setIsClosing] = useState<boolean>(false);
   const modalRef = useRef<HTMLDivElement | null>(null);
@@ -146,6 +156,35 @@ const Settings: React.FC<SettingsProps> = ({
                 <FiMoon size={18} />
               </button>
             </div>
+          </div>
+        </div>
+        <div className={styles.settingGroup}>
+          <div style={{ marginBottom: 8, fontWeight: 500 }}>个人工作文件夹</div>
+          <div className={styles.workDirRow}>
+            <input
+              type="text"
+              value={workDir}
+              readOnly
+              className={styles.workDirInput}
+              placeholder="未设置"
+            />
+            <button
+              type="button"
+              onClick={handleChooseWorkDir}
+              className={styles.workDirBtn}
+              title="选择工作文件夹"
+              style={{
+                borderRadius: "50%",
+                width: 40,
+                height: 40,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: 0,
+              }}
+            >
+              <FiMoreHorizontal size={22} />
+            </button>
           </div>
         </div>
       </div>

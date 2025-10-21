@@ -1,3 +1,80 @@
+.workDirRow {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+.workDirInput {
+  flex: 1;
+  min-width: 0;
+  height: 30px;
+  background: var(--toolbar-bg, #f7f7f7);
+  border: 1px solid var(--editor-border, #ddd);
+  border-radius: 4px;
+  padding: 0 10px;
+  font-size: 1rem;
+  color: var(--text-color, #222);
+  transition: border 0.2s;
+  box-sizing: border-box;
+}
+.workDirInput:focus {
+  outline: none;
+}
+.workDirBtnRow {
+  display: flex;
+  justify-content: center;
+  margin-top: 4px;
+}
+.workDirBtn {
+  padding: 6px 24px;
+  border-radius: 4px;
+  border: 1px solid var(--editor-border, #bbb);
+  background: var(--background-color, #fafafa);
+  color: var(--text-color, #222);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s, border 0.2s;
+}
+.workDirBtn:hover {
+  background: var(--toolbar-bg, #f3f3f3);
+}
+.workDirInput {
+  flex: 1;
+  min-width: 0;
+  background: var(--toolbar-bg, #f7f7f7);
+  border: 1px solid var(--editor-border, #ddd);
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 1rem;
+  color: var(--text-color, #222);
+  transition: border 0.2s;
+}
+.workDirInput:focus {
+  outline: none;
+  border-color: var(--link-active-color, #d33);
+}
+
+.workDirBtn {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--editor-border, #bbb);
+  background: var(--background-color, #fafafa);
+  color: var(--text-color, #222);
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: background 0.2s, border 0.2s;
+}
+
+.workDirBtn:hover {
+  background: var(--toolbar-bg, #f3f3f3);
+}
+
 .modalOverlay {
   position: fixed;
   top: 0;
@@ -41,6 +118,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 1rem;
+  color: var(--text-color);
   border-bottom: 1px solid var(--editor-border, #ddd);
 }
 
@@ -71,6 +149,7 @@
 
 .settingGroup {
   margin-bottom: 1rem;
+  color: var(--text-color);
 }
 
 .switchOptions {

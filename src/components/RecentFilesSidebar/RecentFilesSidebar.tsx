@@ -1,5 +1,6 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import styles from "./RecentFilesSidebar.module.css";
+import DeleteConfirm from "./components/DeleteConfirm/DeleteConfirm";
 import { RecentFile } from "../../types/recentFiles";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
@@ -14,7 +15,6 @@ import {
 interface RecentFilesSidebarProps {
   files: RecentFile[];
   onSelectFile: (file: RecentFile) => void;
-  /** Deprecated: use onRequestClose + onCloseComplete for animated close. */
   onClose?: () => void;
   isOpen: boolean;
   onRequestClose?: () => void;
@@ -25,6 +25,7 @@ interface RecentFilesSidebarProps {
   ) => void;
   onNewFile?: (path: string, content: string) => void;
   onDeleteFile?: (id: string) => void;
+  workDir?: string;
 }
 
 const RecentFilesSidebar: React.FC<RecentFilesSidebarProps> = ({
@@ -38,12 +39,37 @@ const RecentFilesSidebar: React.FC<RecentFilesSidebarProps> = ({
   onLoadDir,
   onNewFile,
   onDeleteFile,
+  workDir,
 }) => {
+  // Ctrl+N 新建文件快捷键
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === "n" || e.key === "N")) {
+        e.preventDefault();
+        handleNewFile();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [isOpen]);
   const sidebarRef = useRef<HTMLDivElement | null>(null);
+  // 记录正在删除动画的文件 id
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  // 记录弹窗确认删除的文件 id 和按钮 ref
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<{
+    id: string;
+    anchor: HTMLButtonElement | null;
+  } | null>(null);
+  // 用于持久化每个文件的按钮ref，避免闪烁
+  const trashBtnRefs = useRef<Map<string, HTMLButtonElement | null>>(new Map());
 
   // Close when clicking outside the sidebar
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      setShowDeleteConfirm(null); // 关闭弹窗
+      return;
+    }
     const onDocMouseDown = (e: MouseEvent) => {
       if (!sidebarRef.current) return;
       const target = e.target as Node;
@@ -82,12 +108,20 @@ const RecentFilesSidebar: React.FC<RecentFilesSidebarProps> = ({
 
   const handleNewFile = async () => {
     try {
+      let defaultPath = "untitled.md";
+      if (workDir) {
+        // 拼接路径，兼容 Windows/Unix
+        defaultPath =
+          workDir.replace(/[\\/]$/, "") +
+          (workDir.includes("\\") ? "\\" : "/") +
+          "untitled.md";
+      }
       const target = await save({
         filters: [
           { name: "Markdown", extensions: ["md", "markdown", "txt"] },
           { name: "All Files", extensions: ["*"] },
         ],
-        defaultPath: "untitled.md",
+        defaultPath,
       });
       if (!target) return;
       const initialContent = "# 新建文档\n\n";
@@ -174,32 +208,65 @@ const RecentFilesSidebar: React.FC<RecentFilesSidebarProps> = ({
         {files.length === 0 ? (
           <div className={styles.noFiles}>暂无最近文件</div>
         ) : (
-          files.map((file) => (
-            <div key={file.id} className={styles.fileItem}>
+          files.map((file) => {
+            return (
               <div
-                className={styles.fileContent}
-                onClick={() => onSelectFile(file)}
+                key={file.id}
+                className={`${styles.fileItem} ${
+                  deletingId === file.id ? styles.deleting : ""
+                }`}
               >
-                <div className={styles.fileName}>{file.name}</div>
-                <div className={styles.filePath}>{file.path}</div>
-                <div className={styles.fileModified}>
-                  {file.modified.toLocaleString()}
+                <div
+                  className={styles.fileContent}
+                  onClick={() => onSelectFile(file)}
+                >
+                  <div className={styles.fileName}>{file.name}</div>
+                  <div className={styles.filePath}>{file.path}</div>
+                  <div className={styles.fileModified}>
+                    {file.modified.toLocaleString()}
+                  </div>
                 </div>
+                <button
+                  ref={(el) => {
+                    trashBtnRefs.current.set(file.id, el);
+                  }}
+                  className={styles.trashButton}
+                  title="删除"
+                  aria-label={`删除 ${file.name}`}
+                  onClick={() =>
+                    setShowDeleteConfirm({
+                      id: file.id,
+                      anchor: trashBtnRefs.current.get(file.id) || null,
+                    })
+                  }
+                  disabled={deletingId === file.id}
+                >
+                  <FaTrash />
+                </button>
               </div>
-              <button
-                className={styles.trashButton}
-                title="删除"
-                aria-label={`删除 ${file.name}`}
-                onClick={() => {
-                  if (onDeleteFile) onDeleteFile(file.id);
-                }}
-              >
-                <FaTrash />
-              </button>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
+      {/* 删除确认弹窗 */}
+      {showDeleteConfirm && (
+        <DeleteConfirm
+          open={true}
+          anchorRef={showDeleteConfirm.anchor}
+          fileName={
+            files.find((f) => f.id === showDeleteConfirm.id)?.name || ""
+          }
+          onConfirm={() => {
+            setDeletingId(showDeleteConfirm.id);
+            setShowDeleteConfirm(null);
+            setTimeout(() => {
+              setDeletingId(null);
+              if (onDeleteFile) onDeleteFile(showDeleteConfirm.id);
+            }, 400);
+          }}
+          onCancel={() => setShowDeleteConfirm(null)}
+        />
+      )}
     </div>
   );
 };
