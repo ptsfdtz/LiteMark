@@ -4,7 +4,7 @@
 > A **lightweight**, **fast**, and **modern** Markdown editor built with [Tauri](https://tauri.app/) — less memory, more focus.
 
 <p align="center">
-  <img src="https://github.com/ptsfdtz/litemark/assets/preview.png" width="600" alt="LiteMark Preview">
+  <img src="assets/preview.png" width="600" alt="LiteMark Preview">
 </p>
 
 ## 🌙themes🔆
@@ -16,7 +16,7 @@ LiteMark supports both light and dark modes for a comfortable writing experience
 
 | Cadmium Light Theme | Dark Theme |
 | :-----------------: | :--------: |
-| <img src="https://github.com/ptsfdtz/litemark/assets/preview-light.png" width="480" alt="LiteMark Light Theme Preview"> | <img src="https://github.com/ptsfdtz/litemark/assets/preview-dark.png" width="480" alt="LiteMark Dark Theme Preview"> |
+| <img src="assets/preview-light.png" width="480" alt="LiteMark Light Theme Preview"> | <img src="assets/preview-dark.png" width="480" alt="LiteMark Dark Theme Preview"> |
 
 ---
 
