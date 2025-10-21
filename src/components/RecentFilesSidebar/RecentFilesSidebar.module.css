@@ -136,3 +136,49 @@
   color: var(--blockquote-text, #666);
   padding: 2rem;
 }
+
+/* 删除确认/取消按钮样式 */
+.confirmBtns {
+  position: absolute;
+  right: 0.6rem;
+  bottom: 0.6rem;
+  display: flex;
+  flex-direction: row;
+  gap: 4px;
+  align-items: center;
+  z-index: 2;
+}
+.confirmButton {
+  background: #ff4d4f;
+  color: #ffffff;
+  border: none;
+  border-radius: 5px;
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.confirmButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.confirmButton:hover:not(:disabled) {
+  background: var(--link-active-color, #cc0000);
+}
+
+.cancelButton {
+  background: var(--background-color);
+  color: var(--text-color);
+  border: none;
+  border-radius: 5px;
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.cancelButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.cancelButton:hover:not(:disabled) {
+  background: var(--button-bg-hover, #95a5a6);
+}

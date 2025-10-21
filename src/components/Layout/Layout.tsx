@@ -15,6 +15,38 @@ import { loadRecentFiles, saveRecentFiles } from "../../utils/recentStore";
 import { save as saveDialog, message } from "@tauri-apps/plugin-dialog";
 import { loadWorkDir, saveWorkDir } from "../../utils/workDirStore";
 
+// 保存成功动画组件
+const SaveSuccessToast: React.FC<{ show: boolean }> = ({ show }) => {
+  return (
+    <div
+      style={{
+        position: "fixed",
+        top: 56,
+        right: 16,
+        zIndex: 9999,
+        pointerEvents: "none",
+        opacity: show ? 1 : 0,
+        transform: show ? "scale(1)" : "scale(0.7)",
+        transition: "opacity 0.4s, transform 0.4s",
+        background: "linear-gradient(135deg, #4fcf70 0%, #36b37e 100%)",
+        color: "#fff",
+        borderRadius: "50%",
+        width: 20,
+        height: 20,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: "0.75rem",
+        boxShadow: "0 2px 16px rgba(0,0,0,0.12)",
+      }}
+    >
+      <span role="img" aria-label="success">
+        ✔
+      </span>
+    </div>
+  );
+};
+
 const Layout: React.FC = () => {
   const [markdown, setMarkdown] = useState("");
   const [selection, setSelection] = useState({ start: 0, end: 0 });
@@ -30,6 +62,8 @@ const Layout: React.FC = () => {
   const [isResizing, setIsResizing] = useState(false);
   const [currentFilePath, setCurrentFilePath] = useState<string | null>(null);
   const [workDir, setWorkDirState] = useState("");
+  const [forceEditFileName, setForceEditFileName] = useState(false);
+  const [showSaveToast, setShowSaveToast] = useState(false);
 
   // 加载个人工作文件夹
   useEffect(() => {
@@ -45,6 +79,7 @@ const Layout: React.FC = () => {
     saveWorkDir(dir);
   };
 
+  // 启动时加载最近文件并自动打开最新的一个
   useEffect(() => {
     (async () => {
       const persisted = await loadRecentFiles();
@@ -55,6 +90,18 @@ const Layout: React.FC = () => {
         modified: new Date(f.modified),
       }));
       setRecentFiles(restored);
+      if (restored.length > 0) {
+        // 自动打开最新的文件
+        try {
+          const content = await invoke<string>("read_text_file", {
+            path: restored[0].path,
+          });
+          setMarkdown(content);
+          setCurrentFilePath(restored[0].path);
+        } catch (err) {
+          console.error("自动打开最近文件失败:", err);
+        }
+      }
     })();
   }, []);
 
@@ -248,6 +295,8 @@ const Layout: React.FC = () => {
         const withoutDup = prev.filter((f) => f.path !== path);
         return [item, ...withoutDup].slice(0, 50);
       });
+      setShowSaveToast(true);
+      setTimeout(() => setShowSaveToast(false), 1500);
     } catch (err) {
       console.error("保存失败:", err);
     }
@@ -316,8 +365,10 @@ const Layout: React.FC = () => {
           onOpenFolder={handleOpenFolder}
           onSave={handleSave}
           onSaveAs={handleSaveAs}
+          className="toolbar"
         />
         <SettingsButton
+          className="settingsButton"
           onClick={() => {
             setShowSettings(true);
             setSettingsClosing(false);
@@ -355,6 +406,7 @@ const Layout: React.FC = () => {
             const withoutDup = prev.filter((f) => f.path !== path);
             return [item, ...withoutDup].slice(0, 50);
           });
+          setForceEditFileName(true); // 新建后强制编辑
         }}
         onDeleteFile={handleDeleteRecentFile}
         workDir={workDir}
@@ -375,6 +427,7 @@ const Layout: React.FC = () => {
                 value={markdown}
                 onChange={setMarkdown}
                 onSelectionChange={(start, end) => setSelection({ start, end })}
+                className="editor"
               />
             </div>
             <div className={styles.resizer} onMouseDown={startResizing} />
@@ -407,9 +460,14 @@ const Layout: React.FC = () => {
         onSaveAs={handleSaveAs}
       />
       {currentFilePath && (
-        <div className={styles.currentFileName}>
-          {currentFilePath.split(/[/\\]/).pop()}
-        </div>
+        <CurrentFileName
+          filePath={currentFilePath}
+          recentFiles={recentFiles}
+          setRecentFiles={setRecentFiles}
+          setCurrentFilePath={setCurrentFilePath}
+          forceEdit={forceEditFileName}
+          setForceEdit={setForceEditFileName}
+        />
       )}
       {showSettings && (
         <Settings
@@ -425,8 +483,116 @@ const Layout: React.FC = () => {
           }}
         />
       )}
+      <SaveSuccessToast show={showSaveToast} />
     </div>
   );
 };
 
 export default Layout;
+
+// 右上角文件名双击可重命名组件
+interface CurrentFileNameProps {
+  filePath: string;
+  recentFiles: RecentFile[];
+  setRecentFiles: React.Dispatch<React.SetStateAction<RecentFile[]>>;
+  setCurrentFilePath: (p: string) => void;
+  forceEdit?: boolean;
+  setForceEdit?: (v: boolean) => void;
+}
+
+const CurrentFileName: React.FC<CurrentFileNameProps> = ({
+  filePath,
+  setRecentFiles,
+  setCurrentFilePath,
+  forceEdit,
+  setForceEdit,
+}) => {
+  const [editing, setEditing] = React.useState(false);
+  const [value, setValue] = React.useState(filePath.split(/[/\\]/).pop() || "");
+  const inputRef = React.useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    setValue(filePath.split(/[/\\]/).pop() || "");
+  }, [filePath]);
+
+  // 新建后强制进入编辑
+  React.useEffect(() => {
+    if (forceEdit) {
+      setEditing(true);
+      setTimeout(() => {
+        inputRef.current?.focus();
+        inputRef.current?.select();
+        setForceEdit && setForceEdit(false);
+      }, 0);
+    }
+  }, [forceEdit]);
+
+  const handleRename = async () => {
+    let newName = value.trim();
+    if (!newName || newName === filePath.split(/[/\\]/).pop()) {
+      setEditing(false);
+      return;
+    }
+    // 自动补全 .md 后缀
+    if (!/\.[a-zA-Z0-9]+$/.test(newName)) {
+      newName += ".md";
+    }
+    const dir = filePath.replace(/[/\\][^/\\]+$/, "");
+    const newPath =
+      dir +
+      (dir.endsWith("/") || dir.endsWith("\\")
+        ? ""
+        : dir.includes("\\")
+        ? "\\"
+        : "/") +
+      newName;
+    // 检查是否已存在同名文件
+    try {
+      const exists = await invoke("file_exists", { path: newPath });
+      if (exists) {
+        await message("该文件名已存在，请输入其他名称。", {
+          title: "重命名失败",
+        });
+        setEditing(true);
+        inputRef.current?.focus();
+        inputRef.current?.select();
+        return;
+      }
+      await invoke("rename_file", { oldPath: filePath, newPath });
+      setCurrentFilePath(newPath);
+      setRecentFiles((prev) =>
+        prev.map((f) =>
+          f.path === filePath ? { ...f, name: newName, path: newPath } : f
+        )
+      );
+    } catch (err) {
+      console.error("重命名失败:", err);
+    }
+    setEditing(false);
+  };
+
+  return editing ? (
+    <input
+      className={styles.currentFileName}
+      ref={inputRef}
+      value={value}
+      autoFocus
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={handleRename}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") handleRename();
+        if (e.key === "Escape") setEditing(false);
+      }}
+      style={{ minWidth: 60, maxWidth: 300 }}
+    />
+  ) : (
+    <div
+      className={styles.currentFileName}
+      title="双击重命名"
+      style={{ cursor: "pointer", userSelect: "text" }}
+      onDoubleClick={() => setEditing(true)}
+    >
+      {filePath.split(/[/\\]/).pop()}
+    </div>
+  );
+};

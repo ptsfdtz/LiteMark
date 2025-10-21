@@ -89,6 +89,21 @@ fn list_text_files(dir_path: String) -> Result<Vec<FileInfo>, String> {
     Ok(entries)
 }
 
+/// Rename a file from old_path to new_path.
+#[tauri::command]
+fn rename_file(old_path: String, new_path: String) -> Result<(), String> {
+    let old = PathBuf::from(&old_path);
+    let new = PathBuf::from(&new_path);
+    std::fs::rename(&old, &new).map_err(|e| e.to_string())
+}
+
+/// Check if a file exists at the given path.
+#[tauri::command]
+fn file_exists(path: String) -> bool {
+    let file_path = std::path::PathBuf::from(path);
+    file_path.exists()
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -100,7 +115,9 @@ pub fn run() {
             read_text_file,
             write_text_file,
             list_text_files,
-            delete_file
+            delete_file,
+            rename_file,
+            file_exists
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

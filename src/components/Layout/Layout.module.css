@@ -21,7 +21,24 @@
   font-weight: bold;
   letter-spacing: 0.5px;
   max-width: calc(100% - 100px);
-  cursor: default;
+  cursor: pointer;
+  z-index: 20;
+}
+
+.currentFileName:focus,
+.currentFileName input {
+  outline: 2px solid var(--primary-color, #409eff);
+  background: var(--background-color, #fff);
+  color: var(--text-color);
+  border-radius: 4px;
+  border: 1px solid var(--editor-border, #ddd);
+  padding: 2px 8px;
+  font-size: 1.2rem;
+  font-weight: bold;
+  max-width: 300px;
+  min-width: 60px;
+  box-sizing: border-box;
+  cursor: text;
 }
 
 .editorPreview {

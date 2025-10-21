@@ -40,6 +40,7 @@ interface ToolbarProps {
   onOpenFolder?: () => void;
   onSave?: () => void;
   onSaveAs?: () => void;
+  className?: string;
 }
 
 const Toolbar: React.FC<ToolbarProps> = ({
@@ -50,14 +51,15 @@ const Toolbar: React.FC<ToolbarProps> = ({
   onOpenFolder,
   onSave,
   onSaveAs,
+  className,
 }) => {
   return (
-    <div className={styles.toolbar}>
+    <div className={`${styles.toolbar} ${className}`}>
       {onOpenFolder && (
         <button
           onClick={onOpenFolder}
           title="最近的文件"
-          className={styles.folderButton}
+          className="folderButton"
         >
           <FaFolderOpen />
         </button>

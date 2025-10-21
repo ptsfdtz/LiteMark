@@ -3,7 +3,7 @@ import styles from "./Editor.module.css";
 import { EditorProps } from "../../types/editor";
 
 const Editor = React.forwardRef<HTMLTextAreaElement, EditorProps>(
-  ({ value, onChange, onSelectionChange }, ref) => {
+  ({ value, onChange, onSelectionChange, className }, ref) => {
     const handleSelect = (e: React.SyntheticEvent<HTMLTextAreaElement>) => {
       const start = e.currentTarget.selectionStart;
       const end = e.currentTarget.selectionEnd;
@@ -13,7 +13,7 @@ const Editor = React.forwardRef<HTMLTextAreaElement, EditorProps>(
     return (
       <textarea
         ref={ref}
-        className={styles.editor}
+        className={`${styles.editor} ${className}`}
         value={value}
         onChange={(e) => onChange(e.currentTarget.value)}
         onSelect={handleSelect}

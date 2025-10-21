@@ -5,14 +5,20 @@ import { FaCog } from "react-icons/fa"; // 引入设置图标
 interface SettingsButtonProps {
   onClick: () => void;
   title?: string;
+  className?: string;
 }
 
 const SettingsButton: React.FC<SettingsButtonProps> = ({
   onClick,
   title = "设置",
+  className,
 }) => {
   return (
-    <button onClick={onClick} className={styles.settingsButton} title={title}>
+    <button
+      onClick={onClick}
+      className={`${styles.settingsButton} ${className}`}
+      title={title}
+    >
       <FaCog size={20} />
     </button>
   );
