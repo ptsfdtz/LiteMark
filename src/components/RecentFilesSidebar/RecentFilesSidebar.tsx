@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
 import styles from "./RecentFilesSidebar.module.css";
-import DeleteConfirm from "./components/DeleteConfirm/DeleteConfirm";
 import { RecentFile } from "../../types/recentFiles";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
@@ -11,6 +10,7 @@ import {
   FaTimes,
   FaTrash,
 } from "react-icons/fa";
+import { FaCheck } from "react-icons/fa";
 
 interface RecentFilesSidebarProps {
   files: RecentFile[];
@@ -56,18 +56,13 @@ const RecentFilesSidebar: React.FC<RecentFilesSidebarProps> = ({
   const sidebarRef = useRef<HTMLDivElement | null>(null);
   // 记录正在删除动画的文件 id
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  // 记录弹窗确认删除的文件 id 和按钮 ref
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState<{
-    id: string;
-    anchor: HTMLButtonElement | null;
-  } | null>(null);
-  // 用于持久化每个文件的按钮ref，避免闪烁
-  const trashBtnRefs = useRef<Map<string, HTMLButtonElement | null>>(new Map());
+  // 记录当前显示确认/取消按钮的文件 id
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
 
   // Close when clicking outside the sidebar
   useEffect(() => {
     if (!isOpen) {
-      setShowDeleteConfirm(null); // 关闭弹窗
+      // setShowDeleteConfirm(null); // 关闭弹窗（已移除弹窗逻辑）
       return;
     }
     const onDocMouseDown = (e: MouseEvent) => {
@@ -106,24 +101,16 @@ const RecentFilesSidebar: React.FC<RecentFilesSidebarProps> = ({
     }
   };
 
+  // 新建文件直接保存到个人工作文件夹，无弹窗
   const handleNewFile = async () => {
     try {
-      let defaultPath = "untitled.md";
+      let target = "untitled.md";
       if (workDir) {
-        // 拼接路径，兼容 Windows/Unix
-        defaultPath =
-          workDir.replace(/[\\/]$/, "") +
+        target =
+          workDir.replace(/[\\\/]$/, "") +
           (workDir.includes("\\") ? "\\" : "/") +
           "untitled.md";
       }
-      const target = await save({
-        filters: [
-          { name: "Markdown", extensions: ["md", "markdown", "txt"] },
-          { name: "All Files", extensions: ["*"] },
-        ],
-        defaultPath,
-      });
-      if (!target) return;
       const initialContent = "# 新建文档\n\n";
       await invoke("write_text_file", {
         path: target,
@@ -226,47 +213,51 @@ const RecentFilesSidebar: React.FC<RecentFilesSidebarProps> = ({
                     {file.modified.toLocaleString()}
                   </div>
                 </div>
-                <button
-                  ref={(el) => {
-                    trashBtnRefs.current.set(file.id, el);
-                  }}
-                  className={styles.trashButton}
-                  title="删除"
-                  aria-label={`删除 ${file.name}`}
-                  onClick={() =>
-                    setShowDeleteConfirm({
-                      id: file.id,
-                      anchor: trashBtnRefs.current.get(file.id) || null,
-                    })
-                  }
-                  disabled={deletingId === file.id}
-                >
-                  <FaTrash />
-                </button>
+                {confirmingId === file.id ? (
+                  <span className={styles.confirmBtns}>
+                    <button
+                      className={styles.confirmButton}
+                      title="确认删除"
+                      aria-label={`确认删除 ${file.name}`}
+                      onClick={() => {
+                        setDeletingId(file.id);
+                        setConfirmingId(null);
+                        setTimeout(() => {
+                          setDeletingId(null);
+                          if (onDeleteFile) onDeleteFile(file.id);
+                        }, 400);
+                      }}
+                      disabled={deletingId === file.id}
+                    >
+                      <FaCheck />
+                    </button>
+                    <button
+                      className={styles.cancelButton}
+                      title="取消"
+                      aria-label={`取消删除 ${file.name}`}
+                      onClick={() => setConfirmingId(null)}
+                      disabled={deletingId === file.id}
+                    >
+                      <FaTimes />
+                    </button>
+                  </span>
+                ) : (
+                  <button
+                    className={styles.trashButton}
+                    title="删除"
+                    aria-label={`删除 ${file.name}`}
+                    onClick={() => setConfirmingId(file.id)}
+                    disabled={deletingId === file.id}
+                  >
+                    <FaTrash />
+                  </button>
+                )}
               </div>
             );
           })
         )}
       </div>
-      {/* 删除确认弹窗 */}
-      {showDeleteConfirm && (
-        <DeleteConfirm
-          open={true}
-          anchorRef={showDeleteConfirm.anchor}
-          fileName={
-            files.find((f) => f.id === showDeleteConfirm.id)?.name || ""
-          }
-          onConfirm={() => {
-            setDeletingId(showDeleteConfirm.id);
-            setShowDeleteConfirm(null);
-            setTimeout(() => {
-              setDeletingId(null);
-              if (onDeleteFile) onDeleteFile(showDeleteConfirm.id);
-            }, 400);
-          }}
-          onCancel={() => setShowDeleteConfirm(null)}
-        />
-      )}
+      {/* 删除确认弹窗已移除，直接在列表项内显示确认/取消按钮 */}
     </div>
   );
 };

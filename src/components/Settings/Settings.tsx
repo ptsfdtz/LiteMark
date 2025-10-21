@@ -173,15 +173,6 @@ const Settings: React.FC<SettingsProps> = ({
               onClick={handleChooseWorkDir}
               className={styles.workDirBtn}
               title="选择工作文件夹"
-              style={{
-                borderRadius: "50%",
-                width: 40,
-                height: 40,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                padding: 0,
-              }}
             >
               <FiMoreHorizontal size={22} />
             </button>
