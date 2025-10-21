@@ -10,7 +10,6 @@
 ## 🌙themes🔆
 
 | **Cadmium Light**	 | **Dark** |
-## 🌙 Themes
 
 LiteMark supports both light and dark modes for a comfortable writing experience in any environment.
 
