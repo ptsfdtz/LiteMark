@@ -1,90 +1,89 @@
-# My Markdown Editor
 
-这是一个基于 **React + TypeScript + Tauri** 的 Markdown 编辑器项目。
+# 🪶 LiteMark
 
-## 功能列表
+> A **lightweight**, **fast**, and **modern** Markdown editor built with [Tauri](https://tauri.app/) — less memory, more focus.
 
-### 核心功能
-- [x] 左侧文件浏览 (Sidebar)
-- [x] 中间 Markdown 编辑区 (Editor)
-- [x] 实时渲染预览 (Preview)
-- [x] 顶部 Markdown 工具栏 (Toolbar)
-- [x] 设置面板 (Setting)：
-  - [x] 主题切换（明暗模式）
-  - [x] 默认工作文件夹
+<p align="center">
+  <img src="https://github.com/ptsfdtz/litemark/assets/preview.png" width="600" alt="LiteMark Preview">
+</p>
 
-### 文件操作
-- [x] 新建 / 保存 / 另存为 Markdown 文件
-- [ ] 文件重命名 / 删除
-- [x] 最近打开文件列表
-- [ ] 导出 PDF / HTML
+## 🌙themes🔆
 
-### 编辑体验
-- [ ] Undo / Redo
-- [x] 自动保存
-- [ ] 搜索 / 替换
-- [ ] 多标签编辑
+| **Cadmium Light**	 | **Dark** |
+## 🌙 Themes
 
-### Markdown 渲染增强
-- [x] 代码高亮
-- [x] 表格 / 数学公式 / 流程图
-- [ ] 折叠标题 / 段落
-- [x] 渲染主题切换（自定义样式）
+LiteMark supports both light and dark modes for a comfortable writing experience in any environment.
 
-### 用户界面优化
-- [x] 可拖动分栏
-- [x] 全屏模式
-- [x] 快捷键支持
-- [x] 状态栏（显示文件路径、字数、光标行列）
+| Cadmium Light Theme | Dark Theme |
+| :-----------------: | :--------: |
+| <img src="https://github.com/ptsfdtz/litemark/assets/preview-light.png" width="480" alt="LiteMark Light Theme Preview"> | <img src="https://github.com/ptsfdtz/litemark/assets/preview-dark.png" width="480" alt="LiteMark Dark Theme Preview"> |
 
-### 高级功能（可选）
-- [x] Markdown 模板
-- [ ] 插件机制
-- [ ] 云同步
-- [ ] 多平台导出（PDF、HTML、DOCX）
+---
 
-## 项目结构
-```
-my-markdown-editor/
-├─ node_modules/                     # npm 依赖
-├─ public/                           # 静态资源（favicon、logo 等）
-├─ src/
-│  ├─ components/
-│  │  ├─ Layout/
-│  │  │   ├─ Layout.tsx
-│  │  │   └─ Layout.css
-│  ├─ types/
-│  │  ├─ file.ts                     # 文件/目录类型
-│  │  ├─ markdown.ts                 # Markdown 类型
-│  │  └─ tauri.d.ts                  # Tauri 命令返回类型
-│  ├─ utils/
-│  │  └─ markdownHelpers.ts          # Markdown 快捷操作函数
-│  ├─ App.tsx                        # 顶层组件
-│  ├─ main.tsx                        # React 入口，挂载 Layout
-│  └─ index.css                       # 全局样式 + CSS 变量
-├─ src-tauri/
-│  ├─ icons/                          # 可删除示例图标
-│  ├─ Cargo.toml                       # Rust 包配置
-│  ├─ main.rs                          # Tauri 后端入口
-│  └─ tauri.conf.json                  # Tauri 配置文件
-├─ package.json                        # npm 配置
-├─ tsconfig.json                       # TypeScript 配置
-├─ vite.config.ts                       # Vite 配置
-└─ README.md
-```
+## ✨ Features
 
+- ⚡ **Lightweight & Fast** — built with Tauri, startup in milliseconds, no Electron bloat.
+- 🧘 **Minimal UI** — distraction-free writing environment, perfect for focus.
+- 🪶 **Live Preview** — instant Markdown rendering with clean typography.
+- 💾 **Auto Save** — your drafts are never lost.
+- 🌙 **Dark / Light Mode** — switch seamlessly to match your system theme.
+- 🧩 **Cross-platform** — works on Windows, macOS, and Linux.
 
-## 技术栈
+---
 
-- React + TypeScript
-- Tauri (Rust + 前端)
-- Markdown 渲染库：`react-markdown` 或 `markdown-it`
-- CSS 模块化 / 变量支持主题切换
+## ❓Why make it ?
 
+1. First, I've created an `Electron` project before, and I find it incredibly large, both in terms of installation size and package size. As a developer, I'm not a fan of such frameworks. Thanks to `Tauri` for using the system's webview, I was able to create a small and beautiful app.
+2. Secondly, all the `Markdown editors` on the market have some minor issues, the biggest being their use of Electron. `MarkText`, which uses the Electron framework, is incredibly large, `Joplin` also uses the Electron framework and lacks simplicity, `Visual Studio Code` is for writing code, and `StackEdit` doesn't have a desktop offline version.
+3. Therefore, to hone my coding skills and out of my passion for this field, I created this editor.
 
-## License
+--- 
 
-本项目使用 MIT 许可证发布。详情请查看根目录的 LICENSE 文件。
+## 🚀 Installation
 
+### 🧱 Prebuilt binaries
+Check the [Releases](https://github.com/ptsfdtz/litemark/releases) page to download the latest version for your OS.
 
+### 🛠 Build from source
 
+```bash
+# Clone
+git clone https://github.com/ptsfdtz/litemark.git
+cd litemark
+
+# Install dependencies
+pnpm install   # or npm / yarn
+
+# Run in dev mode
+pnpm tauri dev
+
+# Build production
+pnpm tauri build
+````
+
+---
+
+## 🧩 Tech Stack
+
+| Layer            | Technology                                      |
+| ---------------- | ----------------------------------------------- |
+| Desktop Runtime  | [Tauri](https://tauri.app/)                     |
+| Frontend         | React + TypeScript                              |
+| Styling          | CSS Modules / 部分原生 CSS                      |
+| Markdown Parsing | remark / rehype / remark-gfm / remark-math      |
+| Guided Experience| react-joyride                                   |
+
+---
+
+## 🧑‍💻 Author
+
+**Haoran Tong (ptsfdtz)**
+
+* 💼 [GitHub @ptsfdtz](https://github.com/ptsfdtz)
+* ✈️ Passionate about minimal software, open source, and clean UI design.
+
+---
+
+⭐ **Star this repo if you love minimal tools!**
+
+[🇨🇳 中文版说明](./README.zh-CN.md)
