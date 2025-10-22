@@ -40,11 +40,16 @@ export const applyHeading = (text: string, start: number, end: number): string =
   if (headingMatch) {
     const currentLevel = headingMatch[1].length;
     headingPrefix = "#".repeat(Math.min(currentLevel + 1, 6)) + " ";
-    return text.slice(0, lineStart) + headingPrefix + text.slice(start).replace(/^\s+/, '');
+    const before = text.slice(0, lineStart);
+    const lineContent = text.slice(lineStart, end) || "";
+    const after = text.slice(end);
+    return before + headingPrefix + lineContent.replace(/^\s+/, '') + after;
   }
   
+  const before = text.slice(0, lineStart);
   const lineContent = text.slice(lineStart, end) || "";
-  return text.slice(0, lineStart) + headingPrefix + lineContent;
+  const after = text.slice(end);
+  return before + headingPrefix + lineContent + after;
 };
 
 export const applyQuote = (text: string, start: number, end: number): string => {
@@ -55,11 +60,16 @@ export const applyQuote = (text: string, start: number, end: number): string => 
   
   const line = text.slice(lineStart, start);
   if (line.startsWith("> ")) {
-    return text.slice(0, lineStart) + line.slice(2) + text.slice(start);
+    const before = text.slice(0, lineStart);
+    const lineContent = text.slice(lineStart, end) || "";
+    const after = text.slice(end);
+    return before + lineContent.replace(/^>\s?/, '') + after;
   }
   
+  const before = text.slice(0, lineStart);
   const lineContent = text.slice(lineStart, end) || "";
-  return text.slice(0, lineStart) + "> " + lineContent;
+  const after = text.slice(end);
+  return before + "> " + lineContent + after;
 };
 
 export const applyUnorderedList = (text: string, start: number, end: number): string => {
@@ -70,11 +80,16 @@ export const applyUnorderedList = (text: string, start: number, end: number): st
   
   const line = text.slice(lineStart, start);
   if (line.startsWith("- ")) {
-    return text.slice(0, lineStart) + line.slice(2) + text.slice(start);
+    const before = text.slice(0, lineStart);
+    const lineContent = text.slice(lineStart, end) || "";
+    const after = text.slice(end);
+    return before + lineContent.replace(/^-\s?/, '') + after;
   }
   
+  const before = text.slice(0, lineStart);
   const lineContent = text.slice(lineStart, end) || "";
-  return text.slice(0, lineStart) + "- " + lineContent;
+  const after = text.slice(end);
+  return before + "- " + lineContent + after;
 };
 
 export const applyOrderedList = (text: string, start: number, end: number): string => {
@@ -87,7 +102,10 @@ export const applyOrderedList = (text: string, start: number, end: number): stri
   const orderedListMatch = line.match(/^(\d+)\.\s*/);
   
   if (orderedListMatch) {
-    return text.slice(0, lineStart) + line.slice(orderedListMatch[0].length) + text.slice(start);
+    const before = text.slice(0, lineStart);
+    const lineContent = text.slice(lineStart, end) || "";
+    const after = text.slice(end);
+    return before + lineContent.replace(/^\d+\.\s?/, '') + after;
   }
   
   let prevLineEnd = lineStart;
@@ -100,8 +118,10 @@ export const applyOrderedList = (text: string, start: number, end: number): stri
   const prevOrderedListMatch = prevLine.match(/^(\d+)\.\s*/);
   const number = prevOrderedListMatch ? parseInt(prevOrderedListMatch[1]) + 1 : 1;
   
+  const before = text.slice(0, lineStart);
   const lineContent = text.slice(lineStart, end) || "";
-  return text.slice(0, lineStart) + number + ". " + lineContent;
+  const after = text.slice(end);
+  return before + number + ". " + lineContent + after;
 };
 
 export const applyTable = (text: string, position: number): string => {

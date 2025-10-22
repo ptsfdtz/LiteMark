@@ -221,7 +221,9 @@ const Layout: React.FC = () => {
         setShowRecentFiles(false);
         setCurrentFilePath(file.path);
         setRecentFiles((prev) => {
-          const withoutDup = prev.filter((f) => f.path !== file.path);
+          const withoutDup = prev.filter(
+            (f) => f.path !== file.path && f.id !== file.path
+          );
           const bumped: RecentFile = {
             id: file.path,
             name: file.name,
@@ -232,7 +234,9 @@ const Layout: React.FC = () => {
         });
       } catch (err) {
         console.error("读取文件失败:", err);
-        setRecentFiles((prev) => prev.filter((f) => f.path !== file.path));
+        setRecentFiles((prev) =>
+          prev.filter((f) => f.path !== file.path && f.id !== file.path)
+        );
         await message("文件不存在或无法访问", { title: "错误" });
       }
     })();
@@ -249,7 +253,7 @@ const Layout: React.FC = () => {
       modified: new Date(),
     };
     setRecentFiles((prev) => {
-      const withoutDup = prev.filter((f) => f.path !== path);
+      const withoutDup = prev.filter((f) => f.path !== path && f.id !== path);
       return [newItem, ...withoutDup].slice(0, 50);
     });
   };
@@ -291,9 +295,19 @@ const Layout: React.FC = () => {
         path,
         modified: new Date(),
       };
+      console.debug(
+        "[handleSave] saving path:",
+        path,
+        "item:",
+        item,
+        "beforeRecent:",
+        recentFiles
+      );
       setRecentFiles((prev) => {
-        const withoutDup = prev.filter((f) => f.path !== path);
-        return [item, ...withoutDup].slice(0, 50);
+        const withoutDup = prev.filter((f) => f.path !== path && f.id !== path);
+        const next = [item, ...withoutDup].slice(0, 50);
+        console.debug("[handleSave] afterRecent:", next);
+        return next;
       });
       setShowSaveToast(true);
       setTimeout(() => setShowSaveToast(false), 1500);
@@ -329,7 +343,7 @@ const Layout: React.FC = () => {
         modified: new Date(),
       };
       setRecentFiles((prev) => {
-        const withoutDup = prev.filter((f) => f.path !== path);
+        const withoutDup = prev.filter((f) => f.path !== path && f.id !== path);
         return [item, ...withoutDup].slice(0, 50);
       });
     } catch (err) {
@@ -365,6 +379,7 @@ const Layout: React.FC = () => {
           onOpenFolder={handleOpenFolder}
           onSave={handleSave}
           onSaveAs={handleSaveAs}
+          editorRef={editorRef}
           className="toolbar"
         />
         <SettingsButton
@@ -403,7 +418,9 @@ const Layout: React.FC = () => {
             modified: new Date(),
           };
           setRecentFiles((prev) => {
-            const withoutDup = prev.filter((f) => f.path !== path);
+            const withoutDup = prev.filter(
+              (f) => f.path !== path && f.id !== path
+            );
             return [item, ...withoutDup].slice(0, 50);
           });
           setForceEditFileName(true); // 新建后强制编辑
@@ -502,6 +519,7 @@ interface CurrentFileNameProps {
 
 const CurrentFileName: React.FC<CurrentFileNameProps> = ({
   filePath,
+  recentFiles,
   setRecentFiles,
   setCurrentFilePath,
   forceEdit,
@@ -560,11 +578,23 @@ const CurrentFileName: React.FC<CurrentFileNameProps> = ({
       }
       await invoke("rename_file", { oldPath: filePath, newPath });
       setCurrentFilePath(newPath);
-      setRecentFiles((prev) =>
-        prev.map((f) =>
-          f.path === filePath ? { ...f, name: newName, path: newPath } : f
-        )
+      console.debug(
+        "[handleRename] renaming",
+        filePath,
+        "->",
+        newPath,
+        "beforeRecent:",
+        recentFiles
       );
+      setRecentFiles((prev) => {
+        const next = prev.map((f) =>
+          f.path === filePath
+            ? { ...f, id: newPath, name: newName, path: newPath }
+            : f
+        );
+        console.debug("[handleRename] afterRecent:", next);
+        return next;
+      });
     } catch (err) {
       console.error("重命名失败:", err);
     }

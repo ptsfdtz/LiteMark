@@ -17,7 +17,18 @@ export async function loadRecentFiles(): Promise<PersistedRecentFile[]> {
   try {
     const store = await getStore();
     const val = (await store.get(KEY)) as PersistedRecentFile[] | null;
-    return Array.isArray(val) ? val : [];
+    const arr = Array.isArray(val) ? val : [];
+    const migrated = arr.map((f) => ({
+      id: f.id || f.path,
+      name: f.name,
+      path: f.path,
+      modified: f.modified,
+    }));
+    if (JSON.stringify(migrated) !== JSON.stringify(arr)) {
+      await store.set(KEY, migrated);
+      await store.save();
+    }
+    return migrated;
   } catch {
     return [];
   }
