@@ -12,7 +12,7 @@ import hljs from "highlight.js";
 import "highlight.js/styles/github.css";
 import "katex/dist/katex.min.css";
 import { useMathPreprocess } from "./hooks/useMathPreprocess";
-import { FaLink, FaUnlink, FaEye, FaTimes } from "react-icons/fa";
+import { FaEye, FaTimes } from "react-icons/fa";
 import { PreviewProps } from "../../types/preview";
 
 const processSpecialEmojis = (content: string): string => {
@@ -28,8 +28,6 @@ const Preview = React.forwardRef<HTMLDivElement, PreviewProps>(
   (
     {
       content,
-      scrollSyncEnabled = true,
-      onScrollSyncToggle,
       // previewMode = false,
       onExitPreviewMode,
       onEnterPreviewMode,
@@ -37,6 +35,9 @@ const Preview = React.forwardRef<HTMLDivElement, PreviewProps>(
     },
     ref
   ) => {
+    {
+      /* scroll sync controls removed */
+    }
     const { preprocessMathChinese } = useMathPreprocess();
     const processedContent = preprocessMathChinese(
       processSpecialEmojis(content)
@@ -100,15 +101,7 @@ const Preview = React.forwardRef<HTMLDivElement, PreviewProps>(
         >
           {processedContent}
         </ReactMarkdown>
-        {onScrollSyncToggle && (
-          <button
-            className={`scrollSyncButton ${scrollSyncEnabled ? "active" : ""}`}
-            onClick={onScrollSyncToggle}
-            title={scrollSyncEnabled ? "禁用滚动同步" : "启用滚动同步"}
-          >
-            {scrollSyncEnabled ? <FaLink /> : <FaUnlink />}
-          </button>
-        )}
+        {/* scroll sync controls removed */}
       </div>
     );
   }

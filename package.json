@@ -1,5 +1,5 @@
 {
-  "name": "LiteMark",
+  "name": "litemark",
   "private": true,
   "version": "0.1.4",
   "type": "module",
@@ -11,6 +11,11 @@
     "tauri": "tauri"
   },
   "dependencies": {
+    "@codemirror/commands": "^6.9.0",
+    "@codemirror/lang-markdown": "^6.4.0",
+    "@codemirror/language": "^6.11.3",
+    "@codemirror/state": "^6.5.2",
+    "@codemirror/view": "^6.38.6",
     "@tauri-apps/api": "^2.9.0",
     "@tauri-apps/plugin-dialog": "^2.4.0",
     "@tauri-apps/plugin-opener": "^2.5.0",

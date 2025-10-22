@@ -7,7 +7,6 @@ import KeyboardShortcuts from "../KeyboardShortcuts/KeyboardShortcuts";
 import Settings from "../Settings/Settings";
 import styles from "./Layout.module.css";
 import SettingsButton from "../SettingsButton/SettingsButton";
-import { ScrollSync } from "../../hooks/useScrollSync";
 import RecentFilesSidebar from "../RecentFilesSidebar/RecentFilesSidebar";
 import { RecentFile } from "../../types/recentFiles";
 import CurrentFileName from "./hooks/CurrentFileName";
@@ -25,7 +24,6 @@ const Layout: React.FC = () => {
   const [showRecentFiles, setShowRecentFiles] = useState(false);
   const [recentClosing, setRecentClosing] = useState(false);
   // recentFiles and file operations are managed by useFileManager
-  const [scrollSyncEnabled, setScrollSyncEnabled] = useState(true);
   const [previewMode, setPreviewMode] = useState(false);
   const [editorWidth, setEditorWidth] = useState(50);
   const [isResizing, setIsResizing] = useState(false);
@@ -71,9 +69,8 @@ const Layout: React.FC = () => {
     },
   });
 
-  const editorRef = useRef<HTMLTextAreaElement>(null);
+  const editorRef = useRef<HTMLTextAreaElement | HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
-  const scrollSyncRef = useRef<ScrollSync>(new ScrollSync());
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -102,34 +99,7 @@ const Layout: React.FC = () => {
     return () => mediaQuery.removeEventListener("change", handleChange);
   }, [theme]);
 
-  useEffect(() => {
-    const editorElement = editorRef.current;
-    const previewElement = previewRef.current;
-    const scrollSync = scrollSyncRef.current;
-
-    if (!editorElement || !previewElement || !scrollSyncEnabled) return;
-
-    const handleEditorScroll = () => {
-      scrollSync.syncEditorToPreview(editorElement, previewElement);
-    };
-
-    const handlePreviewScroll = () => {
-      scrollSync.syncPreviewToEditor(editorElement, previewElement);
-    };
-
-    editorElement.removeEventListener("scroll", handleEditorScroll);
-    previewElement.removeEventListener("scroll", handlePreviewScroll);
-
-    if (!previewMode) {
-      editorElement.addEventListener("scroll", handleEditorScroll);
-      previewElement.addEventListener("scroll", handlePreviewScroll);
-    }
-
-    return () => {
-      editorElement.removeEventListener("scroll", handleEditorScroll);
-      previewElement.removeEventListener("scroll", handlePreviewScroll);
-    };
-  }, [scrollSyncEnabled, previewMode]);
+  // scroll sync removed
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -165,9 +135,7 @@ const Layout: React.FC = () => {
     setShowRecentFiles(false);
   };
 
-  const toggleScrollSync = () => {
-    setScrollSyncEnabled(!scrollSyncEnabled);
-  };
+  // scroll sync removed
 
   const enterPreviewMode = () => {
     setPreviewMode(true);
@@ -193,7 +161,7 @@ const Layout: React.FC = () => {
           onOpenFolder={handleOpenFolder}
           onSave={handleSave}
           onSaveAs={handleSaveAs}
-          editorRef={editorRef}
+          editorRef={editorRef as React.RefObject<HTMLTextAreaElement>}
           className="toolbar"
         />
         <SettingsButton
@@ -273,8 +241,6 @@ const Layout: React.FC = () => {
           <Preview
             ref={previewRef}
             content={markdown}
-            scrollSyncEnabled={scrollSyncEnabled}
-            onScrollSyncToggle={toggleScrollSync}
             previewMode={previewMode}
             onExitPreviewMode={exitPreviewMode}
             onEnterPreviewMode={enterPreviewMode}
