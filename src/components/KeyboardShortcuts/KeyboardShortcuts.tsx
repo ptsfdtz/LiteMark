@@ -13,14 +13,7 @@ import {
   applyImage,
 } from "../Toolbar/toolbarUtils";
 
-interface KeyboardShortcutsProps {
-  value: string;
-  setValue: (newValue: string) => void;
-  selectionStart: number;
-  selectionEnd: number;
-  onSave?: () => void;
-  onSaveAs?: () => void;
-}
+import { KeyboardShortcutsProps } from "../../types/keyboardShortcuts";
 
 const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({
   value,

@@ -1,7 +1,9 @@
 export interface PreviewProps {
   content: string;
- previewMode?: boolean;
- onExitPreviewMode?: () => void;
- onEnterPreviewMode?: () => void;
- isPreviewOnly?: boolean;
+  scrollSyncEnabled?: boolean;
+  onScrollSyncToggle?: () => void;
+  previewMode?: boolean;
+  onExitPreviewMode?: () => void;
+  onEnterPreviewMode?: () => void;
+  isPreviewOnly?: boolean;
 }

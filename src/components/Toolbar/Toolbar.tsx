@@ -1,6 +1,7 @@
 // src/components/Toolbar/Toolbar.tsx
 import React from "react";
 import styles from "./Toolbar.module.css";
+import { ToolbarProps } from "../../types/toolbar";
 import {
   applyBold,
   applyItalic,
@@ -31,18 +32,6 @@ import {
   FaSave,
   FaCopy,
 } from "react-icons/fa";
-
-interface ToolbarProps {
-  value: string;
-  setValue: (newValue: string) => void;
-  selectionStart: number;
-  selectionEnd: number;
-  onOpenFolder?: () => void;
-  onSave?: () => void;
-  onSaveAs?: () => void;
-  className?: string;
-  editorRef?: React.RefObject<HTMLTextAreaElement | null>;
-}
 
 const Toolbar: React.FC<ToolbarProps> = ({
   value,

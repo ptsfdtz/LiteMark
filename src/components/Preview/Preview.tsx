@@ -7,22 +7,13 @@ import remarkEmoji from "remark-emoji";
 import rehypeHighlight from "rehype-highlight";
 import rehypeRaw from "rehype-raw";
 import rehypeKatex from "rehype-katex";
-import rehypeSanitize from "rehype-sanitize";
 import "./Preview.css";
 import hljs from "highlight.js";
 import "highlight.js/styles/github.css";
 import "katex/dist/katex.min.css";
+import { useMathPreprocess } from "./hooks/useMathPreprocess";
 import { FaLink, FaUnlink, FaEye, FaTimes } from "react-icons/fa";
-
-interface PreviewProps {
-  content: string;
-  scrollSyncEnabled?: boolean;
-  onScrollSyncToggle?: () => void;
-  previewMode?: boolean;
-  onExitPreviewMode?: () => void;
-  onEnterPreviewMode?: () => void;
-  isPreviewOnly?: boolean;
-}
+import { PreviewProps } from "../../types/preview";
 
 const processSpecialEmojis = (content: string): string => {
   return content
@@ -46,7 +37,10 @@ const Preview = React.forwardRef<HTMLDivElement, PreviewProps>(
     },
     ref
   ) => {
-    const processedContent = processSpecialEmojis(content);
+    const { preprocessMathChinese } = useMathPreprocess();
+    const processedContent = preprocessMathChinese(
+      processSpecialEmojis(content)
+    );
     useEffect(() => {
       (window as any).hljs = hljs;
       const highlightCode = () => {
@@ -93,12 +87,7 @@ const Preview = React.forwardRef<HTMLDivElement, PreviewProps>(
         )}
         <ReactMarkdown
           remarkPlugins={[remarkGfm, remarkMath, remarkEmoji]}
-          rehypePlugins={[
-            rehypeHighlight,
-            rehypeRaw,
-            rehypeKatex,
-            rehypeSanitize,
-          ]}
+          rehypePlugins={[rehypeHighlight, rehypeRaw, rehypeKatex]}
           components={{
             img: ({ node, ...props }) => (
               <img

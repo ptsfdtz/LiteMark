@@ -8,3 +8,9 @@ export interface SettingsProps {
   onCloseComplete?: () => void;
   isClosing?: boolean;
 }
+
+export interface SettingsButtonProps {
+  onClick: () => void;
+  title?: string;
+  className?: string;
+}
