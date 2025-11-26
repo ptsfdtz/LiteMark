@@ -1,21 +1,21 @@
 /* src/App.css */
 
-@import url("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css");
+@import 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css';
 
 :root {
   --background-color: #f6f6f6;
   --text-color: #414141;
-  --sidebar-bg: #ffffff;
-  --editor-bg: #ffffff;
-  --editor-text: #000000;
+  --sidebar-bg: #fff;
+  --editor-bg: #fff;
+  --editor-text: #000;
   --preview-bg: #fafafa;
-  --preview-text: #000000;
+  --preview-text: #000;
   --toolbar-bg: #f3f3f3;
   --table-border: #ddd;
   --table-header-bg: #f5f5f5;
   --table-header-text: #000;
   --table-even-row-bg: #f9f9f9;
-  --table-odd-row-bg: #ffffff;
+  --table-odd-row-bg: #fff;
   --code-block-bg: #f5f5f5;
   --inline-code-bg: #f5f5f5;
   --blockquote-border: #ddd;
@@ -24,14 +24,14 @@
   --editor-border: #ddd;
   --scrollbar-thumb: #c1c1c1;
   --scrollbar-track: #f1f1f1;
-  --link-color: #0066cc;
-  --link-hover-color: #004499;
-  --link-visited-color: #660099;
-  --link-active-color: #cc0000;
-  --monospace-font: "Consolas", "Menlo", "Monaco", "Courier New", monospace;
+  --link-color: #06c;
+  --link-hover-color: #049;
+  --link-visited-color: #609;
+  --link-active-color: #c00;
+  --monospace-font: 'Consolas', 'Menlo', 'Monaco', 'Courier New', monospace;
 }
 
-[data-theme="dark"] {
+[data-theme='dark'] {
   --background-color: #2f2f2f;
   --text-color: #f6f6f6;
   --sidebar-bg: #1f1f1f;
@@ -85,12 +85,12 @@
 }
 
 body {
-  background-color: var(--background-color);
-  color: var(--text-color);
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
-    "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
-    sans-serif;
+  color: var(--text-color);
+  background-color: var(--background-color);
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans',
+    'Droid Sans', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -130,18 +130,18 @@ a {
   text-decoration: none;
   border-bottom: 1px solid transparent;
   transition: all 0.2s ease;
-}
 
-a:hover {
-  color: var(--link-hover-color);
-  border-bottom-color: var(--link-hover-color);
-  text-decoration: none;
-}
+  &:hover {
+    color: var(--link-hover-color);
+    border-bottom-color: var(--link-hover-color);
+    text-decoration: none;
+  }
 
-a:visited {
-  color: var(--link-visited-color);
-}
+  &:visited {
+    color: var(--link-visited-color);
+  }
 
-a:active {
-  color: var(--link-active-color);
+  &:active {
+    color: var(--link-active-color);
+  }
 }

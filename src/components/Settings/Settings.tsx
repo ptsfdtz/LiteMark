@@ -1,10 +1,10 @@
 // src/components/Settings/Settings.tsx
-import React, { useEffect, useState, useRef } from "react";
-import styles from "./Settings.module.css";
-import { SettingsProps } from "../../types/settings";
-import { open } from "@tauri-apps/plugin-dialog";
-import { FiSun, FiMoon, FiRepeat, FiMoreHorizontal } from "react-icons/fi";
-import { FaCog, FaTimes } from "react-icons/fa";
+import React, { useEffect, useState, useRef } from 'react';
+import styles from './Settings.module.css';
+import { SettingsProps } from '../../types/settings';
+import { open } from '@tauri-apps/plugin-dialog';
+import { FiSun, FiMoon, FiRepeat, FiMoreHorizontal } from 'react-icons/fi';
+import { FaCog, FaTimes } from 'react-icons/fa';
 
 const Settings: React.FC<SettingsProps> = ({
   theme,
@@ -19,44 +19,46 @@ const Settings: React.FC<SettingsProps> = ({
   // 选择个人工作文件夹
   const handleChooseWorkDir = async () => {
     const selected = await open({ directory: true, multiple: false });
-    if (selected && typeof selected === "string") {
+    if (selected && typeof selected === 'string') {
       setWorkDir(selected);
     }
   };
-  const [systemTheme, setSystemTheme] = useState<"light" | "dark">("light");
+  const [systemTheme, setSystemTheme] = useState<'light' | 'dark'>('light');
   const [isClosing, setIsClosing] = useState<boolean>(false);
   const modalRef = useRef<HTMLDivElement | null>(null);
   const [isOpenLocal, setIsOpenLocal] = useState<boolean>(false);
 
   useEffect(() => {
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     const updateSystemTheme = (e: MediaQueryListEvent | MediaQueryList) => {
-      setSystemTheme(e.matches ? "dark" : "light");
+      setSystemTheme(e.matches ? 'dark' : 'light');
     };
 
     updateSystemTheme(mediaQuery);
 
-    mediaQuery.addEventListener("change", updateSystemTheme);
-    return () => mediaQuery.removeEventListener("change", updateSystemTheme);
+    mediaQuery.addEventListener('change', updateSystemTheme);
+    return () => mediaQuery.removeEventListener('change', updateSystemTheme);
   }, []);
 
   const getActiveTheme = () => {
-    if (theme === "system") return systemTheme;
+    if (theme === 'system') return systemTheme;
     return theme;
   };
 
   const activeTheme = getActiveTheme();
-  const shouldHighlightLight = activeTheme === "light";
-  const shouldHighlightDark = activeTheme === "dark";
+  const shouldHighlightLight = activeTheme === 'light';
+  const shouldHighlightDark = activeTheme === 'dark';
 
   useEffect(() => {
     if (externalIsClosing) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsOpenLocal(false);
       setIsClosing(true);
     }
   }, [externalIsClosing]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsOpenLocal(false);
     let raf1 = 0;
     let raf2 = 0;
@@ -82,8 +84,8 @@ const Settings: React.FC<SettingsProps> = ({
         }
       }
     };
-    document.addEventListener("mousedown", onDocMouseDown);
-    return () => document.removeEventListener("mousedown", onDocMouseDown);
+    document.addEventListener('mousedown', onDocMouseDown);
+    return () => document.removeEventListener('mousedown', onDocMouseDown);
   }, [isOpenLocal, onRequestClose]);
 
   const handleRequestClose = () => {
@@ -122,35 +124,33 @@ const Settings: React.FC<SettingsProps> = ({
             <div className={styles.switchOptions}>
               <button
                 className={`${styles.switchButton} ${
-                  theme === "system" && shouldHighlightLight
+                  theme === 'system' && shouldHighlightLight
                     ? styles.hoverIndicator
-                    : theme === "light"
-                    ? styles.active
-                    : ""
+                    : theme === 'light'
+                      ? styles.active
+                      : ''
                 }`}
-                onClick={() => setTheme("light")}
+                onClick={() => setTheme('light')}
                 title="浅色主题"
               >
                 <FiSun size={18} />
               </button>
               <button
-                className={`${styles.switchButton} ${
-                  theme === "system" ? styles.active : ""
-                }`}
-                onClick={() => setTheme("system")}
+                className={`${styles.switchButton} ${theme === 'system' ? styles.active : ''}`}
+                onClick={() => setTheme('system')}
                 title="跟随系统"
               >
                 <FiRepeat size={18} />
               </button>
               <button
                 className={`${styles.switchButton} ${
-                  theme === "system" && shouldHighlightDark
+                  theme === 'system' && shouldHighlightDark
                     ? styles.hoverIndicator
-                    : theme === "dark"
-                    ? styles.active
-                    : ""
+                    : theme === 'dark'
+                      ? styles.active
+                      : ''
                 }`}
-                onClick={() => setTheme("dark")}
+                onClick={() => setTheme('dark')}
                 title="深色主题"
               >
                 <FiMoon size={18} />

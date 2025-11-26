@@ -1,0 +1,40 @@
+module.exports = {
+  extends: ['stylelint-config-standard-scss'],
+  plugins: ['stylelint-order'],
+  rules: {
+    'order/properties-order': [
+      'position',
+      'top',
+      'right',
+      'bottom',
+      'left',
+      'display',
+      'flex',
+      'flex-direction',
+      'justify-content',
+      'align-items',
+      'width',
+      'height',
+      'margin',
+      'padding',
+      'font',
+      'color',
+      'background',
+      'border',
+      'box-shadow',
+      'transition',
+      'animation',
+    ],
+    'selector-class-pattern': null, // 允许 camelCase / PascalCase
+    'block-no-empty': true,
+    'unit-allowed-list': ['em', 'rem', '%', 'px', 's', 'vh', 'vw', 'deg'],
+    'property-no-unknown': true,
+    'no-descending-specificity': null,
+    'scss/at-rule-no-unknown': [
+      true,
+      {
+        ignoreAtRules: ['tailwind', 'apply', 'variants', 'responsive', 'screen'],
+      },
+    ],
+  },
+};
