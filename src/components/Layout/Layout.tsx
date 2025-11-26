@@ -1,27 +1,27 @@
 // src/components/Layout/Layout.tsx
-import React, { useState, useEffect, useRef } from "react";
-import Editor from "../Editor/Editor";
-import Preview from "../Preview/Preview";
-import Toolbar from "../Toolbar/Toolbar";
-import KeyboardShortcuts from "../KeyboardShortcuts/KeyboardShortcuts";
-import Settings from "../Settings/Settings";
-import styles from "./Layout.module.css";
-import SettingsButton from "../SettingsButton/SettingsButton";
-import { ScrollSync } from "../../hooks/useScrollSync";
-import RecentFilesSidebar from "../RecentFilesSidebar/RecentFilesSidebar";
-import { RecentFile } from "../../types/recentFiles";
-import CurrentFileName from "./hooks/CurrentFileName";
+import React, { useState, useEffect, useRef } from 'react';
+import Editor from '../Editor/Editor';
+import Preview from '../Preview/Preview';
+import Toolbar from '../Toolbar/Toolbar';
+import KeyboardShortcuts from '../KeyboardShortcuts/KeyboardShortcuts';
+import Settings from '../Settings/Settings';
+import styles from './Layout.module.css';
+import SettingsButton from '../SettingsButton/SettingsButton';
+import { ScrollSync } from '../../hooks/useScrollSync';
+import RecentFilesSidebar from '../RecentFilesSidebar/RecentFilesSidebar';
+import { RecentFile } from '../../types/recentFiles';
+import CurrentFileName from './hooks/CurrentFileName';
 // import { loadRecentFiles, saveRecentFiles } from "../../utils/recentStore";
-import useFileManager from "./hooks/useFileManager";
-import { loadWorkDir, saveWorkDir } from "../../utils/workDirStore";
-import SaveSuccessToast from "./hooks/SaveSuccessToast";
+import useFileManager from './hooks/useFileManager';
+import { loadWorkDir, saveWorkDir } from '../../utils/workDirStore';
+import SaveSuccessToast from './hooks/SaveSuccessToast';
 
 const Layout: React.FC = () => {
-  const [markdown, setMarkdown] = useState("");
+  const [markdown, setMarkdown] = useState('');
   const [selection, setSelection] = useState({ start: 0, end: 0 });
   const [showSettings, setShowSettings] = useState(false);
   const [settingsClosing, setSettingsClosing] = useState(false);
-  const [theme, setTheme] = useState<"light" | "dark" | "system">("system");
+  const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('system');
   const [showRecentFiles, setShowRecentFiles] = useState(false);
   const [recentClosing, setRecentClosing] = useState(false);
   // recentFiles and file operations are managed by useFileManager
@@ -30,7 +30,7 @@ const Layout: React.FC = () => {
   const [editorWidth, setEditorWidth] = useState(50);
   const [isResizing, setIsResizing] = useState(false);
   const [currentFilePath, setCurrentFilePath] = useState<string | null>(null);
-  const [workDir, setWorkDirState] = useState("");
+  const [workDir, setWorkDirState] = useState('');
   const [forceEditFileName, setForceEditFileName] = useState(false);
   const [showSaveToast, setShowSaveToast] = useState(false);
 
@@ -78,28 +78,27 @@ const Layout: React.FC = () => {
 
   useEffect(() => {
     const root = document.documentElement;
-    if (theme === "system") {
-      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
-        .matches
-        ? "dark"
-        : "light";
-      root.setAttribute("data-theme", systemTheme);
+    if (theme === 'system') {
+      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches
+        ? 'dark'
+        : 'light';
+      root.setAttribute('data-theme', systemTheme);
     } else {
-      root.setAttribute("data-theme", theme);
+      root.setAttribute('data-theme', theme);
     }
   }, [theme]);
 
   useEffect(() => {
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     const handleChange = (e: MediaQueryListEvent) => {
-      if (theme === "system") {
+      if (theme === 'system') {
         const root = document.documentElement;
-        root.setAttribute("data-theme", e.matches ? "dark" : "light");
+        root.setAttribute('data-theme', e.matches ? 'dark' : 'light');
       }
     };
 
-    mediaQuery.addEventListener("change", handleChange);
-    return () => mediaQuery.removeEventListener("change", handleChange);
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
   }, [theme]);
 
   useEffect(() => {
@@ -117,17 +116,17 @@ const Layout: React.FC = () => {
       scrollSync.syncPreviewToEditor(editorElement, previewElement);
     };
 
-    editorElement.removeEventListener("scroll", handleEditorScroll);
-    previewElement.removeEventListener("scroll", handlePreviewScroll);
+    editorElement.removeEventListener('scroll', handleEditorScroll);
+    previewElement.removeEventListener('scroll', handlePreviewScroll);
 
     if (!previewMode) {
-      editorElement.addEventListener("scroll", handleEditorScroll);
-      previewElement.addEventListener("scroll", handlePreviewScroll);
+      editorElement.addEventListener('scroll', handleEditorScroll);
+      previewElement.addEventListener('scroll', handlePreviewScroll);
     }
 
     return () => {
-      editorElement.removeEventListener("scroll", handleEditorScroll);
-      previewElement.removeEventListener("scroll", handlePreviewScroll);
+      editorElement.removeEventListener('scroll', handleEditorScroll);
+      previewElement.removeEventListener('scroll', handlePreviewScroll);
     };
   }, [scrollSyncEnabled, previewMode]);
 
@@ -139,10 +138,7 @@ const Layout: React.FC = () => {
       const containerWidth = containerRect.width;
       const mouseX = e.clientX - containerRect.left;
 
-      const newWidth = Math.min(
-        Math.max((mouseX / containerWidth) * 100, 20),
-        80
-      );
+      const newWidth = Math.min(Math.max((mouseX / containerWidth) * 100, 20), 80);
       setEditorWidth(newWidth);
     };
 
@@ -151,13 +147,13 @@ const Layout: React.FC = () => {
     };
 
     if (isResizing) {
-      document.addEventListener("mousemove", handleMouseMove);
-      document.addEventListener("mouseup", handleMouseUp);
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
     }
 
     return () => {
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
     };
   }, [isResizing]);
 
@@ -184,7 +180,7 @@ const Layout: React.FC = () => {
 
   return (
     <div className={styles.container}>
-      <div style={{ position: "relative" }}>
+      <div style={{ position: 'relative' }}>
         <Toolbar
           value={markdown}
           setValue={setMarkdown}
@@ -232,9 +228,7 @@ const Layout: React.FC = () => {
             modified: new Date(),
           };
           setRecentFiles((prev) => {
-            const withoutDup = prev.filter(
-              (f) => f.path !== path && f.id !== path
-            );
+            const withoutDup = prev.filter((f) => f.path !== path && f.id !== path);
             return [item, ...withoutDup].slice(0, 50);
           });
           setForceEditFileName(true); // 新建后强制编辑
@@ -245,14 +239,11 @@ const Layout: React.FC = () => {
       <div
         ref={containerRef}
         className={styles.editorPreview}
-        style={{ cursor: isResizing ? "col-resize" : "default" }}
+        style={{ cursor: isResizing ? 'col-resize' : 'default' }}
       >
         {!previewMode && (
           <>
-            <div
-              className={styles.editorPanel}
-              style={{ width: `${editorWidth}%` }}
-            >
+            <div className={styles.editorPanel} style={{ width: `${editorWidth}%` }}>
               <Editor
                 ref={editorRef}
                 value={markdown}
@@ -267,7 +258,7 @@ const Layout: React.FC = () => {
         <div
           className={styles.previewPanel}
           style={{
-            width: previewMode ? "100%" : `calc(${100 - editorWidth}% - 5px)`,
+            width: previewMode ? '100%' : `calc(${100 - editorWidth}% - 5px)`,
           }}
         >
           <Preview

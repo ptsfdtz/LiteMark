@@ -1,138 +1,137 @@
 /* src/components/Preview/Preview.css */
 .preview-container {
-  padding: 1rem;
-  overflow: auto;
   position: relative;
-  background-color: var(--preview-bg, #ffffff);
-  color: var(--preview-text, #000000);
   height: 100%;
+  padding: 1rem;
+  color: var(--preview-text, #000);
+  overflow: auto;
+  background-color: var(--preview-bg, #fff);
   box-sizing: border-box;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
-    "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
-    sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans',
+    'Droid Sans', 'Helvetica Neue', sans-serif;
   font-size: 16px;
   line-height: 1.6;
-}
 
-/* 表格样式 */
-.preview-container table {
-  border-collapse: collapse;
-  width: 100%;
-  margin: 1rem 0;
-}
+  /* 表格样式 */
+  & table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1rem 0;
+  }
 
-.preview-container th,
-.preview-container td {
-  border: 1px solid var(--table-border, #ddd);
-  padding: 0.5rem;
-  text-align: left;
-}
+  & th,
+  & td {
+    padding: 0.5rem;
+    border: 1px solid var(--table-border, #ddd);
+    text-align: left;
+  }
 
-.preview-container th {
-  background-color: var(--table-header-bg, #f5f5f5);
-  font-weight: bold;
-  color: var(--table-header-text, #000);
-}
+  & th {
+    background-color: var(--table-header-bg, #f5f5f5);
+    font-weight: bold;
+    color: var(--table-header-text, #000);
+  }
 
-.preview-container tr:nth-child(even) {
-  background-color: var(--table-even-row-bg, #f9f9f9);
-}
+  & tr:nth-child(even) {
+    background-color: var(--table-even-row-bg, #f9f9f9);
+  }
 
-.preview-container tr:nth-child(odd) {
-  background-color: var(--table-odd-row-bg, #fff);
-}
+  & tr:nth-child(odd) {
+    background-color: var(--table-odd-row-bg, #fff);
+  }
 
-/* 其他 Markdown 元素样式 */
-.preview-container h1,
-.preview-container h2,
-.preview-container h3,
-.preview-container h4,
-.preview-container h5,
-.preview-container h6 {
-  margin-top: 1.5rem;
-  margin-bottom: 1rem;
-  font-family: inherit;
-}
+  /* 其他 Markdown 元素样式 */
+  & h1,
+  & h2,
+  & h3,
+  & h4,
+  & h5,
+  & h6 {
+    margin-top: 1.5rem;
+    margin-bottom: 1rem;
+    font-family: inherit;
+  }
 
-.preview-container p {
-  margin: 0.8rem 0;
-}
+  & p {
+    margin: 0.8rem 0;
+  }
 
-.preview-container blockquote {
-  border-left: 4px solid var(--blockquote-border, #ddd);
-  padding-left: 1rem;
-  margin: 1rem 0;
-  color: var(--blockquote-text, #666);
-}
+  & blockquote {
+    border-left: 4px solid var(--blockquote-border, #ddd);
+    padding-left: 1rem;
+    margin: 1rem 0;
+    color: var(--blockquote-text, #666);
+  }
 
-/* 图片样式 */
-.preview-container img {
-  max-width: 100%;
-  height: auto;
-  margin: 0.5rem 0;
-}
+  /* 图片样式 */
+  & img {
+    max-width: 100%;
+    height: auto;
+    margin: 0.5rem 0;
+  }
 
-/* 代码相关样式 */
-.preview-container code {
-  background-color: var(--inline-code-bg, #f5f5f5);
-  padding: 0.2rem 0.4rem;
-  border-radius: 3px;
-  font-family: var(--monospace-font);
-  font-size: 14px;
-}
+  /* 代码相关样式 */
+  & code {
+    background-color: var(--inline-code-bg, #f5f5f5);
+    padding: 0.2rem 0.4rem;
+    border-radius: 3px;
+    font-family: var(--monospace-font);
+    font-size: 14px;
+  }
 
-.preview-container pre {
-  background-color: var(--code-block-bg, #f5f5f5);
-  border-radius: 6px;
-  overflow: auto;
-  margin: 1rem 0;
-  padding: 0;
-}
+  & pre {
+    background-color: var(--code-block-bg, #f5f5f5);
+    border-radius: 6px;
+    overflow: auto;
+    margin: 1rem 0;
+    padding: 0;
 
-.preview-container pre code {
-  padding: 1rem;
-  background: none;
-  border-radius: 0;
-  font-family: var(--monospace-font);
-  font-size: 14px;
-  line-height: 1.5;
-  color: var(--code-text, inherit);
-  display: block;
-}
+    & code {
+      display: block;
+      padding: 1rem;
+      color: var(--code-text, inherit);
+      background: none;
+      border-radius: 0;
+      font-family: var(--monospace-font);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+  }
 
-/* 数学公式块样式 */
-.preview-container .math-display {
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding: 1rem;
-  text-align: center;
-}
+  /* 数学公式块样式 */
+  & .math-display {
+    overflow: auto hidden;
+    padding: 1rem;
+    text-align: center;
+  }
 
-.preview-container .math-inline {
-  display: inline-block;
-  vertical-align: middle;
-}
+  & .math-inline {
+    display: inline-block;
+    vertical-align: middle;
+  }
 
-/* 链接样式 */
-.preview-container a {
-  color: var(--link-color, #0066cc);
-  text-decoration: none;
-  border-bottom: 1px solid transparent;
-  transition: all 0.2s ease;
-}
+  /* 链接样式 */
+  & a {
+    color: var(--link-color, #06c);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: all 0.2s ease;
 
-.preview-container a:hover {
-  color: var(--link-hover-color, #004499);
-  border-bottom-color: var(--link-hover-color, #004499);
-  text-decoration: none;
-}
+    &:hover {
+      color: var(--link-hover-color, #049);
+      border-bottom-color: var(--link-hover-color, #049);
+      text-decoration: none;
+    }
 
-.preview-container a:visited {
-  color: var(--link-visited-color, #660099);
-}
+    &:visited {
+      color: var(--link-visited-color, #609);
+    }
 
-.preview-container a:active {
-  color: var(--link-active-color, #cc0000);
+    &:active {
+      color: var(--link-active-color, #c00);
+    }
+  }
 }
 
 /* 特殊图标样式 */
@@ -165,36 +164,36 @@
 .scrollSyncButton,
 .previewModeButton {
   position: fixed;
-  bottom: 20px;
   right: 20px;
-  background: none;
-  border-radius: 18px;
+  bottom: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
   width: 36px;
   height: 36px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
+  background: none;
   transition: all 0.2s ease;
+  border-radius: 18px;
+  cursor: pointer;
+  z-index: 100;
+
+  &:hover {
+    background-color: var(--toolbar-bg, #eee);
+  }
+
+  & svg {
+    width: 18px;
+    height: 18px;
+    color: var(--text-color, #333);
+  }
 }
 
-.scrollSyncButton:hover,
-.previewModeButton:hover {
-  background-color: var(--toolbar-bg, #eee);
-}
+.previewModeButton {
+  &.enter {
+    bottom: 60px;
+  }
 
-.scrollSyncButton svg,
-.previewModeButton svg {
-  width: 18px;
-  height: 18px;
-  color: var(--text-color, #333);
-}
-
-.previewModeButton.enter {
-  bottom: 60px;
-}
-
-.previewModeButton.exit {
-  bottom: 60px;
+  &.exit {
+    bottom: 60px;
+  }
 }

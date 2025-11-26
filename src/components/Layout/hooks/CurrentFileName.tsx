@@ -1,8 +1,9 @@
-import React from "react";
-import styles from "../Layout.module.css";
-import { RecentFile } from "../../../types/recentFiles";
-import { invoke } from "@tauri-apps/api/core";
-import { message } from "@tauri-apps/plugin-dialog";
+// src/components/Layout/hooks/CurrentFileName.tsx
+import React from 'react';
+import styles from '../Layout.module.css';
+import { RecentFile } from '../../../types/recentFiles';
+import { invoke } from '@tauri-apps/api/core';
+import { message } from '@tauri-apps/plugin-dialog';
 
 interface CurrentFileNameProps {
   filePath: string;
@@ -21,13 +22,11 @@ const CurrentFileName: React.FC<CurrentFileNameProps> = ({
   setForceEdit,
 }) => {
   const [editing, setEditing] = React.useState(false);
-  const [value, setValue] = React.useState(
-    filePath.split(/[/\\\\]/).pop() || ""
-  );
+  const [value, setValue] = React.useState(filePath.split(/[/\\\\]/).pop() || '');
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
-    setValue(filePath.split(/[/\\\\]/).pop() || "");
+    setValue(filePath.split(/[/\\\\]/).pop() || '');
   }, [filePath]);
 
   React.useEffect(() => {
@@ -48,39 +47,33 @@ const CurrentFileName: React.FC<CurrentFileNameProps> = ({
       return;
     }
     if (!/\.[a-zA-Z0-9]+$/.test(newName)) {
-      newName += ".md";
+      newName += '.md';
     }
-    const dir = filePath.replace(/[/\\\\][^/\\\\]+$/, "");
+    const dir = filePath.replace(/[/\\\\][^/\\\\]+$/, '');
     const newPath =
       dir +
-      (dir.endsWith("/") || dir.endsWith("\\\\")
-        ? ""
-        : dir.includes("\\\\")
-        ? "\\\\"
-        : "/") +
+      (dir.endsWith('/') || dir.endsWith('\\\\') ? '' : dir.includes('\\\\') ? '\\\\' : '/') +
       newName;
     try {
-      const exists = await invoke("file_exists", { path: newPath });
+      const exists = await invoke('file_exists', { path: newPath });
       if (exists) {
-        await message("该文件名已存在，请输入其他名称。", {
-          title: "重命名失败",
+        await message('该文件名已存在，请输入其他名称。', {
+          title: '重命名失败',
         });
         setEditing(true);
         inputRef.current?.focus();
         inputRef.current?.select();
         return;
       }
-      await invoke("rename_file", { oldPath: filePath, newPath });
+      await invoke('rename_file', { oldPath: filePath, newPath });
       setCurrentFilePath(newPath);
       setRecentFiles((prev) =>
         prev.map((f) =>
-          f.path === filePath
-            ? { ...f, id: newPath, name: newName, path: newPath }
-            : f
-        )
+          f.path === filePath ? { ...f, id: newPath, name: newName, path: newPath } : f,
+        ),
       );
     } catch (err) {
-      console.error("重命名失败:", err);
+      console.error('重命名失败:', err);
     }
     setEditing(false);
   };
@@ -94,8 +87,8 @@ const CurrentFileName: React.FC<CurrentFileNameProps> = ({
       onChange={(e) => setValue(e.target.value)}
       onBlur={handleRename}
       onKeyDown={(e) => {
-        if (e.key === "Enter") handleRename();
-        if (e.key === "Escape") setEditing(false);
+        if (e.key === 'Enter') handleRename();
+        if (e.key === 'Escape') setEditing(false);
       }}
       style={{ minWidth: 60, maxWidth: 300 }}
     />
@@ -103,7 +96,7 @@ const CurrentFileName: React.FC<CurrentFileNameProps> = ({
     <div
       className={styles.currentFileName}
       title="双击重命名"
-      style={{ cursor: "pointer", userSelect: "text" }}
+      style={{ cursor: 'pointer', userSelect: 'text' }}
       onDoubleClick={() => setEditing(true)}
     >
       {filePath.split(/[/\\\\]/).pop()}

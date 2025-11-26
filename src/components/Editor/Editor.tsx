@@ -1,6 +1,6 @@
-import React from "react";
-import styles from "./Editor.module.css";
-import { EditorProps } from "../../types/editor";
+import React from 'react';
+import styles from './Editor.module.css';
+import { EditorProps } from '../../types/editor';
 
 const Editor = React.forwardRef<HTMLTextAreaElement, EditorProps>(
   ({ value, onChange, onSelectionChange, className }, ref) => {
@@ -20,9 +20,9 @@ const Editor = React.forwardRef<HTMLTextAreaElement, EditorProps>(
         placeholder="在这里输入 ..."
       />
     );
-  }
+  },
 );
 
-Editor.displayName = "Editor";
+Editor.displayName = 'Editor';
 
 export default Editor;

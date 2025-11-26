@@ -1,4 +1,5 @@
-import React, { useEffect } from "react";
+// src/components/KeyboardShortcuts/KeyboardShortcuts.tsx
+import React, { useEffect } from 'react';
 import {
   applyBold,
   applyItalic,
@@ -11,9 +12,9 @@ import {
   applyOrderedList,
   applyTable,
   applyImage,
-} from "../Toolbar/toolbarUtils";
+} from '../Toolbar/toolbarUtils';
 
-import { KeyboardShortcutsProps } from "../../types/keyboardShortcuts";
+import { KeyboardShortcutsProps } from '../../types/keyboardShortcuts';
 
 const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({
   value,
@@ -28,18 +29,14 @@ const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({
       if (!(e.target instanceof HTMLTextAreaElement)) return;
 
       // Ctrl/Cmd + S 保存
-      if ((e.ctrlKey || e.metaKey) && (e.key === "s" || e.key === "S")) {
+      if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
         e.preventDefault();
         onSave?.();
         return;
       }
 
       // Ctrl/Cmd + Shift + S 另存为
-      if (
-        (e.ctrlKey || e.metaKey) &&
-        e.shiftKey &&
-        (e.key === "s" || e.key === "S")
-      ) {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 's' || e.key === 'S')) {
         e.preventDefault();
         onSaveAs?.();
         return;
@@ -50,48 +47,48 @@ const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({
       let newValue: string | null = null;
 
       switch (e.key) {
-        case "b":
-        case "B":
+        case 'b':
+        case 'B':
           e.preventDefault();
           newValue = applyBold(value, selectionStart, selectionEnd);
           break;
-        case "i":
-        case "I":
+        case 'i':
+        case 'I':
           e.preventDefault();
           newValue = applyItalic(value, selectionStart, selectionEnd);
           break;
-        case "k":
-        case "K":
+        case 'k':
+        case 'K':
           e.preventDefault();
           newValue = applyCode(value, selectionStart, selectionEnd);
           break;
-        case "l":
-        case "L":
+        case 'l':
+        case 'L':
           e.preventDefault();
           newValue = applyLink(value, selectionStart, selectionEnd);
           break;
-        case "h":
-        case "H":
+        case 'h':
+        case 'H':
           e.preventDefault();
           newValue = applyHeading(value, selectionStart, selectionEnd);
           break;
-        case "q":
-        case "Q":
+        case 'q':
+        case 'Q':
           e.preventDefault();
           newValue = applyQuote(value, selectionStart, selectionEnd);
           break;
-        case "u":
-        case "U":
+        case 'u':
+        case 'U':
           e.preventDefault();
           newValue = applyUnorderedList(value, selectionStart, selectionEnd);
           break;
-        case "o":
-        case "O":
+        case 'o':
+        case 'O':
           e.preventDefault();
           newValue = applyOrderedList(value, selectionStart, selectionEnd);
           break;
-        case "t":
-        case "T":
+        case 't':
+        case 'T':
           e.preventDefault();
           newValue = applyTable(value, selectionStart);
           break;
@@ -101,11 +98,11 @@ const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({
 
       if (e.shiftKey) {
         switch (e.key) {
-          case "X":
+          case 'X':
             e.preventDefault();
             newValue = applyStrikethrough(value, selectionStart, selectionEnd);
             break;
-          case "I":
+          case 'I':
             e.preventDefault();
             newValue = applyImage(value, selectionStart, selectionEnd);
             break;
@@ -119,9 +116,9 @@ const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({
       }
     };
 
-    document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener('keydown', handleKeyDown);
     return () => {
-      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener('keydown', handleKeyDown);
     };
   }, [value, setValue, selectionStart, selectionEnd]);
 

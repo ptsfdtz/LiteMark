@@ -1,16 +1,10 @@
-import React, { useEffect, useRef, useState } from "react";
-import styles from "./RecentFilesSidebar.module.css";
-import { RecentFilesSidebarProps } from "../../types/recentFiles";
-import { open } from "@tauri-apps/plugin-dialog";
-import { invoke } from "@tauri-apps/api/core";
-import {
-  FaFolderOpen,
-  FaFile,
-  FaFileAlt,
-  FaTimes,
-  FaTrash,
-} from "react-icons/fa";
-import { FaCheck } from "react-icons/fa";
+import React, { useEffect, useRef, useState } from 'react';
+import styles from './RecentFilesSidebar.module.css';
+import { RecentFilesSidebarProps } from '../../types/recentFiles';
+import { open } from '@tauri-apps/plugin-dialog';
+import { invoke } from '@tauri-apps/api/core';
+import { FaFolderOpen, FaFile, FaFileAlt, FaTimes, FaTrash } from 'react-icons/fa';
+import { FaCheck } from 'react-icons/fa';
 
 const RecentFilesSidebar: React.FC<RecentFilesSidebarProps> = ({
   files,
@@ -29,13 +23,14 @@ const RecentFilesSidebar: React.FC<RecentFilesSidebarProps> = ({
   useEffect(() => {
     if (!isOpen) return;
     const handler = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && (e.key === "n" || e.key === "N")) {
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'n' || e.key === 'N')) {
         e.preventDefault();
         handleNewFile();
       }
     };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
   const sidebarRef = useRef<HTMLDivElement | null>(null);
   // 记录正在删除动画的文件 id
@@ -57,8 +52,8 @@ const RecentFilesSidebar: React.FC<RecentFilesSidebarProps> = ({
         else if (onClose) onClose();
       }
     };
-    document.addEventListener("mousedown", onDocMouseDown);
-    return () => document.removeEventListener("mousedown", onDocMouseDown);
+    document.addEventListener('mousedown', onDocMouseDown);
+    return () => document.removeEventListener('mousedown', onDocMouseDown);
   }, [isOpen, onRequestClose, onClose]);
   const handleOpenFile = async () => {
     try {
@@ -66,34 +61,32 @@ const RecentFilesSidebar: React.FC<RecentFilesSidebarProps> = ({
         multiple: false,
         directory: false,
         filters: [
-          { name: "Markdown", extensions: ["md", "markdown", "txt"] },
-          { name: "All Files", extensions: ["*"] },
+          { name: 'Markdown', extensions: ['md', 'markdown', 'txt'] },
+          { name: 'All Files', extensions: ['*'] },
         ],
       });
       if (!selected || Array.isArray(selected)) return;
-      const content = await invoke<string>("read_text_file", {
+      const content = await invoke<string>('read_text_file', {
         path: selected,
       });
       if (onLoadFile) onLoadFile(selected, content);
       if (onRequestClose) onRequestClose();
       if (onClose) onClose();
     } catch (err) {
-      console.error("打开文件失败:", err);
+      console.error('打开文件失败:', err);
     }
   };
 
   // 新建文件直接保存到个人工作文件夹，无弹窗
   const handleNewFile = async () => {
     try {
-      let target = "untitled.md";
+      let target = 'untitled.md';
       if (workDir) {
         target =
-          workDir.replace(/[\\\/]$/, "") +
-          (workDir.includes("\\") ? "\\" : "/") +
-          "untitled.md";
+          workDir.replace(/[\\/]$/, '') + (workDir.includes('\\') ? '\\' : '/') + 'untitled.md';
       }
-      const initialContent = "# 新建文档\n\n";
-      await invoke("write_text_file", {
+      const initialContent = '# 新建文档\n\n';
+      await invoke('write_text_file', {
         path: target,
         content: initialContent,
       });
@@ -101,7 +94,7 @@ const RecentFilesSidebar: React.FC<RecentFilesSidebarProps> = ({
       if (onRequestClose) onRequestClose();
       if (onClose) onClose();
     } catch (err) {
-      console.error("新建文件失败:", err);
+      console.error('新建文件失败:', err);
     }
   };
 
@@ -109,9 +102,10 @@ const RecentFilesSidebar: React.FC<RecentFilesSidebarProps> = ({
     try {
       const selected = await open({ multiple: false, directory: true });
       if (!selected || Array.isArray(selected)) return;
-      const list = await invoke<
-        Array<{ path: string; name: string; modified_ms: number }>
-      >("list_text_files", { dirPath: selected });
+      const list = await invoke<Array<{ path: string; name: string; modified_ms: number }>>(
+        'list_text_files',
+        { dirPath: selected },
+      );
       const files = list.map((f) => ({
         id: f.path,
         name: f.name,
@@ -120,7 +114,7 @@ const RecentFilesSidebar: React.FC<RecentFilesSidebarProps> = ({
       }));
       if (onLoadDir) onLoadDir(files);
     } catch (err) {
-      console.error("打开文件夹失败:", err);
+      console.error('打开文件夹失败:', err);
     }
   };
   return (
@@ -177,19 +171,12 @@ const RecentFilesSidebar: React.FC<RecentFilesSidebarProps> = ({
             return (
               <div
                 key={file.id}
-                className={`${styles.fileItem} ${
-                  deletingId === file.id ? styles.deleting : ""
-                }`}
+                className={`${styles.fileItem} ${deletingId === file.id ? styles.deleting : ''}`}
               >
-                <div
-                  className={styles.fileContent}
-                  onClick={() => onSelectFile(file)}
-                >
+                <div className={styles.fileContent} onClick={() => onSelectFile(file)}>
                   <div className={styles.fileName}>{file.name}</div>
                   <div className={styles.filePath}>{file.path}</div>
-                  <div className={styles.fileModified}>
-                    {file.modified.toLocaleString()}
-                  </div>
+                  <div className={styles.fileModified}>{file.modified.toLocaleString()}</div>
                 </div>
                 {confirmingId === file.id ? (
                   <span className={styles.confirmBtns}>

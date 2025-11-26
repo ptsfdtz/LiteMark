@@ -108,7 +108,7 @@ export const applyOrderedList = (text: string, start: number, end: number): stri
     return before + lineContent.replace(/^\d+\.\s?/, '') + after;
   }
   
-  let prevLineEnd = lineStart;
+  const prevLineEnd = lineStart;
   let prevLineStart = lineStart;
   while (prevLineStart > 0 && text[prevLineStart - 1] !== '\n') {
     prevLineStart--;

@@ -7,23 +7,23 @@
 }
 
 button {
-  font-weight: bold;
+  display: flex;
+  justify-content: center;
+  align-items: center;
   padding: 0.3rem 0.6rem;
-  cursor: pointer;
+  color: var(--text-color, #333);
   border: none;
+  font-weight: bold;
+  cursor: pointer;
   border-radius: 4px;
   background-color: var(--sidebar-bg, white);
-  color: var(--text-color, #333);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
 
-button:hover {
-  background-color: var(--toolbar-bg, #eee);
-}
+  &:hover {
+    background-color: var(--toolbar-bg, #eee);
+  }
 
-button svg {
-  width: 1rem;
-  height: 1rem;
+  & svg {
+    width: 1rem;
+    height: 1rem;
+  }
 }

@@ -1,7 +1,7 @@
 // src/components/Toolbar/Toolbar.tsx
-import React from "react";
-import styles from "./Toolbar.module.css";
-import { ToolbarProps } from "../../types/toolbar";
+import React from 'react';
+import styles from './Toolbar.module.css';
+import { ToolbarProps } from '../../types/toolbar';
 import {
   applyBold,
   applyItalic,
@@ -14,7 +14,7 @@ import {
   applyOrderedList,
   applyTable,
   applyImage,
-} from "./toolbarUtils";
+} from './toolbarUtils';
 
 import {
   FaBold,
@@ -31,7 +31,7 @@ import {
   FaFolderOpen,
   FaSave,
   FaCopy,
-} from "react-icons/fa";
+} from 'react-icons/fa';
 
 const Toolbar: React.FC<ToolbarProps> = ({
   value,
@@ -44,18 +44,32 @@ const Toolbar: React.FC<ToolbarProps> = ({
   className,
   editorRef,
 }) => {
-  const applyWithUndo = (
-    transform: (text: string, start: number, end: number) => string
-  ) => {
-    const el = editorRef && (editorRef as any).current;
-    if (el && typeof el.setRangeText === "function") {
-      const s = el.selectionStart;
-      const e = el.selectionEnd;
-      const full = transform(el.value, s, e);
-      const replacement = full.slice(s, full.length - (el.value.length - e));
-      el.setRangeText(replacement, s, e, "end");
-      el.dispatchEvent(new Event("input", { bubbles: true }));
-      setValue(el.value);
+  const applyWithUndo = (transform: (text: string, start: number, end: number) => string) => {
+    const el = editorRef && (editorRef.current as HTMLTextAreaElement | HTMLInputElement);
+    if (el) {
+      el.focus();
+      const s = el.selectionStart ?? 0;
+      const e = el.selectionEnd ?? 0;
+      const originalValue = el.value;
+      const newValue = transform(originalValue, s, e);
+      const replacement = newValue.slice(s, newValue.length - (originalValue.length - e));
+      let success = false;
+      try {
+        el.setSelectionRange(s, e);
+        success = document.execCommand('insertText', false, replacement);
+      } catch (err) {
+        console.error('execCommand failed', err);
+      }
+
+      if (!success) {
+        if (typeof el.setRangeText === 'function') {
+          el.setRangeText(replacement, s, e, 'end');
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+          setValue(el.value);
+        } else {
+          setValue(newValue);
+        }
+      }
       return;
     }
     setValue(transform(value, selectionStart, selectionEnd));
@@ -63,11 +77,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
   return (
     <div className={`${styles.toolbar} ${className}`}>
       {onOpenFolder && (
-        <button
-          onClick={onOpenFolder}
-          title="最近的文件"
-          className="folderButton"
-        >
+        <button onClick={onOpenFolder} title="最近的文件" className="folderButton">
           <FaFolderOpen />
         </button>
       )}
@@ -81,10 +91,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
           <FaCopy />
         </button>
       )}
-      <button
-        onClick={() => applyWithUndo((t, s, e) => applyBold(t, s, e))}
-        title="粗体 (Ctrl+B)"
-      >
+      <button onClick={() => applyWithUndo((t, s, e) => applyBold(t, s, e))} title="粗体 (Ctrl+B)">
         <FaBold />
       </button>
       <button
@@ -99,16 +106,10 @@ const Toolbar: React.FC<ToolbarProps> = ({
       >
         <FaStrikethrough />
       </button>
-      <button
-        onClick={() => applyWithUndo((t, s, e) => applyCode(t, s, e))}
-        title="代码 (Ctrl+K)"
-      >
+      <button onClick={() => applyWithUndo((t, s, e) => applyCode(t, s, e))} title="代码 (Ctrl+K)">
         <FaCode />
       </button>
-      <button
-        onClick={() => applyWithUndo((t, s, e) => applyLink(t, s, e))}
-        title="链接 (Ctrl+L)"
-      >
+      <button onClick={() => applyWithUndo((t, s, e) => applyLink(t, s, e))} title="链接 (Ctrl+L)">
         <FaLink />
       </button>
       <button
@@ -117,10 +118,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
       >
         <FaHeading />
       </button>
-      <button
-        onClick={() => applyWithUndo((t, s, e) => applyQuote(t, s, e))}
-        title="引用 (Ctrl+Q)"
-      >
+      <button onClick={() => applyWithUndo((t, s, e) => applyQuote(t, s, e))} title="引用 (Ctrl+Q)">
         <FaQuoteRight />
       </button>
       <button
@@ -135,10 +133,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
       >
         <FaListOl />
       </button>
-      <button
-        onClick={() => applyWithUndo((t, s) => applyTable(t, s))}
-        title="表格 (Ctrl+T)"
-      >
+      <button onClick={() => applyWithUndo((t, s) => applyTable(t, s))} title="表格 (Ctrl+T)">
         <FaTable />
       </button>
       <button
