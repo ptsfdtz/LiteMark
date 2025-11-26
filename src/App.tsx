@@ -47,9 +47,11 @@ function App() {
   const [run, setRun] = useState(false);
   useEffect(() => {
     const seen = localStorage.getItem('joyride_seen');
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!seen) setRun(true);
   }, []);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleJoyrideCallback = (data: any) => {
     if (data.status === 'finished' || data.status === 'skipped') {
       localStorage.setItem('joyride_seen', '1');
