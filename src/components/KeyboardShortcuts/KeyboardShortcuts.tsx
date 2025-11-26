@@ -120,7 +120,7 @@ const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [value, setValue, selectionStart, selectionEnd]);
+  }, [value, setValue, selectionStart, selectionEnd, onSave, onSaveAs]);
 
   return null;
 };
