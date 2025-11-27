@@ -78,14 +78,25 @@ const Layout: React.FC = () => {
 
   useEffect(() => {
     const root = document.documentElement;
-    if (theme === 'system') {
-      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches
-        ? 'dark'
-        : 'light';
-      root.setAttribute('data-theme', systemTheme);
-    } else {
-      root.setAttribute('data-theme', theme);
+    const updateTheme = () => {
+      if (theme === 'system') {
+        const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches
+          ? 'dark'
+          : 'light';
+        root.setAttribute('data-theme', systemTheme);
+      } else {
+        root.setAttribute('data-theme', theme);
+      }
+    };
+
+    if (!document.startViewTransition) {
+      updateTheme();
+      return;
     }
+
+    document.startViewTransition(() => {
+      updateTheme();
+    });
   }, [theme]);
 
   useEffect(() => {
@@ -93,7 +104,15 @@ const Layout: React.FC = () => {
     const handleChange = (e: MediaQueryListEvent) => {
       if (theme === 'system') {
         const root = document.documentElement;
-        root.setAttribute('data-theme', e.matches ? 'dark' : 'light');
+        const updateTheme = () => {
+          root.setAttribute('data-theme', e.matches ? 'dark' : 'light');
+        };
+
+        if (!document.startViewTransition) {
+          updateTheme();
+          return;
+        }
+        document.startViewTransition(updateTheme);
       }
     };
 
