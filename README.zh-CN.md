@@ -2,6 +2,9 @@
 
 > 一个基于 [Tauri](https://tauri.app/) 构建的**轻量级**、**极速**、**现代化** Markdown 编辑器 —— 更小内存占用，更专注写作。
 
+<p align="center">
+  <img src="assets/preview.png" width="600" alt="LiteMark Preview">
+</p>
 
 ## 🌙 主题演示
 
@@ -9,7 +12,7 @@ LiteMark 支持浅色和深色两种主题，适应不同环境下的写作体�
 
 | Cadmium Light 主题 | Dark 主题 |
 | :----------------: | :-------: |
-| <img src="https://github.com/ptsfdtz/litemark/assets/preview-light.png" width="480" alt="LiteMark 浅色主题预览"> | <img src="https://github.com/ptsfdtz/litemark/assets/preview-dark.png" width="480" alt="LiteMark 深色主题预览"> |
+| <img src="assets/preview-light.png" width="480" alt="深色主题预览"> | <img src="assets/preview-dark.png" width="480" alt="浅色主题预览"> |
 
 ---
 
