@@ -119,11 +119,6 @@ const Layout: React.FC = () => {
   }, [theme]);
 
   useEffect(() => {
-    // Robustly attach scroll-sync listeners. Monaco editor instance is assigned
-    // via a ref and its .current may be null when this effect runs. To ensure
-    // enabling scroll-sync takes effect immediately, poll briefly until both
-    // editor and preview elements are available, then bind listeners. Clean up
-    // interval/listeners on unmount or when dependencies change.
     let intervalId: number | null = null;
     let disposable: { dispose: () => void } | null = null;
     let previewHandler: ((e: Event) => void) | null = null;

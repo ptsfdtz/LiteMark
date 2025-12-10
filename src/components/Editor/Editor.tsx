@@ -130,6 +130,53 @@ const Editor = React.forwardRef<any, EditorProps>(
           onSaveRef.current();
         }
       });
+      editor.addCommand(monaco.KeyCode.Enter, () => {
+        const model = editor.getModel();
+        const pos = editor.getPosition();
+        if (!model || !pos) return;
+
+        const lineNumber = pos.lineNumber;
+        const lineText = model.getLineContent(lineNumber);
+
+        const unordered = lineText.match(/^(\s*)-\s+/);
+        const ordered = lineText.match(/^(\s*)(\d+)\.\s+/);
+
+        if (unordered) {
+          const indent = unordered[1] || '';
+          const insert = '\n' + indent + '- ';
+          editor.executeEdits('list-enter', [
+            {
+              range: new monaco.Range(lineNumber, pos.column, lineNumber, pos.column),
+              text: insert,
+              forceMoveMarkers: true,
+            },
+          ]);
+          // place cursor after the new list marker
+          editor.setPosition(new monaco.Position(lineNumber + 1, indent.length + 3));
+          return;
+        }
+
+        if (ordered) {
+          const indent = ordered[1] || '';
+          const current = parseInt(ordered[2], 10);
+          const next = current + 1;
+          const insert = '\n' + indent + next + '. ';
+          editor.executeEdits('list-enter', [
+            {
+              range: new monaco.Range(lineNumber, pos.column, lineNumber, pos.column),
+              text: insert,
+              forceMoveMarkers: true,
+            },
+          ]);
+          editor.setPosition(
+            new monaco.Position(lineNumber + 1, indent.length + String(next).length + 3),
+          );
+          return;
+        }
+
+        // Fallback: insert a normal newline
+        editor.trigger('keyboard', 'type', { text: '\n' });
+      });
 
       editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyS, () => {
         if (onSaveAsRef.current) {
