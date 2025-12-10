@@ -1,19 +1,14 @@
 // src/components/Layout/Layout.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import { FaTimes } from 'react-icons/fa';
-import Editor from '../Editor/Editor';
-import Preview from '../Preview/Preview';
-import Toolbar from '../Toolbar/Toolbar';
-import Settings from '../Settings/Settings';
+import { Editor, Preview, Toolbar, Settings, SettingsButton, RecentFilesSidebar } from '../index';
 import styles from './Layout.module.css';
-import SettingsButton from '../SettingsButton/SettingsButton';
-import RecentFilesSidebar from '../RecentFilesSidebar/RecentFilesSidebar';
 import { RecentFile } from '../../types/recentFiles';
-import CurrentFileName from './hooks/CurrentFileName';
+import CurrentFileName from './components/CurrentFileName';
 // import { loadRecentFiles, saveRecentFiles } from "../../utils/recentStore";
 import useFileManager from './hooks/useFileManager';
 import { loadWorkDir, saveWorkDir } from '../../utils/workDirStore';
-import SaveSuccessToast from './hooks/SaveSuccessToast';
+import SaveSuccessToast from './components/SaveSuccessToast';
 
 const Layout: React.FC = () => {
   const [markdown, setMarkdown] = useState('');
