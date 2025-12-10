@@ -45,8 +45,40 @@ const Toolbar: React.FC<ToolbarProps> = ({
   editorRef,
 }) => {
   const applyWithUndo = (transform: (text: string, start: number, end: number) => string) => {
+    const editor = editorRef?.current;
+
+    // Handle Monaco Editor
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if (editor && (editor as any).getModel) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const model = (editor as any).getModel();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const selection = (editor as any).getSelection();
+      if (model && selection) {
+        const startOffset = model.getOffsetAt(selection.getStartPosition());
+        const endOffset = model.getOffsetAt(selection.getEndPosition());
+        const text = model.getValue();
+
+        const newText = transform(text, startOffset, endOffset);
+
+        // Use executeEdits to preserve undo stack
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (editor as any).executeEdits('toolbar', [
+          {
+            range: model.getFullModelRange(),
+            text: newText,
+            forceMoveMarkers: true,
+          },
+        ]);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (editor as any).focus();
+        return;
+      }
+    }
+
+    // Handle HTMLTextAreaElement (fallback)
     const el = editorRef && (editorRef.current as HTMLTextAreaElement | HTMLInputElement);
-    if (el) {
+    if (el && el.setSelectionRange) {
       el.focus();
       const s = el.selectionStart ?? 0;
       const e = el.selectionEnd ?? 0;

@@ -145,3 +145,8 @@ a {
     color: var(--link-active-color);
   }
 }
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.3s;
+}
