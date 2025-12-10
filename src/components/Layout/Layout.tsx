@@ -22,6 +22,14 @@ const Layout: React.FC = () => {
   const [scrollSyncEnabled, setScrollSyncEnabled] = useState(true);
   const [previewMode, setPreviewMode] = useState(false);
   const [editorOnly, setEditorOnly] = useState(false);
+  const [minimapEnabled, setMinimapEnabledState] = useState<boolean>(() => {
+    try {
+      const v = localStorage.getItem('minimapEnabled');
+      return v ? v === 'true' : false;
+    } catch {
+      return false;
+    }
+  });
   const [editorWidth, setEditorWidth] = useState(60);
   const [isResizing, setIsResizing] = useState(false);
   const [currentFilePath, setCurrentFilePath] = useState<string | null>(null);
@@ -278,6 +286,15 @@ const Layout: React.FC = () => {
     }
   };
 
+  const setMinimapEnabled = (v: boolean) => {
+    setMinimapEnabledState(v);
+    try {
+      localStorage.setItem('minimapEnabled', v ? 'true' : 'false');
+    } catch {
+      // ignore
+    }
+  };
+
   const startResizing = (e: React.MouseEvent) => {
     e.preventDefault();
     setIsResizing(true);
@@ -355,6 +372,7 @@ const Layout: React.FC = () => {
               onSelectionChange={(start, end) => setSelection({ start, end })}
               className={styles.editor}
               theme={theme}
+              minimapEnabled={minimapEnabled}
               onSave={handleSave}
               onSaveAs={handleSaveAs}
             />
@@ -379,6 +397,7 @@ const Layout: React.FC = () => {
                     onSelectionChange={(start, end) => setSelection({ start, end })}
                     className={styles.editor}
                     theme={theme}
+                    minimapEnabled={minimapEnabled}
                     onSave={handleSave}
                     onSaveAs={handleSaveAs}
                   />
@@ -423,6 +442,8 @@ const Layout: React.FC = () => {
           setTheme={setTheme}
           workDir={workDir}
           setWorkDir={setWorkDir}
+          minimapEnabled={minimapEnabled}
+          setMinimapEnabled={setMinimapEnabled}
           isClosing={settingsClosing}
           onRequestClose={() => setSettingsClosing(true)}
           onCloseComplete={() => {

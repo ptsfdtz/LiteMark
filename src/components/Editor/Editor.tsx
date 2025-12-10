@@ -19,7 +19,10 @@ import {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const Editor = React.forwardRef<any, EditorProps>(
-  ({ value, onChange, onSelectionChange, className, theme, onSave, onSaveAs }, ref) => {
+  (
+    { value, onChange, onSelectionChange, className, theme, onSave, onSaveAs, minimapEnabled },
+    ref,
+  ) => {
     const [resolvedTheme, setResolvedTheme] = useState('light');
     const onSaveRef = useRef(onSave);
     const onSaveAsRef = useRef(onSaveAs);
@@ -195,7 +198,7 @@ const Editor = React.forwardRef<any, EditorProps>(
           onChange={(value) => onChange(value || '')}
           onMount={handleEditorDidMount}
           options={{
-            minimap: { enabled: false },
+            minimap: { enabled: !!minimapEnabled },
             wordWrap: 'on',
             fontSize: 14,
             scrollBeyondLastLine: false,

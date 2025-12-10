@@ -4,6 +4,7 @@ export interface EditorProps {
   onSelectionChange?: (start: number, end: number) => void;
   className?: string;
   theme?: 'light' | 'dark' | 'system';
+  minimapEnabled?: boolean;
   onSave?: () => void;
   onSaveAs?: () => void;
 }
