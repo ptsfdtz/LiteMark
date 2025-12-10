@@ -25,7 +25,7 @@ const Layout: React.FC = () => {
   // recentFiles and file operations are managed by useFileManager
   const [scrollSyncEnabled, setScrollSyncEnabled] = useState(true);
   const [previewMode, setPreviewMode] = useState(false);
-  const [editorWidth, setEditorWidth] = useState(50);
+  const [editorWidth, setEditorWidth] = useState(60);
   const [isResizing, setIsResizing] = useState(false);
   const [currentFilePath, setCurrentFilePath] = useState<string | null>(null);
   const [workDir, setWorkDirState] = useState('');
