@@ -1,98 +1,157 @@
 // src/components/Editor/Editor.tsx
-import React from 'react';
+import React, { useEffect, useState, useRef } from 'react';
+import MonacoEditor, { OnMount } from '@monaco-editor/react';
 import styles from './Editor.module.css';
 import { EditorProps } from '../../types/editor';
+import {
+  applyBold,
+  applyItalic,
+  applyStrikethrough,
+  applyCode,
+  applyLink,
+  applyHeading,
+  applyQuote,
+  applyUnorderedList,
+  applyOrderedList,
+  applyTable,
+  applyImage,
+} from '../Toolbar/toolbarUtils';
 
-const Editor = React.forwardRef<HTMLTextAreaElement, EditorProps>(
-  ({ value, onChange, onSelectionChange, className }, ref) => {
-    const handleSelect = (e: React.SyntheticEvent<HTMLTextAreaElement>) => {
-      const start = e.currentTarget.selectionStart;
-      const end = e.currentTarget.selectionEnd;
-      if (onSelectionChange) onSelectionChange(start, end);
-    };
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const Editor = React.forwardRef<any, EditorProps>(
+  ({ value, onChange, onSelectionChange, className, theme, onSave, onSaveAs }, ref) => {
+    const [resolvedTheme, setResolvedTheme] = useState('light');
+    const onSaveRef = useRef(onSave);
+    const onSaveAsRef = useRef(onSaveAs);
 
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        const element = e.currentTarget;
-        const start = element.selectionStart;
-        const value = element.value;
+    useEffect(() => {
+      onSaveRef.current = onSave;
+    }, [onSave]);
 
-        const beforeCursor = value.substring(0, start);
-        const lastNewLine = beforeCursor.lastIndexOf('\n');
-        const lineStart = lastNewLine === -1 ? 0 : lastNewLine + 1;
-        const currentLine = beforeCursor.substring(lineStart);
+    useEffect(() => {
+      onSaveAsRef.current = onSaveAs;
+    }, [onSaveAs]);
 
-        // Ordered List
-        const orderedMatch = currentLine.match(/^(\s*)(\d+)\.\s/);
-        if (orderedMatch) {
-          e.preventDefault();
-          const indent = orderedMatch[1];
-          const currentNum = parseInt(orderedMatch[2], 10);
-          const nextNum = currentNum + 1;
-          const textToInsert = `\n${indent}${nextNum}. `;
-
-          let success = false;
-          try {
-            success = document.execCommand('insertText', false, textToInsert);
-          } catch (err) {
-            console.error(err);
-          }
-
-          if (!success) {
-            if (element.setRangeText) {
-              element.setRangeText(textToInsert, start, element.selectionEnd, 'end');
-              element.dispatchEvent(new Event('input', { bubbles: true }));
-              onChange(element.value);
-            } else {
-              const newValue =
-                value.substring(0, start) + textToInsert + value.substring(element.selectionEnd);
-              onChange(newValue);
-            }
-          }
-          return;
+    useEffect(() => {
+      const updateTheme = () => {
+        if (theme === 'system') {
+          const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          setResolvedTheme(isDark ? 'vs-dark' : 'light');
+        } else {
+          setResolvedTheme(theme === 'dark' ? 'vs-dark' : 'light');
         }
+      };
 
-        // Unordered List
-        const unorderedMatch = currentLine.match(/^(\s*)([-*+])\s/);
-        if (unorderedMatch) {
-          e.preventDefault();
-          const indent = unorderedMatch[1];
-          const marker = unorderedMatch[2];
-          const textToInsert = `\n${indent}${marker} `;
+      updateTheme();
 
-          let success = false;
-          try {
-            success = document.execCommand('insertText', false, textToInsert);
-          } catch (err) {
-            console.error(err);
-          }
-
-          if (!success) {
-            if (element.setRangeText) {
-              element.setRangeText(textToInsert, start, element.selectionEnd, 'end');
-              element.dispatchEvent(new Event('input', { bubbles: true }));
-              onChange(element.value);
-            } else {
-              const newValue =
-                value.substring(0, start) + textToInsert + value.substring(element.selectionEnd);
-              onChange(newValue);
-            }
-          }
-          return;
-        }
+      if (theme === 'system') {
+        const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+        const handler = (e: MediaQueryListEvent) => {
+          setResolvedTheme(e.matches ? 'vs-dark' : 'light');
+        };
+        mediaQuery.addEventListener('change', handler);
+        return () => mediaQuery.removeEventListener('change', handler);
       }
+    }, [theme]);
+
+    const handleEditorDidMount: OnMount = (editor, monaco) => {
+      if (typeof ref === 'function') {
+        ref(editor);
+      } else if (ref) {
+        ref.current = editor;
+      }
+
+      editor.onDidChangeCursorSelection((e) => {
+        if (onSelectionChange) {
+          const model = editor.getModel();
+          if (model) {
+            const selection = e.selection;
+            const start = model.getOffsetAt(selection.getStartPosition());
+            const end = model.getOffsetAt(selection.getEndPosition());
+            onSelectionChange(start, end);
+          }
+        }
+      });
+
+      const applyEdit = (
+        transform: (text: string, start: number, end: number) => string,
+        isTable = false,
+      ) => {
+        const model = editor.getModel();
+        const selection = editor.getSelection();
+        if (model && selection) {
+          const startOffset = model.getOffsetAt(selection.getStartPosition());
+          const endOffset = model.getOffsetAt(selection.getEndPosition());
+          const text = model.getValue();
+          const newText = isTable
+            ? (transform as any)(text, startOffset)
+            : transform(text, startOffset, endOffset);
+          editor.executeEdits('keyboard', [
+            {
+              range: model.getFullModelRange(),
+              text: newText,
+              forceMoveMarkers: true,
+            },
+          ]);
+        }
+      };
+
+      // Shortcuts
+      editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyB, () => applyEdit(applyBold));
+      editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyI, () => applyEdit(applyItalic));
+      editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyX, () =>
+        applyEdit(applyStrikethrough),
+      );
+      editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyK, () => applyEdit(applyCode));
+      editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyL, () => applyEdit(applyLink));
+      editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyH, () => applyEdit(applyHeading));
+      editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyQ, () => applyEdit(applyQuote));
+      editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyU, () =>
+        applyEdit(applyUnorderedList),
+      );
+      editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyO, () =>
+        applyEdit(applyOrderedList),
+      );
+      editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyT, () =>
+        applyEdit(applyTable, true),
+      );
+      editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyI, () =>
+        applyEdit(applyImage),
+      );
+
+      editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
+        if (onSaveRef.current) {
+          onSaveRef.current();
+        }
+      });
+
+      editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyS, () => {
+        if (onSaveAsRef.current) {
+          onSaveAsRef.current();
+        }
+      });
     };
 
     return (
-      <textarea
-        ref={ref}
-        className={`${styles.editor} ${className}`}
-        value={value}
-        onChange={(e) => onChange(e.currentTarget.value)}
-        onSelect={handleSelect}
-        onKeyDown={handleKeyDown}
-        placeholder="在这里输入 ..."
-      />
+      <div className={`${styles.editor} ${className}`}>
+        <MonacoEditor
+          height="100%"
+          language="markdown"
+          theme={resolvedTheme}
+          value={value}
+          onChange={(value) => onChange(value || '')}
+          onMount={handleEditorDidMount}
+          options={{
+            minimap: { enabled: true },
+            wordWrap: 'on',
+            fontSize: 14,
+            scrollBeyondLastLine: false,
+            automaticLayout: true,
+            fontFamily:
+              "'Consolas', 'Menlo', 'Monaco', 'Courier New', monospace, 'Microsoft YaHei'",
+          }}
+        />
+      </div>
     );
   },
 );

@@ -3,11 +3,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import Editor from '../Editor/Editor';
 import Preview from '../Preview/Preview';
 import Toolbar from '../Toolbar/Toolbar';
-import KeyboardShortcuts from '../KeyboardShortcuts/KeyboardShortcuts';
 import Settings from '../Settings/Settings';
 import styles from './Layout.module.css';
 import SettingsButton from '../SettingsButton/SettingsButton';
-import { ScrollSync } from '../../hooks/useScrollSync';
 import RecentFilesSidebar from '../RecentFilesSidebar/RecentFilesSidebar';
 import { RecentFile } from '../../types/recentFiles';
 import CurrentFileName from './hooks/CurrentFileName';
@@ -71,9 +69,9 @@ const Layout: React.FC = () => {
     },
   });
 
-  const editorRef = useRef<HTMLTextAreaElement>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const editorRef = useRef<any>(null);
   const previewRef = useRef<HTMLDivElement>(null);
-  const scrollSyncRef = useRef<ScrollSync>(new ScrollSync());
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -121,30 +119,65 @@ const Layout: React.FC = () => {
   }, [theme]);
 
   useEffect(() => {
-    const editorElement = editorRef.current;
+    const editorInstance = editorRef.current;
     const previewElement = previewRef.current;
-    const scrollSync = scrollSyncRef.current;
 
-    if (!editorElement || !previewElement || !scrollSyncEnabled) return;
+    if (!editorInstance || !previewElement || !scrollSyncEnabled) return;
+
+    let isSyncingEditor = false;
+    let isSyncingPreview = false;
 
     const handleEditorScroll = () => {
-      scrollSync.syncEditorToPreview(editorElement, previewElement);
+      if (isSyncingPreview) return;
+      isSyncingEditor = true;
+      const scrollTop = editorInstance.getScrollTop();
+      const scrollHeight = editorInstance.getScrollHeight();
+      const clientHeight = editorInstance.getLayoutInfo().height;
+
+      const editorScrollableHeight = scrollHeight - clientHeight;
+      if (editorScrollableHeight > 0) {
+        const ratio = scrollTop / editorScrollableHeight;
+        const previewScrollHeight = previewElement.scrollHeight - previewElement.clientHeight;
+        previewElement.scrollTop = ratio * previewScrollHeight;
+      }
+      // Small timeout to prevent immediate feedback loop
+      setTimeout(() => {
+        isSyncingEditor = false;
+      }, 50);
     };
 
     const handlePreviewScroll = () => {
-      scrollSync.syncPreviewToEditor(editorElement, previewElement);
+      if (isSyncingEditor) return;
+      isSyncingPreview = true;
+
+      const previewScrollTop = previewElement.scrollTop;
+      const previewScrollHeight = previewElement.scrollHeight - previewElement.clientHeight;
+
+      if (previewScrollHeight > 0) {
+        const ratio = previewScrollTop / previewScrollHeight;
+        const editorScrollHeight = editorInstance.getScrollHeight();
+        const editorClientHeight = editorInstance.getLayoutInfo().height;
+        const editorScrollableHeight = editorScrollHeight - editorClientHeight;
+        editorInstance.setScrollTop(ratio * editorScrollableHeight);
+      }
+      setTimeout(() => {
+        isSyncingPreview = false;
+      }, 50);
     };
 
-    editorElement.removeEventListener('scroll', handleEditorScroll);
-    previewElement.removeEventListener('scroll', handlePreviewScroll);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const disposable = editorInstance.onDidScrollChange((e: any) => {
+      if (e.scrollTopChanged) {
+        handleEditorScroll();
+      }
+    });
 
     if (!previewMode) {
-      editorElement.addEventListener('scroll', handleEditorScroll);
       previewElement.addEventListener('scroll', handlePreviewScroll);
     }
 
     return () => {
-      editorElement.removeEventListener('scroll', handleEditorScroll);
+      disposable.dispose();
       previewElement.removeEventListener('scroll', handlePreviewScroll);
     };
   }, [scrollSyncEnabled, previewMode]);
@@ -268,7 +301,10 @@ const Layout: React.FC = () => {
                 value={markdown}
                 onChange={setMarkdown}
                 onSelectionChange={(start, end) => setSelection({ start, end })}
-                className="editor"
+                className={styles.editor}
+                theme={theme}
+                onSave={handleSave}
+                onSaveAs={handleSaveAs}
               />
             </div>
             <div className={styles.resizer} onMouseDown={startResizing} />
@@ -292,14 +328,6 @@ const Layout: React.FC = () => {
           />
         </div>
       </div>
-      <KeyboardShortcuts
-        value={markdown}
-        setValue={setMarkdown}
-        selectionStart={selection.start}
-        selectionEnd={selection.end}
-        onSave={handleSave}
-        onSaveAs={handleSaveAs}
-      />
       {currentFilePath && (
         <CurrentFileName
           filePath={currentFilePath}

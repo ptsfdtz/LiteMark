@@ -89,7 +89,7 @@
 
     & code {
       display: block;
-      padding: 1rem;
+      padding: 0.5rem;
       color: var(--code-text, inherit);
       background: none;
       border-radius: 0;
