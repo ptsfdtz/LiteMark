@@ -119,66 +119,90 @@ const Layout: React.FC = () => {
   }, [theme]);
 
   useEffect(() => {
-    const editorInstance = editorRef.current;
-    const previewElement = previewRef.current;
+    if (!scrollSyncEnabled) return undefined;
 
-    if (!editorInstance || !previewElement || !scrollSyncEnabled) return;
+    let disposable: { dispose: () => void } | null = null;
+    const listeners: Array<() => void> = [];
+    let stopped = false;
 
-    let isSyncingEditor = false;
-    let isSyncingPreview = false;
+    const tryAttach = () => {
+      if (stopped) return;
+      const editorInstance = editorRef.current;
+      const previewElement = previewRef.current;
+      if (!editorInstance || !previewElement) return false;
 
-    const handleEditorScroll = () => {
-      if (isSyncingPreview) return;
-      isSyncingEditor = true;
-      const scrollTop = editorInstance.getScrollTop();
-      const scrollHeight = editorInstance.getScrollHeight();
-      const clientHeight = editorInstance.getLayoutInfo().height;
+      let isSyncingEditor = false;
+      let isSyncingPreview = false;
 
-      const editorScrollableHeight = scrollHeight - clientHeight;
-      if (editorScrollableHeight > 0) {
-        const ratio = scrollTop / editorScrollableHeight;
+      const handleEditorScroll = () => {
+        if (isSyncingPreview) return;
+        isSyncingEditor = true;
+        const scrollTop = editorInstance.getScrollTop();
+        const scrollHeight = editorInstance.getScrollHeight();
+        const clientHeight = editorInstance.getLayoutInfo().height;
+
+        const editorScrollableHeight = scrollHeight - clientHeight;
+        if (editorScrollableHeight > 0) {
+          const ratio = scrollTop / editorScrollableHeight;
+          const previewScrollHeight = previewElement.scrollHeight - previewElement.clientHeight;
+          previewElement.scrollTop = ratio * previewScrollHeight;
+        }
+        setTimeout(() => {
+          isSyncingEditor = false;
+        }, 50);
+      };
+
+      const handlePreviewScroll = () => {
+        if (isSyncingEditor) return;
+        isSyncingPreview = true;
+
+        const previewScrollTop = previewElement.scrollTop;
         const previewScrollHeight = previewElement.scrollHeight - previewElement.clientHeight;
-        previewElement.scrollTop = ratio * previewScrollHeight;
+
+        if (previewScrollHeight > 0) {
+          const ratio = previewScrollTop / previewScrollHeight;
+          const editorScrollHeight = editorInstance.getScrollHeight();
+          const editorClientHeight = editorInstance.getLayoutInfo().height;
+          const editorScrollableHeight = editorScrollHeight - editorClientHeight;
+          editorInstance.setScrollTop(ratio * editorScrollableHeight);
+        }
+        setTimeout(() => {
+          isSyncingPreview = false;
+        }, 50);
+      };
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      disposable = editorInstance.onDidScrollChange((e: any) => {
+        if (e.scrollTopChanged) {
+          handleEditorScroll();
+        }
+      });
+
+      if (!previewMode) {
+        previewElement.addEventListener('scroll', handlePreviewScroll);
+        listeners.push(() => previewElement.removeEventListener('scroll', handlePreviewScroll));
       }
-      // Small timeout to prevent immediate feedback loop
-      setTimeout(() => {
-        isSyncingEditor = false;
-      }, 50);
+
+      return true;
     };
 
-    const handlePreviewScroll = () => {
-      if (isSyncingEditor) return;
-      isSyncingPreview = true;
-
-      const previewScrollTop = previewElement.scrollTop;
-      const previewScrollHeight = previewElement.scrollHeight - previewElement.clientHeight;
-
-      if (previewScrollHeight > 0) {
-        const ratio = previewScrollTop / previewScrollHeight;
-        const editorScrollHeight = editorInstance.getScrollHeight();
-        const editorClientHeight = editorInstance.getLayoutInfo().height;
-        const editorScrollableHeight = editorScrollHeight - editorClientHeight;
-        editorInstance.setScrollTop(ratio * editorScrollableHeight);
-      }
-      setTimeout(() => {
-        isSyncingPreview = false;
+    // Try immediately, otherwise poll a few times until editor/preview mount
+    if (!tryAttach()) {
+      let attempts = 0;
+      const maxAttempts = 20; // try for ~1s (20 * 50ms)
+      const interval = setInterval(() => {
+        attempts += 1;
+        if (tryAttach() || attempts >= maxAttempts) {
+          clearInterval(interval);
+        }
       }, 50);
-    };
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const disposable = editorInstance.onDidScrollChange((e: any) => {
-      if (e.scrollTopChanged) {
-        handleEditorScroll();
-      }
-    });
-
-    if (!previewMode) {
-      previewElement.addEventListener('scroll', handlePreviewScroll);
+      listeners.push(() => clearInterval(interval));
     }
 
     return () => {
-      disposable.dispose();
-      previewElement.removeEventListener('scroll', handlePreviewScroll);
+      stopped = true;
+      if (disposable) disposable.dispose();
+      listeners.forEach((fn) => fn());
     };
   }, [scrollSyncEnabled, previewMode]);
 
