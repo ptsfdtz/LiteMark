@@ -73,19 +73,25 @@ const Editor = React.forwardRef<any, EditorProps>(
         }
       });
 
-      const applyEdit = (
-        transform: (text: string, start: number, end: number) => string,
-        isTable = false,
-      ) => {
+      type Transform =
+        | ((text: string, start: number, end: number) => string)
+        | ((text: string, pos: number) => string);
+
+      const applyEdit = (transform: Transform, isTable = false) => {
         const model = editor.getModel();
         const selection = editor.getSelection();
         if (model && selection) {
           const startOffset = model.getOffsetAt(selection.getStartPosition());
           const endOffset = model.getOffsetAt(selection.getEndPosition());
           const text = model.getValue();
-          const newText = isTable
-            ? (transform as any)(text, startOffset)
-            : transform(text, startOffset, endOffset);
+          let newText: string;
+          if (isTable) {
+            const fn = transform as (text: string, pos: number) => string;
+            newText = fn(text, startOffset);
+          } else {
+            const fn = transform as (text: string, start: number, end: number) => string;
+            newText = fn(text, startOffset, endOffset);
+          }
           editor.executeEdits('keyboard', [
             {
               range: model.getFullModelRange(),

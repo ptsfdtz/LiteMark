@@ -33,12 +33,17 @@ const CurrentFileName: React.FC<CurrentFileNameProps> = ({
     if (forceEdit) {
       setEditing(true);
       setTimeout(() => {
-        inputRef.current?.focus();
-        inputRef.current?.select();
-        setForceEdit && setForceEdit(false);
+        const cur = inputRef.current;
+        if (cur) {
+          cur.focus();
+          cur.select();
+        }
+        if (setForceEdit) {
+          setForceEdit(false);
+        }
       }, 0);
     }
-  }, [forceEdit]);
+  }, [forceEdit, setForceEdit]);
 
   const handleRename = async () => {
     let newName = value.trim();
