@@ -1,5 +1,6 @@
 // src/components/Layout/Layout.tsx
 import React, { useState, useEffect, useRef } from 'react';
+import { FaTimes } from 'react-icons/fa';
 import Editor from '../Editor/Editor';
 import Preview from '../Preview/Preview';
 import Toolbar from '../Toolbar/Toolbar';
@@ -25,6 +26,7 @@ const Layout: React.FC = () => {
   // recentFiles and file operations are managed by useFileManager
   const [scrollSyncEnabled, setScrollSyncEnabled] = useState(true);
   const [previewMode, setPreviewMode] = useState(false);
+  const [editorOnly, setEditorOnly] = useState(false);
   const [editorWidth, setEditorWidth] = useState(60);
   const [isResizing, setIsResizing] = useState(false);
   const [currentFilePath, setCurrentFilePath] = useState<string | null>(null);
@@ -224,7 +226,7 @@ const Layout: React.FC = () => {
         attachedPreviewEl.removeEventListener('scroll', previewHandler);
       }
     };
-  }, [scrollSyncEnabled, previewMode]);
+  }, [scrollSyncEnabled, previewMode, editorOnly]);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -267,6 +269,18 @@ const Layout: React.FC = () => {
 
   const exitPreviewMode = () => {
     setPreviewMode(false);
+  };
+
+  const enterEditorOnly = () => {
+    setEditorOnly(true);
+  };
+
+  const exitEditorOnly = () => {
+    setEditorOnly(false);
+    if (scrollSyncEnabled) {
+      setScrollSyncEnabled(false);
+      setTimeout(() => setScrollSyncEnabled(true), 60);
+    }
   };
 
   const startResizing = (e: React.MouseEvent) => {
@@ -337,40 +351,66 @@ const Layout: React.FC = () => {
         className={styles.editorPreview}
         style={{ cursor: isResizing ? 'col-resize' : 'default' }}
       >
-        {!previewMode && (
+        {editorOnly ? (
+          <div className={styles.editorPanel} style={{ width: `100%`, position: 'relative' }}>
+            <Editor
+              ref={editorRef}
+              value={markdown}
+              onChange={setMarkdown}
+              onSelectionChange={(start, end) => setSelection({ start, end })}
+              className={styles.editor}
+              theme={theme}
+              onSave={handleSave}
+              onSaveAs={handleSaveAs}
+            />
+            <button
+              aria-label="退出编辑模式"
+              title="退出编辑模式"
+              onClick={exitEditorOnly}
+              className={styles.editorOnlyExit}
+            >
+              <FaTimes />
+            </button>
+          </div>
+        ) : (
           <>
-            <div className={styles.editorPanel} style={{ width: `${editorWidth}%` }}>
-              <Editor
-                ref={editorRef}
-                value={markdown}
-                onChange={setMarkdown}
-                onSelectionChange={(start, end) => setSelection({ start, end })}
-                className={styles.editor}
-                theme={theme}
-                onSave={handleSave}
-                onSaveAs={handleSaveAs}
+            {!previewMode && (
+              <>
+                <div className={styles.editorPanel} style={{ width: `${editorWidth}%` }}>
+                  <Editor
+                    ref={editorRef}
+                    value={markdown}
+                    onChange={setMarkdown}
+                    onSelectionChange={(start, end) => setSelection({ start, end })}
+                    className={styles.editor}
+                    theme={theme}
+                    onSave={handleSave}
+                    onSaveAs={handleSaveAs}
+                  />
+                </div>
+                <div className={styles.resizer} onMouseDown={startResizing} />
+              </>
+            )}
+            <div
+              className={styles.previewPanel}
+              style={{
+                width: previewMode ? '100%' : `calc(${100 - editorWidth}% - 5px)`,
+              }}
+            >
+              <Preview
+                ref={previewRef}
+                content={markdown}
+                scrollSyncEnabled={scrollSyncEnabled}
+                onScrollSyncToggle={toggleScrollSync}
+                previewMode={previewMode}
+                onExitPreviewMode={exitPreviewMode}
+                onEnterPreviewMode={enterPreviewMode}
+                onEnterEditorMode={enterEditorOnly}
+                isPreviewOnly={previewMode}
               />
             </div>
-            <div className={styles.resizer} onMouseDown={startResizing} />
           </>
         )}
-        <div
-          className={styles.previewPanel}
-          style={{
-            width: previewMode ? '100%' : `calc(${100 - editorWidth}% - 5px)`,
-          }}
-        >
-          <Preview
-            ref={previewRef}
-            content={markdown}
-            scrollSyncEnabled={scrollSyncEnabled}
-            onScrollSyncToggle={toggleScrollSync}
-            previewMode={previewMode}
-            onExitPreviewMode={exitPreviewMode}
-            onEnterPreviewMode={enterPreviewMode}
-            isPreviewOnly={previewMode}
-          />
-        </div>
       </div>
       {currentFilePath && (
         <CurrentFileName

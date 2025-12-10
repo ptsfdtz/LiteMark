@@ -12,7 +12,7 @@ import hljs from 'highlight.js';
 import 'highlight.js/styles/github.css';
 import 'katex/dist/katex.min.css';
 import { useMathPreprocess } from './hooks/useMathPreprocess';
-import { FaLink, FaUnlink, FaEye, FaTimes } from 'react-icons/fa';
+import { FaLink, FaUnlink, FaEdit, FaTimes } from 'react-icons/fa';
 import { PreviewProps } from '../../types/preview';
 
 const processSpecialEmojis = (content: string): string => {
@@ -29,7 +29,7 @@ const Preview = React.forwardRef<HTMLDivElement, PreviewProps>(
       onScrollSyncToggle,
       // previewMode = false,
       onExitPreviewMode,
-      onEnterPreviewMode,
+      onEnterEditorMode,
       isPreviewOnly,
     },
     ref,
@@ -60,13 +60,13 @@ const Preview = React.forwardRef<HTMLDivElement, PreviewProps>(
 
     return (
       <div ref={ref} className="preview-container">
-        {!isPreviewOnly && onEnterPreviewMode && (
+        {!isPreviewOnly && onEnterEditorMode && (
           <button
             className="previewModeButton enter"
-            onClick={onEnterPreviewMode}
-            title="进入预览模式"
+            onClick={onEnterEditorMode}
+            title="进入编辑模式"
           >
-            <FaEye />
+            <FaEdit />
           </button>
         )}
         {isPreviewOnly && onExitPreviewMode && (
