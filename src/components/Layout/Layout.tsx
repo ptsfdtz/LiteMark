@@ -119,17 +119,31 @@ const Layout: React.FC = () => {
   }, [theme]);
 
   useEffect(() => {
-    if (!scrollSyncEnabled) return undefined;
-
+    // Robustly attach scroll-sync listeners. Monaco editor instance is assigned
+    // via a ref and its .current may be null when this effect runs. To ensure
+    // enabling scroll-sync takes effect immediately, poll briefly until both
+    // editor and preview elements are available, then bind listeners. Clean up
+    // interval/listeners on unmount or when dependencies change.
+    let intervalId: number | null = null;
     let disposable: { dispose: () => void } | null = null;
-    const listeners: Array<() => void> = [];
-    let stopped = false;
+    let previewHandler: ((e: Event) => void) | null = null;
+    let attachedPreviewEl: HTMLDivElement | null = null;
+
+    type EditorLike = {
+      getScrollTop: () => number;
+      getScrollHeight: () => number;
+      getLayoutInfo: () => { height: number };
+      setScrollTop: (v: number) => void;
+      onDidScrollChange: (cb: (e: { scrollTopChanged?: boolean }) => void) => {
+        dispose: () => void;
+      };
+    };
 
     const tryAttach = () => {
-      if (stopped) return;
-      const editorInstance = editorRef.current;
+      const editorInstance = editorRef.current as EditorLike | null;
       const previewElement = previewRef.current;
-      if (!editorInstance || !previewElement) return false;
+
+      if (!editorInstance || !previewElement || !scrollSyncEnabled) return false;
 
       let isSyncingEditor = false;
       let isSyncingPreview = false;
@@ -171,6 +185,7 @@ const Layout: React.FC = () => {
         }, 50);
       };
 
+      // Attach editor scroll listener
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       disposable = editorInstance.onDidScrollChange((e: any) => {
         if (e.scrollTopChanged) {
@@ -178,31 +193,41 @@ const Layout: React.FC = () => {
         }
       });
 
+      // Attach preview listener only when preview pane is shown
       if (!previewMode) {
         previewElement.addEventListener('scroll', handlePreviewScroll);
-        listeners.push(() => previewElement.removeEventListener('scroll', handlePreviewScroll));
+        previewHandler = handlePreviewScroll;
+        attachedPreviewEl = previewElement;
       }
 
       return true;
     };
 
-    // Try immediately, otherwise poll a few times until editor/preview mount
-    if (!tryAttach()) {
-      let attempts = 0;
-      const maxAttempts = 20; // try for ~1s (20 * 50ms)
-      const interval = setInterval(() => {
-        attempts += 1;
-        if (tryAttach() || attempts >= maxAttempts) {
-          clearInterval(interval);
-        }
-      }, 50);
-      listeners.push(() => clearInterval(interval));
+    if (scrollSyncEnabled) {
+      // Try immediate attach; if not ready, poll briefly (up to ~1s)
+      if (!tryAttach()) {
+        let attempts = 0;
+        intervalId = window.setInterval(() => {
+          attempts += 1;
+          if (tryAttach() || attempts > 20) {
+            if (intervalId !== null) {
+              clearInterval(intervalId);
+              intervalId = null;
+            }
+          }
+        }, 50) as unknown as number;
+      }
     }
 
     return () => {
-      stopped = true;
-      if (disposable) disposable.dispose();
-      listeners.forEach((fn) => fn());
+      if (intervalId !== null) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+      if (disposable && disposable.dispose) disposable.dispose();
+      if (previewHandler && attachedPreviewEl) {
+        attachedPreviewEl.removeEventListener('scroll', previewHandler);
+      }
     };
   }, [scrollSyncEnabled, previewMode]);
 

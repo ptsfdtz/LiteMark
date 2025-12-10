@@ -148,7 +148,7 @@ const Editor = React.forwardRef<any, EditorProps>(
           onChange={(value) => onChange(value || '')}
           onMount={handleEditorDidMount}
           options={{
-            minimap: { enabled: true },
+            minimap: { enabled: false },
             wordWrap: 'on',
             fontSize: 14,
             scrollBeyondLastLine: false,
