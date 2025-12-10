@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
-import { RecentFile } from "../../../types/recentFiles";
-import { loadRecentFiles, saveRecentFiles } from "../../../utils/recentStore";
-import { save as saveDialog, message } from "@tauri-apps/plugin-dialog";
+import { useEffect, useState } from 'react';
+import { invoke } from '@tauri-apps/api/core';
+import { RecentFile } from '../../../types/recentFiles';
+import { loadRecentFiles, saveRecentFiles } from '../../../utils/recentStore';
+import { save as saveDialog, message } from '@tauri-apps/plugin-dialog';
 
 /**
  * Hook: useFileManager
@@ -48,17 +48,17 @@ export function useFileManager(opts: {
         setRecentFiles(restored);
         if (restored.length > 0 && !currentFilePath) {
           try {
-            const content = await invoke<string>("read_text_file", {
+            const content = await invoke<string>('read_text_file', {
               path: restored[0].path,
             });
             setMarkdown(content);
             setCurrentFilePath(restored[0].path);
           } catch (err) {
-            console.error("自动打开最近文件失败:", err);
+            console.error('自动打开最近文件失败:', err);
           }
         }
       } catch (err) {
-        console.error("加载最近文件失败:", err);
+        console.error('加载最近文件失败:', err);
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -76,7 +76,7 @@ export function useFileManager(opts: {
         }));
         await saveRecentFiles(toStore);
       } catch (err) {
-        console.error("保存最近文件到存储失败:", err);
+        console.error('保存最近文件到存储失败:', err);
       }
     })();
   }, [recentFiles]);
@@ -84,11 +84,13 @@ export function useFileManager(opts: {
   const handleSelectFile = (file: RecentFile) => {
     (async () => {
       try {
-        const content = await invoke<string>("read_text_file", {
+        const content = await invoke<string>('read_text_file', {
           path: file.path,
         });
         setMarkdown(content);
-        setShowRecentFiles && setShowRecentFiles(false);
+        if (setShowRecentFiles) {
+          setShowRecentFiles(false);
+        }
         setCurrentFilePath(file.path);
         setRecentFiles((prev) => {
           const withoutDup = prev.filter((f) => f.path !== file.path && f.id !== file.path);
@@ -101,9 +103,9 @@ export function useFileManager(opts: {
           return [bumped, ...withoutDup].slice(0, 50);
         });
       } catch (err) {
-        console.error("读取文件失败:", err);
+        console.error('读取文件失败:', err);
         setRecentFiles((prev) => prev.filter((f) => f.path !== file.path && f.id !== file.path));
-        await message("文件不存在或无法访问", { title: "错误" });
+        await message('文件不存在或无法访问', { title: '错误' });
       }
     })();
   };
@@ -128,12 +130,12 @@ export function useFileManager(opts: {
     const file = recentFiles.find((f) => f.id === id);
     if (!file) return;
     try {
-      await invoke("delete_file", { path: file.path });
+      await invoke('delete_file', { path: file.path });
       setRecentFiles((prev) => prev.filter((f) => f.id !== id));
     } catch (err) {
-      console.error("删除文件失败:", err);
-      await message("删除文件失败，可能没有权限或文件正在被使用", {
-        title: "错误",
+      console.error('删除文件失败:', err);
+      await message('删除文件失败，可能没有权限或文件正在被使用', {
+        title: '错误',
       });
     }
   };
@@ -144,16 +146,16 @@ export function useFileManager(opts: {
       if (!path) {
         const selected = await saveDialog({
           filters: [
-            { name: "Markdown", extensions: ["md", "markdown", "txt"] },
-            { name: "All Files", extensions: ["*"] },
+            { name: 'Markdown', extensions: ['md', 'markdown', 'txt'] },
+            { name: 'All Files', extensions: ['*'] },
           ],
-          defaultPath: "note.md",
+          defaultPath: 'note.md',
         });
         if (!selected) return;
         path = selected as string;
         setCurrentFilePath(path);
       }
-      await invoke("write_text_file", { path, content: markdown });
+      await invoke('write_text_file', { path, content: markdown });
       const name = path.split(/[/\\]/).pop() || path;
       const item: RecentFile = {
         id: path,
@@ -167,9 +169,11 @@ export function useFileManager(opts: {
         return next;
       });
       // call optional success callback
-      opts.onSaveSuccess && opts.onSaveSuccess();
+      if (opts.onSaveSuccess) {
+        opts.onSaveSuccess();
+      }
     } catch (err) {
-      console.error("保存失败:", err);
+      console.error('保存失败:', err);
     }
   };
 
@@ -177,14 +181,14 @@ export function useFileManager(opts: {
     try {
       const selected = await saveDialog({
         filters: [
-          { name: "Markdown", extensions: ["md", "markdown", "txt"] },
-          { name: "All Files", extensions: ["*"] },
+          { name: 'Markdown', extensions: ['md', 'markdown', 'txt'] },
+          { name: 'All Files', extensions: ['*'] },
         ],
-        defaultPath: (currentFilePath && currentFilePath.split(/[/\\]/).pop()) || "note.md",
+        defaultPath: (currentFilePath && currentFilePath.split(/[/\\]/).pop()) || 'note.md',
       });
       if (!selected) return;
       const path = selected as string;
-      await invoke("write_text_file", { path, content: markdown });
+      await invoke('write_text_file', { path, content: markdown });
       setCurrentFilePath(path);
       const name = path.split(/[/\\]/).pop() || path;
       const item: RecentFile = {
@@ -198,17 +202,17 @@ export function useFileManager(opts: {
         return [item, ...withoutDup].slice(0, 50);
       });
       // call optional success callback
-      opts.onSaveSuccess && opts.onSaveSuccess();
+      if (opts.onSaveSuccess) {
+        opts.onSaveSuccess();
+      }
     } catch (err) {
-      console.error("另存为失败:", err);
+      console.error('另存为失败:', err);
     }
   };
 
   const handleOpenFolder = () => {
-    setShowRecentFiles && setShowRecentFiles(true);
+    if (setShowRecentFiles) setShowRecentFiles(true);
   };
-
-
 
   return {
     recentFiles,

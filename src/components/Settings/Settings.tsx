@@ -11,6 +11,8 @@ const Settings: React.FC<SettingsProps> = ({
   setTheme,
   workDir,
   setWorkDir,
+  minimapEnabled,
+  setMinimapEnabled,
   onClose,
   onCloseComplete,
   onRequestClose,
@@ -176,6 +178,24 @@ const Settings: React.FC<SettingsProps> = ({
             >
               <FiMoreHorizontal size={22} />
             </button>
+          </div>
+        </div>
+        <div className={styles.settingGroup}>
+          <div className={styles.editorRow}>
+            <label className={styles.minimapLabel} htmlFor="minimapToggle">
+              代码缩略图
+            </label>
+            <label className={styles.switch}>
+              <input
+                id="minimapToggle"
+                type="checkbox"
+                checked={!!minimapEnabled}
+                onChange={() => {
+                  if (setMinimapEnabled) setMinimapEnabled(!minimapEnabled);
+                }}
+              />
+              <span className={styles.slider}></span>
+            </label>
           </div>
         </div>
       </div>

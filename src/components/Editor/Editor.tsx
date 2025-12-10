@@ -19,7 +19,10 @@ import {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const Editor = React.forwardRef<any, EditorProps>(
-  ({ value, onChange, onSelectionChange, className, theme, onSave, onSaveAs }, ref) => {
+  (
+    { value, onChange, onSelectionChange, className, theme, onSave, onSaveAs, minimapEnabled },
+    ref,
+  ) => {
     const [resolvedTheme, setResolvedTheme] = useState('light');
     const onSaveRef = useRef(onSave);
     const onSaveAsRef = useRef(onSaveAs);
@@ -73,19 +76,25 @@ const Editor = React.forwardRef<any, EditorProps>(
         }
       });
 
-      const applyEdit = (
-        transform: (text: string, start: number, end: number) => string,
-        isTable = false,
-      ) => {
+      type Transform =
+        | ((text: string, start: number, end: number) => string)
+        | ((text: string, pos: number) => string);
+
+      const applyEdit = (transform: Transform, isTable = false) => {
         const model = editor.getModel();
         const selection = editor.getSelection();
         if (model && selection) {
           const startOffset = model.getOffsetAt(selection.getStartPosition());
           const endOffset = model.getOffsetAt(selection.getEndPosition());
           const text = model.getValue();
-          const newText = isTable
-            ? (transform as any)(text, startOffset)
-            : transform(text, startOffset, endOffset);
+          let newText: string;
+          if (isTable) {
+            const fn = transform as (text: string, pos: number) => string;
+            newText = fn(text, startOffset);
+          } else {
+            const fn = transform as (text: string, start: number, end: number) => string;
+            newText = fn(text, startOffset, endOffset);
+          }
           editor.executeEdits('keyboard', [
             {
               range: model.getFullModelRange(),
@@ -124,6 +133,53 @@ const Editor = React.forwardRef<any, EditorProps>(
           onSaveRef.current();
         }
       });
+      editor.addCommand(monaco.KeyCode.Enter, () => {
+        const model = editor.getModel();
+        const pos = editor.getPosition();
+        if (!model || !pos) return;
+
+        const lineNumber = pos.lineNumber;
+        const lineText = model.getLineContent(lineNumber);
+
+        const unordered = lineText.match(/^(\s*)-\s+/);
+        const ordered = lineText.match(/^(\s*)(\d+)\.\s+/);
+
+        if (unordered) {
+          const indent = unordered[1] || '';
+          const insert = '\n' + indent + '- ';
+          editor.executeEdits('list-enter', [
+            {
+              range: new monaco.Range(lineNumber, pos.column, lineNumber, pos.column),
+              text: insert,
+              forceMoveMarkers: true,
+            },
+          ]);
+          // place cursor after the new list marker
+          editor.setPosition(new monaco.Position(lineNumber + 1, indent.length + 3));
+          return;
+        }
+
+        if (ordered) {
+          const indent = ordered[1] || '';
+          const current = parseInt(ordered[2], 10);
+          const next = current + 1;
+          const insert = '\n' + indent + next + '. ';
+          editor.executeEdits('list-enter', [
+            {
+              range: new monaco.Range(lineNumber, pos.column, lineNumber, pos.column),
+              text: insert,
+              forceMoveMarkers: true,
+            },
+          ]);
+          editor.setPosition(
+            new monaco.Position(lineNumber + 1, indent.length + String(next).length + 3),
+          );
+          return;
+        }
+
+        // Fallback: insert a normal newline
+        editor.trigger('keyboard', 'type', { text: '\n' });
+      });
 
       editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyS, () => {
         if (onSaveAsRef.current) {
@@ -142,7 +198,7 @@ const Editor = React.forwardRef<any, EditorProps>(
           onChange={(value) => onChange(value || '')}
           onMount={handleEditorDidMount}
           options={{
-            minimap: { enabled: true },
+            minimap: { enabled: !!minimapEnabled },
             wordWrap: 'on',
             fontSize: 14,
             scrollBeyondLastLine: false,

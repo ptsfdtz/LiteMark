@@ -54,6 +54,28 @@
   min-height: 0;
 }
 
+.editorOnlyExit {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background: var(--toolbar-bg, rgb(0 0 0 / 5%));
+  border: none;
+  z-index: 5;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.editorOnlyExit:hover {
+  background: var(--toolbar-bg-hover, rgb(0 0 0 / 8%));
+}
+
 .previewPanel {
   display: flex;
   flex-direction: column;

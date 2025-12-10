@@ -20,15 +20,15 @@ export function useMathPreprocess() {
     });
 
     const wrapChineseInMath = (mathContent: string) => {
-      let res = "";
+      let res = '';
       let i = 0;
       while (i < mathContent.length) {
-        if (mathContent.startsWith("\\text{", i)) {
+        if (mathContent.startsWith('\\text{', i)) {
           let depth = 0;
           let j = i;
           do {
-            if (mathContent[j] === "{") depth++;
-            else if (mathContent[j] === "}") depth--;
+            if (mathContent[j] === '{') depth++;
+            else if (mathContent[j] === '}') depth--;
             j++;
           } while (j < mathContent.length && depth > 0);
           res += mathContent.slice(i, j);
@@ -37,11 +37,7 @@ export function useMathPreprocess() {
           const ch = mathContent.charAt(i);
           if (/[\u4e00-\u9fff]/.test(ch)) {
             let j = i + 1;
-            while (
-              j < mathContent.length &&
-              /[\u4e00-\u9fff]/.test(mathContent.charAt(j))
-            )
-              j++;
+            while (j < mathContent.length && /[\u4e00-\u9fff]/.test(mathContent.charAt(j))) j++;
             const run = mathContent.slice(i, j);
             res += `\\text{${run}}`;
             i = j;
@@ -77,19 +73,15 @@ export function useMathPreprocess() {
       return `\\(${g1}\\)`;
     });
 
-    out = out.replace(/\$([^\$\n][^\$]*?)\$/g, (_m, g1) => {
+    out = out.replace(/\$([^$\n][^$]*?)\$/g, (_m, g1) => {
       if (/[\u4e00-\u9fff]/.test(g1)) {
         return `$${wrapChineseInMath(g1)}$`;
       }
       return `$${g1}$`;
     });
 
-    out = out.replace(/__INLINE_CODE_(\d+)__/g, (_m, p1) =>
-      inlineCodes[Number(p1)] || ""
-    );
-    out = out.replace(/__CODE_BLOCK_(\d+)__/g, (_m, p1) =>
-      codeBlocks[Number(p1)] || ""
-    );
+    out = out.replace(/__INLINE_CODE_(\d+)__/g, (_m, p1) => inlineCodes[Number(p1)] || '');
+    out = out.replace(/__CODE_BLOCK_(\d+)__/g, (_m, p1) => codeBlocks[Number(p1)] || '');
 
     return out;
   };

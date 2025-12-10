@@ -5,5 +5,7 @@ export interface PreviewProps {
   previewMode?: boolean;
   onExitPreviewMode?: () => void;
   onEnterPreviewMode?: () => void;
+  onEnterEditorMode?: () => void;
+  onExitEditorMode?: () => void;
   isPreviewOnly?: boolean;
 }

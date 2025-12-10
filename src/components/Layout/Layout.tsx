@@ -1,18 +1,14 @@
 // src/components/Layout/Layout.tsx
 import React, { useState, useEffect, useRef } from 'react';
-import Editor from '../Editor/Editor';
-import Preview from '../Preview/Preview';
-import Toolbar from '../Toolbar/Toolbar';
-import Settings from '../Settings/Settings';
+import { FaTimes } from 'react-icons/fa';
+import { Editor, Preview, Toolbar, Settings, SettingsButton, RecentFilesSidebar } from '../index';
 import styles from './Layout.module.css';
-import SettingsButton from '../SettingsButton/SettingsButton';
-import RecentFilesSidebar from '../RecentFilesSidebar/RecentFilesSidebar';
 import { RecentFile } from '../../types/recentFiles';
-import CurrentFileName from './hooks/CurrentFileName';
+import CurrentFileName from './components/CurrentFileName';
 // import { loadRecentFiles, saveRecentFiles } from "../../utils/recentStore";
 import useFileManager from './hooks/useFileManager';
 import { loadWorkDir, saveWorkDir } from '../../utils/workDirStore';
-import SaveSuccessToast from './hooks/SaveSuccessToast';
+import SaveSuccessToast from './components/SaveSuccessToast';
 
 const Layout: React.FC = () => {
   const [markdown, setMarkdown] = useState('');
@@ -25,7 +21,16 @@ const Layout: React.FC = () => {
   // recentFiles and file operations are managed by useFileManager
   const [scrollSyncEnabled, setScrollSyncEnabled] = useState(true);
   const [previewMode, setPreviewMode] = useState(false);
-  const [editorWidth, setEditorWidth] = useState(50);
+  const [editorOnly, setEditorOnly] = useState(false);
+  const [minimapEnabled, setMinimapEnabledState] = useState<boolean>(() => {
+    try {
+      const v = localStorage.getItem('minimapEnabled');
+      return v ? v === 'true' : false;
+    } catch {
+      return false;
+    }
+  });
+  const [editorWidth, setEditorWidth] = useState(60);
   const [isResizing, setIsResizing] = useState(false);
   const [currentFilePath, setCurrentFilePath] = useState<string | null>(null);
   const [workDir, setWorkDirState] = useState('');
@@ -119,68 +124,112 @@ const Layout: React.FC = () => {
   }, [theme]);
 
   useEffect(() => {
-    const editorInstance = editorRef.current;
-    const previewElement = previewRef.current;
+    let intervalId: number | null = null;
+    let disposable: { dispose: () => void } | null = null;
+    let previewHandler: ((e: Event) => void) | null = null;
+    let attachedPreviewEl: HTMLDivElement | null = null;
 
-    if (!editorInstance || !previewElement || !scrollSyncEnabled) return;
+    type EditorLike = {
+      getScrollTop: () => number;
+      getScrollHeight: () => number;
+      getLayoutInfo: () => { height: number };
+      setScrollTop: (v: number) => void;
+      onDidScrollChange: (cb: (e: { scrollTopChanged?: boolean }) => void) => {
+        dispose: () => void;
+      };
+    };
 
-    let isSyncingEditor = false;
-    let isSyncingPreview = false;
+    const tryAttach = () => {
+      const editorInstance = editorRef.current as EditorLike | null;
+      const previewElement = previewRef.current;
 
-    const handleEditorScroll = () => {
-      if (isSyncingPreview) return;
-      isSyncingEditor = true;
-      const scrollTop = editorInstance.getScrollTop();
-      const scrollHeight = editorInstance.getScrollHeight();
-      const clientHeight = editorInstance.getLayoutInfo().height;
+      if (!editorInstance || !previewElement || !scrollSyncEnabled) return false;
 
-      const editorScrollableHeight = scrollHeight - clientHeight;
-      if (editorScrollableHeight > 0) {
-        const ratio = scrollTop / editorScrollableHeight;
+      let isSyncingEditor = false;
+      let isSyncingPreview = false;
+
+      const handleEditorScroll = () => {
+        if (isSyncingPreview) return;
+        isSyncingEditor = true;
+        const scrollTop = editorInstance.getScrollTop();
+        const scrollHeight = editorInstance.getScrollHeight();
+        const clientHeight = editorInstance.getLayoutInfo().height;
+
+        const editorScrollableHeight = scrollHeight - clientHeight;
+        if (editorScrollableHeight > 0) {
+          const ratio = scrollTop / editorScrollableHeight;
+          const previewScrollHeight = previewElement.scrollHeight - previewElement.clientHeight;
+          previewElement.scrollTop = ratio * previewScrollHeight;
+        }
+        setTimeout(() => {
+          isSyncingEditor = false;
+        }, 50);
+      };
+
+      const handlePreviewScroll = () => {
+        if (isSyncingEditor) return;
+        isSyncingPreview = true;
+
+        const previewScrollTop = previewElement.scrollTop;
         const previewScrollHeight = previewElement.scrollHeight - previewElement.clientHeight;
-        previewElement.scrollTop = ratio * previewScrollHeight;
+
+        if (previewScrollHeight > 0) {
+          const ratio = previewScrollTop / previewScrollHeight;
+          const editorScrollHeight = editorInstance.getScrollHeight();
+          const editorClientHeight = editorInstance.getLayoutInfo().height;
+          const editorScrollableHeight = editorScrollHeight - editorClientHeight;
+          editorInstance.setScrollTop(ratio * editorScrollableHeight);
+        }
+        setTimeout(() => {
+          isSyncingPreview = false;
+        }, 50);
+      };
+
+      // Attach editor scroll listener
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      disposable = editorInstance.onDidScrollChange((e: any) => {
+        if (e.scrollTopChanged) {
+          handleEditorScroll();
+        }
+      });
+
+      // Attach preview listener only when preview pane is shown
+      if (!previewMode) {
+        previewElement.addEventListener('scroll', handlePreviewScroll);
+        previewHandler = handlePreviewScroll;
+        attachedPreviewEl = previewElement;
       }
-      // Small timeout to prevent immediate feedback loop
-      setTimeout(() => {
-        isSyncingEditor = false;
-      }, 50);
+
+      return true;
     };
 
-    const handlePreviewScroll = () => {
-      if (isSyncingEditor) return;
-      isSyncingPreview = true;
-
-      const previewScrollTop = previewElement.scrollTop;
-      const previewScrollHeight = previewElement.scrollHeight - previewElement.clientHeight;
-
-      if (previewScrollHeight > 0) {
-        const ratio = previewScrollTop / previewScrollHeight;
-        const editorScrollHeight = editorInstance.getScrollHeight();
-        const editorClientHeight = editorInstance.getLayoutInfo().height;
-        const editorScrollableHeight = editorScrollHeight - editorClientHeight;
-        editorInstance.setScrollTop(ratio * editorScrollableHeight);
+    if (scrollSyncEnabled) {
+      // Try immediate attach; if not ready, poll briefly (up to ~1s)
+      if (!tryAttach()) {
+        let attempts = 0;
+        intervalId = window.setInterval(() => {
+          attempts += 1;
+          if (tryAttach() || attempts > 20) {
+            if (intervalId !== null) {
+              clearInterval(intervalId);
+              intervalId = null;
+            }
+          }
+        }, 50) as unknown as number;
       }
-      setTimeout(() => {
-        isSyncingPreview = false;
-      }, 50);
-    };
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const disposable = editorInstance.onDidScrollChange((e: any) => {
-      if (e.scrollTopChanged) {
-        handleEditorScroll();
-      }
-    });
-
-    if (!previewMode) {
-      previewElement.addEventListener('scroll', handlePreviewScroll);
     }
 
     return () => {
-      disposable.dispose();
-      previewElement.removeEventListener('scroll', handlePreviewScroll);
+      if (intervalId !== null) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+      if (disposable && disposable.dispose) disposable.dispose();
+      if (previewHandler && attachedPreviewEl) {
+        attachedPreviewEl.removeEventListener('scroll', previewHandler);
+      }
     };
-  }, [scrollSyncEnabled, previewMode]);
+  }, [scrollSyncEnabled, previewMode, editorOnly]);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -223,6 +272,27 @@ const Layout: React.FC = () => {
 
   const exitPreviewMode = () => {
     setPreviewMode(false);
+  };
+
+  const enterEditorOnly = () => {
+    setEditorOnly(true);
+  };
+
+  const exitEditorOnly = () => {
+    setEditorOnly(false);
+    if (scrollSyncEnabled) {
+      setScrollSyncEnabled(false);
+      setTimeout(() => setScrollSyncEnabled(true), 60);
+    }
+  };
+
+  const setMinimapEnabled = (v: boolean) => {
+    setMinimapEnabledState(v);
+    try {
+      localStorage.setItem('minimapEnabled', v ? 'true' : 'false');
+    } catch {
+      // ignore
+    }
   };
 
   const startResizing = (e: React.MouseEvent) => {
@@ -293,40 +363,68 @@ const Layout: React.FC = () => {
         className={styles.editorPreview}
         style={{ cursor: isResizing ? 'col-resize' : 'default' }}
       >
-        {!previewMode && (
+        {editorOnly ? (
+          <div className={styles.editorPanel} style={{ width: `100%`, position: 'relative' }}>
+            <Editor
+              ref={editorRef}
+              value={markdown}
+              onChange={setMarkdown}
+              onSelectionChange={(start, end) => setSelection({ start, end })}
+              className={styles.editor}
+              theme={theme}
+              minimapEnabled={minimapEnabled}
+              onSave={handleSave}
+              onSaveAs={handleSaveAs}
+            />
+            <button
+              aria-label="退出编辑模式"
+              title="退出编辑模式"
+              onClick={exitEditorOnly}
+              className={styles.editorOnlyExit}
+            >
+              <FaTimes />
+            </button>
+          </div>
+        ) : (
           <>
-            <div className={styles.editorPanel} style={{ width: `${editorWidth}%` }}>
-              <Editor
-                ref={editorRef}
-                value={markdown}
-                onChange={setMarkdown}
-                onSelectionChange={(start, end) => setSelection({ start, end })}
-                className={styles.editor}
-                theme={theme}
-                onSave={handleSave}
-                onSaveAs={handleSaveAs}
+            {!previewMode && (
+              <>
+                <div className={styles.editorPanel} style={{ width: `${editorWidth}%` }}>
+                  <Editor
+                    ref={editorRef}
+                    value={markdown}
+                    onChange={setMarkdown}
+                    onSelectionChange={(start, end) => setSelection({ start, end })}
+                    className={styles.editor}
+                    theme={theme}
+                    minimapEnabled={minimapEnabled}
+                    onSave={handleSave}
+                    onSaveAs={handleSaveAs}
+                  />
+                </div>
+                <div className={styles.resizer} onMouseDown={startResizing} />
+              </>
+            )}
+            <div
+              className={styles.previewPanel}
+              style={{
+                width: previewMode ? '100%' : `calc(${100 - editorWidth}% - 5px)`,
+              }}
+            >
+              <Preview
+                ref={previewRef}
+                content={markdown}
+                scrollSyncEnabled={scrollSyncEnabled}
+                onScrollSyncToggle={toggleScrollSync}
+                previewMode={previewMode}
+                onExitPreviewMode={exitPreviewMode}
+                onEnterPreviewMode={enterPreviewMode}
+                onEnterEditorMode={enterEditorOnly}
+                isPreviewOnly={previewMode}
               />
             </div>
-            <div className={styles.resizer} onMouseDown={startResizing} />
           </>
         )}
-        <div
-          className={styles.previewPanel}
-          style={{
-            width: previewMode ? '100%' : `calc(${100 - editorWidth}% - 5px)`,
-          }}
-        >
-          <Preview
-            ref={previewRef}
-            content={markdown}
-            scrollSyncEnabled={scrollSyncEnabled}
-            onScrollSyncToggle={toggleScrollSync}
-            previewMode={previewMode}
-            onExitPreviewMode={exitPreviewMode}
-            onEnterPreviewMode={enterPreviewMode}
-            isPreviewOnly={previewMode}
-          />
-        </div>
       </div>
       {currentFilePath && (
         <CurrentFileName
@@ -344,6 +442,8 @@ const Layout: React.FC = () => {
           setTheme={setTheme}
           workDir={workDir}
           setWorkDir={setWorkDir}
+          minimapEnabled={minimapEnabled}
+          setMinimapEnabled={setMinimapEnabled}
           isClosing={settingsClosing}
           onRequestClose={() => setSettingsClosing(true)}
           onCloseComplete={() => {

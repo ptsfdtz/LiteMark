@@ -107,6 +107,61 @@
     .settingGroup {
       margin-bottom: 1rem;
       color: var(--text-color);
+
+      .editorRow {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .switch {
+        position: relative;
+        display: inline-block;
+        width: 42px;
+        height: 22px;
+        cursor: pointer;
+
+        input {
+          opacity: 0;
+          width: 0;
+          height: 0;
+        }
+
+        .slider {
+          position: absolute;
+          inset: 0;
+          background-color: var(--editor-border, #ccc);
+          border-radius: 22px;
+          transition:
+            background-color 0.2s ease,
+            box-shadow 0.2s ease;
+
+          &::before {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 18px;
+            height: 18px;
+            box-shadow: 0 0 3px rgb(0 0 0 / 20%);
+            transition: transform 0.25s ease;
+            content: '';
+            background-color: var(--background-color);
+            border-radius: 50%;
+          }
+        }
+
+        input:checked + .slider {
+          background-color: var(--blockquote-text);
+        }
+
+        input:checked + .slider::before {
+          transform: translateX(20px);
+        }
+
+        &:hover .slider {
+          box-shadow: 0 0 0 2px var(--toolbar-bg);
+        }
+      }
     }
 
     .switchButton {
