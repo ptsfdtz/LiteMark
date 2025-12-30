@@ -1,6 +1,6 @@
 [package]
 name = "LtieMark"
-version = "0.1.6"
+version = "0.1.7"
 description = "editor for markdown"
 authors = ["PTSFDTZ pitousanfadetuzi@gmail.com"]
 edition = "2021"
