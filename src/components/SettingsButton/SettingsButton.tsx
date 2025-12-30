@@ -6,7 +6,12 @@ import { SettingsButtonProps } from '../../types/settings';
 
 const SettingsButton: React.FC<SettingsButtonProps> = ({ onClick, title = '设置', className }) => {
   return (
-    <button onClick={onClick} className={`${styles.settingsButton} ${className}`} title={title}>
+    <button
+      onClick={onClick}
+      className={`${styles.settingsButton} ${className}`}
+      title={title}
+      data-tauri-drag-region="false"
+    >
       <FaCog size={20} />
     </button>
   );

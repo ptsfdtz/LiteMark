@@ -44,6 +44,8 @@ const Toolbar: React.FC<ToolbarProps> = ({
   className,
   editorRef,
 }) => {
+  const noDrag = { 'data-tauri-drag-region': 'false' } as const;
+
   const applyWithUndo = (transform: (text: string, start: number, end: number) => string) => {
     const editor = editorRef?.current;
 
@@ -109,68 +111,94 @@ const Toolbar: React.FC<ToolbarProps> = ({
   return (
     <div className={`${styles.toolbar} ${className}`}>
       {onOpenFolder && (
-        <button onClick={onOpenFolder} title="最近的文件" className="folderButton">
+        <button onClick={onOpenFolder} title="最近的文件" className="folderButton" {...noDrag}>
           <FaFolderOpen />
         </button>
       )}
       {onSave && (
-        <button onClick={onSave} title="保存 (Ctrl+S)">
+        <button onClick={onSave} title="保存 (Ctrl+S)" {...noDrag}>
           <FaSave />
         </button>
       )}
       {onSaveAs && (
-        <button onClick={onSaveAs} title="另存为 (Ctrl+Shift+S)">
+        <button onClick={onSaveAs} title="另存为 (Ctrl+Shift+S)" {...noDrag}>
           <FaCopy />
         </button>
       )}
-      <button onClick={() => applyWithUndo((t, s, e) => applyBold(t, s, e))} title="粗体 (Ctrl+B)">
+      <button
+        onClick={() => applyWithUndo((t, s, e) => applyBold(t, s, e))}
+        title="粗体 (Ctrl+B)"
+        {...noDrag}
+      >
         <FaBold />
       </button>
       <button
         onClick={() => applyWithUndo((t, s, e) => applyItalic(t, s, e))}
         title="斜体 (Ctrl+I)"
+        {...noDrag}
       >
         <FaItalic />
       </button>
       <button
         onClick={() => applyWithUndo((t, s, e) => applyStrikethrough(t, s, e))}
         title="删除线 (Ctrl+Shift+X)"
+        {...noDrag}
       >
         <FaStrikethrough />
       </button>
-      <button onClick={() => applyWithUndo((t, s, e) => applyCode(t, s, e))} title="代码 (Ctrl+K)">
+      <button
+        onClick={() => applyWithUndo((t, s, e) => applyCode(t, s, e))}
+        title="代码 (Ctrl+K)"
+        {...noDrag}
+      >
         <FaCode />
       </button>
-      <button onClick={() => applyWithUndo((t, s, e) => applyLink(t, s, e))} title="链接 (Ctrl+L)">
+      <button
+        onClick={() => applyWithUndo((t, s, e) => applyLink(t, s, e))}
+        title="链接 (Ctrl+L)"
+        {...noDrag}
+      >
         <FaLink />
       </button>
       <button
         onClick={() => applyWithUndo((t, s, e) => applyHeading(t, s, e))}
         title="标题 (Ctrl+H)"
+        {...noDrag}
       >
         <FaHeading />
       </button>
-      <button onClick={() => applyWithUndo((t, s, e) => applyQuote(t, s, e))} title="引用 (Ctrl+Q)">
+      <button
+        onClick={() => applyWithUndo((t, s, e) => applyQuote(t, s, e))}
+        title="引用 (Ctrl+Q)"
+        {...noDrag}
+      >
         <FaQuoteRight />
       </button>
       <button
         onClick={() => applyWithUndo((t, s, e) => applyUnorderedList(t, s, e))}
         title="无序列表 (Ctrl+U)"
+        {...noDrag}
       >
         <FaListUl />
       </button>
       <button
         onClick={() => applyWithUndo((t, s, e) => applyOrderedList(t, s, e))}
         title="有序列表 (Ctrl+O)"
+        {...noDrag}
       >
         <FaListOl />
       </button>
-      <button onClick={() => applyWithUndo((t, s) => applyTable(t, s))} title="表格 (Ctrl+T)">
+      <button
+        onClick={() => applyWithUndo((t, s) => applyTable(t, s))}
+        title="表格 (Ctrl+T)"
+        {...noDrag}
+      >
         <FaTable />
       </button>
       <button
         onClick={() => applyWithUndo((t, s, e) => applyImage(t, s, e))}
         title="图片 (Ctrl+Shift+I)"
+        {...noDrag}
       >
         <FaImage />
       </button>
