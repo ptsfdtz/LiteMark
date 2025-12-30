@@ -1,7 +1,15 @@
 // src/components/Layout/Layout.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import { FaTimes } from 'react-icons/fa';
-import { Editor, Preview, Toolbar, Settings, SettingsButton, RecentFilesSidebar } from '../index';
+import {
+  Editor,
+  Preview,
+  Toolbar,
+  Settings,
+  SettingsButton,
+  RecentFilesSidebar,
+  WindowControls,
+} from '../index';
 import styles from './Layout.module.css';
 import { RecentFile } from '../../types/recentFiles';
 import CurrentFileName from './components/CurrentFileName';
@@ -30,7 +38,7 @@ const Layout: React.FC = () => {
       return false;
     }
   });
-  const [editorWidth, setEditorWidth] = useState(60);
+  const [editorWidth, setEditorWidth] = useState(50);
   const [isResizing, setIsResizing] = useState(false);
   const [currentFilePath, setCurrentFilePath] = useState<string | null>(null);
   const [workDir, setWorkDirState] = useState('');
@@ -314,13 +322,16 @@ const Layout: React.FC = () => {
           editorRef={editorRef}
           className="toolbar"
         />
-        <SettingsButton
-          className="settingsButton"
-          onClick={() => {
-            setShowSettings(true);
-            setSettingsClosing(false);
-          }}
-        />
+        <div className={styles.topRightControls}>
+          <SettingsButton
+            className="settingsButton"
+            onClick={() => {
+              setShowSettings(true);
+              setSettingsClosing(false);
+            }}
+          />
+          <WindowControls />
+        </div>
       </div>
       <RecentFilesSidebar
         files={recentFiles}

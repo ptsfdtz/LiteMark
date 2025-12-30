@@ -11,7 +11,7 @@
 .currentFileName {
   position: absolute;
   top: 0.4rem;
-  right: 2.5rem;
+  right: 8.5rem;
   color: var(--text-color);
   background: none;
   font-size: 1.2rem;
@@ -36,6 +36,16 @@
     box-sizing: border-box;
     cursor: text;
   }
+}
+
+.topRightControls {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  z-index: 25;
 }
 
 .editorPreview {

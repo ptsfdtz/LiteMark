@@ -7,6 +7,7 @@ export { default as RecentFilesSidebar } from './RecentFilesSidebar/RecentFilesS
 export { default as Settings } from './Settings/Settings';
 export { default as SettingsButton } from './SettingsButton/SettingsButton';
 export { default as Toolbar } from './Toolbar/Toolbar';
+export { default as WindowControls } from './WindowControls/WindowControls';
 
 // also re-export some useful sub-components/hooks
 export { default as CurrentFileName } from './Layout/components/CurrentFileName';
