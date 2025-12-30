@@ -109,7 +109,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
     setValue(transform(value, selectionStart, selectionEnd));
   };
   return (
-    <div className={`${styles.toolbar} ${className}`}>
+    <div className={`${styles.toolbar} ${className}`} data-tauri-drag-region="true">
       {onOpenFolder && (
         <button onClick={onOpenFolder} title="最近的文件" className="folderButton" {...noDrag}>
           <FaFolderOpen />
