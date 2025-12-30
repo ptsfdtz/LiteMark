@@ -302,7 +302,7 @@ const Layout: React.FC = () => {
 
   return (
     <div className={styles.container}>
-      <div style={{ position: 'relative' }}>
+      <div style={{ position: 'relative' }} data-tauri-drag-region="true">
         <Toolbar
           value={markdown}
           setValue={setMarkdown}
