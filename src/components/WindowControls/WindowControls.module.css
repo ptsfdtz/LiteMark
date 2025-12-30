@@ -1,0 +1,30 @@
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.button {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  width: 30px;
+  height: 28px;
+  padding: 0;
+  color: var(--text-color);
+  background: none;
+  border: none;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 0.95rem;
+}
+
+.button:hover {
+  background-color: var(--toolbar-bg);
+  color: var(--primary-color, #409eff);
+}
+
+.close:hover {
+  background-color: #e81123;
+  color: #fff;
+}

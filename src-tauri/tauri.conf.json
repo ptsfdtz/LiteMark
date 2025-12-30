@@ -15,12 +15,13 @@
         "title": "LiteMark",
         "width": 1200,
         "height": 800,
-        "center": true
+        "center": true,
+        "decorations": false
       }
     ],
     "security": {
       "csp": null,
-      "capabilities": ["dialog", "store"]
+      "capabilities": ["dialog", "store", "window"]
     }
   },
   "bundle": {
