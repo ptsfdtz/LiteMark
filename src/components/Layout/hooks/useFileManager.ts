@@ -46,7 +46,20 @@ export function useFileManager(opts: {
           modified: new Date(f.modified),
         }));
         setRecentFiles(restored);
-        if (restored.length > 0 && !currentFilePath) {
+        let openedStartup = false;
+        try {
+          const startupPath = await invoke<string | null>('get_startup_file');
+          if (startupPath) {
+            const content = await invoke<string>('read_text_file', { path: startupPath });
+            handleLoadFile(startupPath, content);
+            openedStartup = true;
+          }
+        } catch (err) {
+          console.error('自动打开启动文件失败:', err);
+          await message('启动文件不存在或无法访问', { title: '错误' });
+        }
+
+        if (!openedStartup && restored.length > 0 && !currentFilePath) {
           try {
             const content = await invoke<string>('read_text_file', {
               path: restored[0].path,

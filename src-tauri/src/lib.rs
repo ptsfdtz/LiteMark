@@ -1,5 +1,6 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 use serde::Serialize;
+use std::env;
 use std::fs::{read_to_string, write};
 use std::path::{Path, PathBuf};
 
@@ -104,6 +105,18 @@ fn file_exists(path: String) -> bool {
     file_path.exists()
 }
 
+/// Return the first CLI argument that looks like a markdown/text file path.
+#[tauri::command]
+fn get_startup_file() -> Option<String> {
+    for arg in env::args().skip(1) {
+        let path = PathBuf::from(&arg);
+        if path.is_file() && is_text_extension(&path) {
+            return Some(path.to_string_lossy().to_string());
+        }
+    }
+    None
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -117,7 +130,8 @@ pub fn run() {
             list_text_files,
             delete_file,
             rename_file,
-            file_exists
+            file_exists,
+            get_startup_file
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
