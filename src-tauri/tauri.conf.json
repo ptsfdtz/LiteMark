@@ -21,7 +21,11 @@
     ],
     "security": {
       "csp": null,
-      "capabilities": ["dialog", "store", "window"]
+      "capabilities": ["dialog", "store", "window"],
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["$HOME/**"]
+      }
     }
   },
   "bundle": {
