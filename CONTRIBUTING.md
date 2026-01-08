@@ -85,6 +85,10 @@ pnpm stylelint
 
 - 主题切换：主题（light/dark/system）由 `data-theme` 属性驱动，切换时使用了 View Transition API 优雅过渡（`document.startViewTransition`），实现代码在 `src/components/Layout/Layout.tsx` 与 `src/hooks/useTheme.ts`（如存在）中。
 
+- 启动打开文件：桌面端通过系统传入的启动参数打开文件，后端命令 `get_startup_file`（`src-tauri/src/lib.rs`）解析路径，前端在 `src/components/Layout/hooks/useFileManager.ts` 优先加载该文件内容。
+
+- 本地图片加载：Markdown 预览会根据当前文件路径解析图片相对路径，并通过 `convertFileSrc` 加载本地图片（`src/components/Preview/Preview.tsx`）。需确保 `src-tauri/tauri.conf.json` 中 `app.security.assetProtocol` 已启用且 `scope` 覆盖图片所在目录。
+
 ---
 
 ## 5. 提交与 PR 规范
@@ -94,7 +98,9 @@ pnpm stylelint
 - Pull Request：
 	- 先在 issue 中说明要做的修改（若是大改动），并在 PR 描述中列出变更内容与影响范围。
 	- 确保 PR 中无破坏性变更或未清理的调试代码。
+	- 若涉及 UI 变更，请附上前后对比截图。
 	- CI / 本地 lint/format 应通过。
+	- 若影响 Tauri 打包（如文件关联/权限），请说明平台验证情况。
 
 ---
 
@@ -110,6 +116,10 @@ pnpm install
 - Monaco 相关问题：若编辑器无法加载或出现跨域/worker 错误，检查 `monaco-editor` 版本与 `@monaco-editor/react` 配置。一般在 dev 模式下直接 `pnpm dev` 可重现问题并调试。
 
 - Tauri 构建失败：检查 Rust toolchain 与 Tauri 版本是否匹配，查看 `src-tauri/tauri.conf.json` 与 `Cargo.toml`。
+
+- 本地图片不显示：确认 `app.security.assetProtocol` 已启用，`scope` 覆盖图片路径（例如 `$HOME/**`），并重启 `pnpm tauri dev` 或重新打包安装。
+
+- 文件关联不生效：仅安装后的桌面包会注册默认应用，修改 `bundle.fileAssociations` 后需重新打包并安装。
 
 ---
 
@@ -156,8 +166,10 @@ litemark/
 │  │  ├─ Layout/         # 主布局、分栏、设置面板、保存提示等
 │  │  │  ├─ Layout.tsx
 │  │  │  └─ hooks/
-│  │  │     ├─ useFileManager.ts
-│  │  │     └─ CurrentFileName.tsx
+│  │  │     └─ useFileManager.ts
+│  │  │  └─ components/
+│  │  │     ├─ CurrentFileName.tsx
+│  │  │     └─ SaveSuccessToast.tsx
 │  │  ├─ Preview/        # Markdown 预览 + math preprocess
 │  │  ├─ Toolbar/        # 工具栏与 toolbarUtils.ts
 │  │  ├─ Settings/       # 设置面板
