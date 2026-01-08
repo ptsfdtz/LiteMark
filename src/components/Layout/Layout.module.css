@@ -10,7 +10,7 @@
 
 .currentFileName {
   position: absolute;
-  top: 0.4rem;
+  top: 0.45rem;
   right: 8.5rem;
   color: var(--text-color);
   background: none;
@@ -40,7 +40,7 @@
 
 .topRightControls {
   position: absolute;
-  top: 0.35rem;
+  top: 0.5rem;
   right: 0.5rem;
   display: flex;
   align-items: center;

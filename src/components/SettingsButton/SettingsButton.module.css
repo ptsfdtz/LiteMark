@@ -11,6 +11,6 @@
   border-radius: 4px;
 
   &:hover {
-    background-color: var(--toolbar-bg);
+    background-color: var(--background-color);
   }
 }

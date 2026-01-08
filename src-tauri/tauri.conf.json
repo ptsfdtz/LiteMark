@@ -21,7 +21,11 @@
     ],
     "security": {
       "csp": null,
-      "capabilities": ["dialog", "store", "window"]
+      "capabilities": ["dialog", "store", "window"],
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["$HOME/**"]
+      }
     }
   },
   "bundle": {
@@ -32,6 +36,14 @@
       "icons/icon.png",
       "icons/icon.icns",
       "icons/icon.svg"
+    ],
+    "fileAssociations": [
+      {
+        "ext": ["md", "markdown", "txt"],
+        "name": "Markdown",
+        "description": "Markdown Document",
+        "role": "Editor"
+      }
     ]
   }
 }

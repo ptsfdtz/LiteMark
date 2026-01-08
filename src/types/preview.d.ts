@@ -1,5 +1,6 @@
 export interface PreviewProps {
   content: string;
+  filePath?: string | null;
   scrollSyncEnabled?: boolean;
   onScrollSyncToggle?: () => void;
   previewMode?: boolean;

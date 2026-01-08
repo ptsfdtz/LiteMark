@@ -5,23 +5,20 @@
 }
 
 .button {
-  display: inline-flex;
+  display: flex;
   justify-content: center;
   align-items: center;
-  width: 30px;
-  height: 28px;
-  padding: 0;
+  padding: 0.3rem;
   color: var(--text-color);
   background: none;
   border: none;
+  font-size: 1.2rem;
   cursor: pointer;
   border-radius: 4px;
-  font-size: 0.95rem;
 }
 
 .button:hover {
-  background-color: var(--toolbar-bg);
-  color: var(--primary-color, #409eff);
+  background-color: var(--background-color);
 }
 
 .close:hover {

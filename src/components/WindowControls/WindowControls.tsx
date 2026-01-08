@@ -1,7 +1,7 @@
 // src/components/WindowControls/WindowControls.tsx
 import React from 'react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { FaRegSquare, FaTimes, FaWindowMinimize } from 'react-icons/fa';
+import { FaTimes, FaMinus, FaRegSquare } from 'react-icons/fa';
 import styles from './WindowControls.module.css';
 
 const WindowControls: React.FC = () => {
@@ -30,7 +30,7 @@ const WindowControls: React.FC = () => {
         onClick={handleMinimize}
         data-tauri-drag-region="false"
       >
-        <FaWindowMinimize />
+        <FaMinus />
       </button>
       <button
         type="button"

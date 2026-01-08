@@ -425,6 +425,7 @@ const Layout: React.FC = () => {
               <Preview
                 ref={previewRef}
                 content={markdown}
+                filePath={currentFilePath}
                 scrollSyncEnabled={scrollSyncEnabled}
                 onScrollSyncToggle={toggleScrollSync}
                 previewMode={previewMode}
