@@ -1,11 +1,11 @@
 // src/components/Settings/Settings.tsx
 import React, { useEffect, useState, useRef } from 'react';
 import styles from './Settings.module.css';
-import { SettingsProps } from '../../types/settings';
+import { SettingsProps } from '@/types/settings';
 import { open } from '@tauri-apps/plugin-dialog';
 import { FiSun, FiMoon, FiRepeat, FiMoreHorizontal } from 'react-icons/fi';
 import { FaCog, FaTimes } from 'react-icons/fa';
-import { useI18n } from '../../locales';
+import { useI18n } from '@/locales/useI18n';
 
 const Settings: React.FC<SettingsProps> = ({
   theme,

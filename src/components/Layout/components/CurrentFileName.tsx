@@ -1,10 +1,10 @@
 // src/components/Layout/hooks/CurrentFileName.tsx
 import React from 'react';
-import styles from '../Layout.module.css';
-import { RecentFile } from '../../../types/recentFiles';
+import styles from '@/components/Layout/Layout.module.css';
+import { RecentFile } from '@/types/recentFiles';
 import { invoke } from '@tauri-apps/api/core';
 import { message } from '@tauri-apps/plugin-dialog';
-import { useI18n } from '../../../locales';
+import { useI18n } from '@/locales/useI18n';
 
 interface CurrentFileNameProps {
   filePath: string;

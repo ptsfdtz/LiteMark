@@ -1,7 +1,7 @@
 // src/components/Toolbar/Toolbar.tsx
 import React from 'react';
 import styles from './Toolbar.module.css';
-import { ToolbarProps } from '../../types/toolbar';
+import { ToolbarProps } from '@/types/toolbar';
 import {
   applyBold,
   applyItalic,
@@ -32,7 +32,7 @@ import {
   FaSave,
   FaCopy,
 } from 'react-icons/fa';
-import { useI18n } from '../../locales';
+import { useI18n } from '@/locales/useI18n';
 
 const Toolbar: React.FC<ToolbarProps> = ({
   value,

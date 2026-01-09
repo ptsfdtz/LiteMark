@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { RecentFile } from '../../../types/recentFiles';
-import { loadRecentFiles, saveRecentFiles } from '../../../utils/recentStore';
+import { RecentFile } from '@/types/recentFiles';
+import { loadRecentFiles, saveRecentFiles } from '@/utils/recentStore';
 import { save as saveDialog, message } from '@tauri-apps/plugin-dialog';
-import { useI18n } from '../../../locales';
+import { useI18n } from '@/locales/useI18n';
 
 /**
  * Hook: useFileManager

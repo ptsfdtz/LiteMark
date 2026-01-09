@@ -9,15 +9,16 @@ import {
   SettingsButton,
   RecentFilesSidebar,
   WindowControls,
-} from '../index';
+} from '@/components/index';
 import styles from './Layout.module.css';
-import { RecentFile } from '../../types/recentFiles';
+import { RecentFile } from '@/types/recentFiles';
 import CurrentFileName from './components/CurrentFileName';
-// import { loadRecentFiles, saveRecentFiles } from "../../utils/recentStore";
+// import { loadRecentFiles, saveRecentFiles } from "@/utils/recentStore";
 import useFileManager from './hooks/useFileManager';
-import { loadWorkDir, saveWorkDir } from '../../utils/workDirStore';
+import { loadWorkDir, saveWorkDir } from '@/utils/workDirStore';
 import SaveSuccessToast from './components/SaveSuccessToast';
-import { useI18n } from '../../locales';
+import { useI18n } from '@/locales/useI18n';
+import { loadTheme, saveTheme } from '@/utils/themeStore';
 
 const Layout: React.FC = () => {
   const { t } = useI18n();
@@ -26,6 +27,7 @@ const Layout: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [settingsClosing, setSettingsClosing] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('system');
+  const [themeReady, setThemeReady] = useState(false);
   const [showRecentFiles, setShowRecentFiles] = useState(false);
   const [recentClosing, setRecentClosing] = useState(false);
   // recentFiles and file operations are managed by useFileManager
@@ -54,6 +56,36 @@ const Layout: React.FC = () => {
       setWorkDirState(dir);
     })();
   }, []);
+
+  // 启动时加载主题设置
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const storedTheme = await loadTheme();
+        if (storedTheme && active) {
+          setTheme(storedTheme);
+        }
+      } finally {
+        if (active) setThemeReady(true);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // 持久化主题设置
+  useEffect(() => {
+    if (!themeReady) return;
+    (async () => {
+      try {
+        await saveTheme(theme);
+      } catch {
+        // ignore
+      }
+    })();
+  }, [theme, themeReady]);
 
   // 持久化个人工作文件夹
   const setWorkDir = (dir: string) => {

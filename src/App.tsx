@@ -2,7 +2,7 @@ import './App.css';
 import { useEffect, useMemo, useState } from 'react';
 import Layout from './components/Layout/Layout';
 import Joyride, { Step } from 'react-joyride';
-import { useI18n } from './locales';
+import { useI18n } from './locales/useI18n';
 
 function getCssVar(name: string, fallback: string) {
   if (typeof window === 'undefined') return fallback;

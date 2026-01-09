@@ -12,10 +12,10 @@ import {
   applyOrderedList,
   applyTable,
   applyImage,
-} from '../Toolbar/toolbarUtils';
+} from '@/components/Toolbar/toolbarUtils';
 
-import { KeyboardShortcutsProps } from '../../types/keyboardShortcuts';
-import { useI18n } from '../../locales';
+import { KeyboardShortcutsProps } from '@/types/keyboardShortcuts';
+import { useI18n } from '@/locales/useI18n';
 
 const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({
   value,

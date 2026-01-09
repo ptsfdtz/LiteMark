@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import styles from './RecentFilesSidebar.module.css';
-import { RecentFilesSidebarProps } from '../../types/recentFiles';
+import { RecentFilesSidebarProps } from '@/types/recentFiles';
 import { open } from '@tauri-apps/plugin-dialog';
 import { invoke } from '@tauri-apps/api/core';
 import { FaFolderOpen, FaFile, FaFileAlt, FaTimes, FaTrash } from 'react-icons/fa';
 import { FaCheck } from 'react-icons/fa';
-import { useI18n } from '../../locales';
+import { useI18n } from '@/locales/useI18n';
 
 const RecentFilesSidebar: React.FC<RecentFilesSidebarProps> = ({
   files,

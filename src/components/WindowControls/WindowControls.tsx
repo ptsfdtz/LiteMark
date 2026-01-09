@@ -3,7 +3,7 @@ import React from 'react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { FaTimes, FaMinus, FaRegSquare } from 'react-icons/fa';
 import styles from './WindowControls.module.css';
-import { useI18n } from '../../locales';
+import { useI18n } from '@/locales/useI18n';
 
 const WindowControls: React.FC = () => {
   const { t } = useI18n();

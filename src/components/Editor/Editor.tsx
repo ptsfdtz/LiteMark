@@ -2,8 +2,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import MonacoEditor, { OnMount } from '@monaco-editor/react';
 import styles from './Editor.module.css';
-import { EditorProps } from '../../types/editor';
-import { useI18n } from '../../locales';
+import { EditorProps } from '@/types/editor';
+import { useI18n } from '@/locales/useI18n';
 import {
   applyBold,
   applyItalic,
@@ -16,7 +16,7 @@ import {
   applyOrderedList,
   applyTable,
   applyImage,
-} from '../Toolbar/toolbarUtils';
+} from '@/components/Toolbar/toolbarUtils';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const Editor = React.forwardRef<any, EditorProps>(

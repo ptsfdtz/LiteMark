@@ -13,9 +13,9 @@ import 'highlight.js/styles/github.css';
 import 'katex/dist/katex.min.css';
 import { useMathPreprocess } from './hooks/useMathPreprocess';
 import { FaLink, FaUnlink, FaEdit, FaTimes } from 'react-icons/fa';
-import { PreviewProps } from '../../types/preview';
+import { PreviewProps } from '@/types/preview';
 import { convertFileSrc } from '@tauri-apps/api/core';
-import { useI18n } from '../../locales';
+import { useI18n } from '@/locales/useI18n';
 
 const processSpecialEmojis = (content: string): string => {
   return content
