@@ -3,6 +3,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { RecentFile } from '../../../types/recentFiles';
 import { loadRecentFiles, saveRecentFiles } from '../../../utils/recentStore';
 import { save as saveDialog, message } from '@tauri-apps/plugin-dialog';
+import { useI18n } from '../../../locales';
 
 /**
  * Hook: useFileManager
@@ -31,6 +32,7 @@ export function useFileManager(opts: {
     setShowRecentFiles,
     // setForceEditFileName,
   } = opts;
+  const { t } = useI18n();
 
   const [recentFiles, setRecentFiles] = useState<RecentFile[]>([]);
 
@@ -56,7 +58,7 @@ export function useFileManager(opts: {
           }
         } catch (err) {
           console.error('自动打开启动文件失败:', err);
-          await message('启动文件不存在或无法访问', { title: '错误' });
+          await message(t('dialog.startupFileMissing'), { title: t('dialog.error') });
         }
 
         if (!openedStartup && restored.length > 0 && !currentFilePath) {
@@ -118,7 +120,7 @@ export function useFileManager(opts: {
       } catch (err) {
         console.error('读取文件失败:', err);
         setRecentFiles((prev) => prev.filter((f) => f.path !== file.path && f.id !== file.path));
-        await message('文件不存在或无法访问', { title: '错误' });
+        await message(t('dialog.fileMissing'), { title: t('dialog.error') });
       }
     })();
   };
@@ -147,8 +149,8 @@ export function useFileManager(opts: {
       setRecentFiles((prev) => prev.filter((f) => f.id !== id));
     } catch (err) {
       console.error('删除文件失败:', err);
-      await message('删除文件失败，可能没有权限或文件正在被使用', {
-        title: '错误',
+      await message(t('dialog.deleteFailed'), {
+        title: t('dialog.error'),
       });
     }
   };
@@ -159,8 +161,8 @@ export function useFileManager(opts: {
       if (!path) {
         const selected = await saveDialog({
           filters: [
-            { name: 'Markdown', extensions: ['md', 'markdown', 'txt'] },
-            { name: 'All Files', extensions: ['*'] },
+            { name: t('dialog.markdown'), extensions: ['md', 'markdown', 'txt'] },
+            { name: t('dialog.allFiles'), extensions: ['*'] },
           ],
           defaultPath: 'note.md',
         });
@@ -194,8 +196,8 @@ export function useFileManager(opts: {
     try {
       const selected = await saveDialog({
         filters: [
-          { name: 'Markdown', extensions: ['md', 'markdown', 'txt'] },
-          { name: 'All Files', extensions: ['*'] },
+          { name: t('dialog.markdown'), extensions: ['md', 'markdown', 'txt'] },
+          { name: t('dialog.allFiles'), extensions: ['*'] },
         ],
         defaultPath: (currentFilePath && currentFilePath.split(/[/\\]/).pop()) || 'note.md',
       });

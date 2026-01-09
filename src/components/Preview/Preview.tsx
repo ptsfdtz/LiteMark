@@ -15,6 +15,7 @@ import { useMathPreprocess } from './hooks/useMathPreprocess';
 import { FaLink, FaUnlink, FaEdit, FaTimes } from 'react-icons/fa';
 import { PreviewProps } from '../../types/preview';
 import { convertFileSrc } from '@tauri-apps/api/core';
+import { useI18n } from '../../locales';
 
 const processSpecialEmojis = (content: string): string => {
   return content
@@ -80,6 +81,7 @@ const Preview = React.forwardRef<HTMLDivElement, PreviewProps>(
     },
     ref,
   ) => {
+    const { t } = useI18n();
     const { preprocessMathChinese } = useMathPreprocess();
     const processedContent = preprocessMathChinese(processSpecialEmojis(content));
     useEffect(() => {
@@ -110,7 +112,8 @@ const Preview = React.forwardRef<HTMLDivElement, PreviewProps>(
           <button
             className="previewModeButton enter"
             onClick={onEnterEditorMode}
-            title="进入编辑模式"
+            title={t('preview.enterEditMode')}
+            aria-label={t('preview.enterEditMode')}
           >
             <FaEdit />
           </button>
@@ -119,7 +122,8 @@ const Preview = React.forwardRef<HTMLDivElement, PreviewProps>(
           <button
             className="previewModeButton exit"
             onClick={onExitPreviewMode}
-            title="退出预览模式"
+            title={t('preview.exitPreviewMode')}
+            aria-label={t('preview.exitPreviewMode')}
           >
             <FaTimes />
           </button>
@@ -133,7 +137,7 @@ const Preview = React.forwardRef<HTMLDivElement, PreviewProps>(
                 {...props}
                 src={resolveImageSrc(props.src, filePath)}
                 style={{ maxWidth: '100%', height: 'auto' }}
-                alt={props.alt || '图片'}
+                alt={props.alt || t('preview.imageAlt')}
               />
             ),
           }}
@@ -144,7 +148,12 @@ const Preview = React.forwardRef<HTMLDivElement, PreviewProps>(
           <button
             className={`scrollSyncButton ${scrollSyncEnabled ? 'active' : ''}`}
             onClick={onScrollSyncToggle}
-            title={scrollSyncEnabled ? '禁用滚动同步' : '启用滚动同步'}
+            title={
+              scrollSyncEnabled ? t('preview.disableScrollSync') : t('preview.enableScrollSync')
+            }
+            aria-label={
+              scrollSyncEnabled ? t('preview.disableScrollSync') : t('preview.enableScrollSync')
+            }
           >
             {scrollSyncEnabled ? <FaLink /> : <FaUnlink />}
           </button>

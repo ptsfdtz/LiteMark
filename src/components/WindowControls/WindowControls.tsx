@@ -3,8 +3,10 @@ import React from 'react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { FaTimes, FaMinus, FaRegSquare } from 'react-icons/fa';
 import styles from './WindowControls.module.css';
+import { useI18n } from '../../locales';
 
 const WindowControls: React.FC = () => {
+  const { t } = useI18n();
   const handleMinimize = () => {
     const appWindow = getCurrentWindow();
     void appWindow.minimize();
@@ -25,8 +27,8 @@ const WindowControls: React.FC = () => {
       <button
         type="button"
         className={styles.button}
-        aria-label="最小化"
-        title="最小化"
+        aria-label={t('window.minimize')}
+        title={t('window.minimize')}
         onClick={handleMinimize}
         data-tauri-drag-region="false"
       >
@@ -35,8 +37,8 @@ const WindowControls: React.FC = () => {
       <button
         type="button"
         className={styles.button}
-        aria-label="最大化"
-        title="最大化"
+        aria-label={t('window.maximize')}
+        title={t('window.maximize')}
         onClick={handleToggleMaximize}
         data-tauri-drag-region="false"
       >
@@ -45,8 +47,8 @@ const WindowControls: React.FC = () => {
       <button
         type="button"
         className={`${styles.button} ${styles.close}`}
-        aria-label="关闭"
-        title="关闭"
+        aria-label={t('window.close')}
+        title={t('window.close')}
         onClick={handleClose}
         data-tauri-drag-region="false"
       >

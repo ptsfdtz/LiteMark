@@ -208,3 +208,32 @@
   justify-content: center;
   gap: 1rem;
 }
+
+.languageTitle {
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.languageButtons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.languageButton {
+  padding: 6px 10px;
+  color: var(--text-color, #0f0f0f);
+  background: var(--toolbar-bg, #f3f3f3);
+  border: 1px solid var(--editor-border, #bbb);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition:
+    background 0.2s,
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+
+.languageButtonActive {
+  box-shadow: 0 0 0 2px var(--text-color, #0f0f0f);
+  border-color: transparent;
+}

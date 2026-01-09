@@ -17,8 +17,10 @@ import CurrentFileName from './components/CurrentFileName';
 import useFileManager from './hooks/useFileManager';
 import { loadWorkDir, saveWorkDir } from '../../utils/workDirStore';
 import SaveSuccessToast from './components/SaveSuccessToast';
+import { useI18n } from '../../locales';
 
 const Layout: React.FC = () => {
+  const { t } = useI18n();
   const [markdown, setMarkdown] = useState('');
   const [selection, setSelection] = useState({ start: 0, end: 0 });
   const [showSettings, setShowSettings] = useState(false);
@@ -388,8 +390,8 @@ const Layout: React.FC = () => {
               onSaveAs={handleSaveAs}
             />
             <button
-              aria-label="退出编辑模式"
-              title="退出编辑模式"
+              aria-label={t('layout.exitEditMode')}
+              title={t('layout.exitEditMode')}
               onClick={exitEditorOnly}
               className={styles.editorOnlyExit}
             >

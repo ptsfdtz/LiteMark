@@ -4,6 +4,7 @@ import styles from '../Layout.module.css';
 import { RecentFile } from '../../../types/recentFiles';
 import { invoke } from '@tauri-apps/api/core';
 import { message } from '@tauri-apps/plugin-dialog';
+import { useI18n } from '../../../locales';
 
 interface CurrentFileNameProps {
   filePath: string;
@@ -21,6 +22,7 @@ const CurrentFileName: React.FC<CurrentFileNameProps> = ({
   forceEdit,
   setForceEdit,
 }) => {
+  const { t } = useI18n();
   const [editing, setEditing] = React.useState(false);
   const [value, setValue] = React.useState(filePath.split(/[/\\\\]/).pop() || '');
   const inputRef = React.useRef<HTMLInputElement>(null);
@@ -62,8 +64,8 @@ const CurrentFileName: React.FC<CurrentFileNameProps> = ({
     try {
       const exists = await invoke('file_exists', { path: newPath });
       if (exists) {
-        await message('该文件名已存在，请输入其他名称。', {
-          title: '重命名失败',
+        await message(t('dialog.renameExists'), {
+          title: t('dialog.renameFailed'),
         });
         setEditing(true);
         inputRef.current?.focus();
@@ -100,7 +102,7 @@ const CurrentFileName: React.FC<CurrentFileNameProps> = ({
   ) : (
     <div
       className={styles.currentFileName}
-      title="双击重命名"
+      title={t('file.renameHint')}
       style={{ cursor: 'pointer', userSelect: 'text' }}
       onDoubleClick={() => setEditing(true)}
     >

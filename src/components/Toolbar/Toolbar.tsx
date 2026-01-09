@@ -32,6 +32,7 @@ import {
   FaSave,
   FaCopy,
 } from 'react-icons/fa';
+import { useI18n } from '../../locales';
 
 const Toolbar: React.FC<ToolbarProps> = ({
   value,
@@ -44,6 +45,8 @@ const Toolbar: React.FC<ToolbarProps> = ({
   className,
   editorRef,
 }) => {
+  const { t } = useI18n();
+  const tableTemplate = t('toolbar.tableTemplate');
   const noDrag = { 'data-tauri-drag-region': 'false' } as const;
 
   const applyWithUndo = (transform: (text: string, start: number, end: number) => string) => {
@@ -111,93 +114,120 @@ const Toolbar: React.FC<ToolbarProps> = ({
   return (
     <div className={`${styles.toolbar} ${className}`} data-tauri-drag-region="true">
       {onOpenFolder && (
-        <button onClick={onOpenFolder} title="最近的文件" className="folderButton" {...noDrag}>
+        <button
+          onClick={onOpenFolder}
+          title={t('toolbar.recentFiles')}
+          aria-label={t('toolbar.recentFiles')}
+          className="folderButton"
+          {...noDrag}
+        >
           <FaFolderOpen />
         </button>
       )}
       {onSave && (
-        <button onClick={onSave} title="保存 (Ctrl+S)" {...noDrag}>
+        <button
+          onClick={onSave}
+          title={t('toolbar.save')}
+          aria-label={t('toolbar.save')}
+          {...noDrag}
+        >
           <FaSave />
         </button>
       )}
       {onSaveAs && (
-        <button onClick={onSaveAs} title="另存为 (Ctrl+Shift+S)" {...noDrag}>
+        <button
+          onClick={onSaveAs}
+          title={t('toolbar.saveAs')}
+          aria-label={t('toolbar.saveAs')}
+          {...noDrag}
+        >
           <FaCopy />
         </button>
       )}
       <button
         onClick={() => applyWithUndo((t, s, e) => applyBold(t, s, e))}
-        title="粗体 (Ctrl+B)"
+        title={t('toolbar.bold')}
+        aria-label={t('toolbar.bold')}
         {...noDrag}
       >
         <FaBold />
       </button>
       <button
         onClick={() => applyWithUndo((t, s, e) => applyItalic(t, s, e))}
-        title="斜体 (Ctrl+I)"
+        title={t('toolbar.italic')}
+        aria-label={t('toolbar.italic')}
         {...noDrag}
       >
         <FaItalic />
       </button>
       <button
         onClick={() => applyWithUndo((t, s, e) => applyStrikethrough(t, s, e))}
-        title="删除线 (Ctrl+Shift+X)"
+        title={t('toolbar.strikethrough')}
+        aria-label={t('toolbar.strikethrough')}
         {...noDrag}
       >
         <FaStrikethrough />
       </button>
       <button
         onClick={() => applyWithUndo((t, s, e) => applyCode(t, s, e))}
-        title="代码 (Ctrl+K)"
+        title={t('toolbar.code')}
+        aria-label={t('toolbar.code')}
         {...noDrag}
       >
         <FaCode />
       </button>
       <button
         onClick={() => applyWithUndo((t, s, e) => applyLink(t, s, e))}
-        title="链接 (Ctrl+L)"
+        title={t('toolbar.link')}
+        aria-label={t('toolbar.link')}
         {...noDrag}
       >
         <FaLink />
       </button>
       <button
         onClick={() => applyWithUndo((t, s, e) => applyHeading(t, s, e))}
-        title="标题 (Ctrl+H)"
+        title={t('toolbar.heading')}
+        aria-label={t('toolbar.heading')}
         {...noDrag}
       >
         <FaHeading />
       </button>
       <button
         onClick={() => applyWithUndo((t, s, e) => applyQuote(t, s, e))}
-        title="引用 (Ctrl+Q)"
+        title={t('toolbar.quote')}
+        aria-label={t('toolbar.quote')}
         {...noDrag}
       >
         <FaQuoteRight />
       </button>
       <button
         onClick={() => applyWithUndo((t, s, e) => applyUnorderedList(t, s, e))}
-        title="无序列表 (Ctrl+U)"
+        title={t('toolbar.unorderedList')}
+        aria-label={t('toolbar.unorderedList')}
         {...noDrag}
       >
         <FaListUl />
       </button>
       <button
         onClick={() => applyWithUndo((t, s, e) => applyOrderedList(t, s, e))}
-        title="有序列表 (Ctrl+O)"
+        title={t('toolbar.orderedList')}
+        aria-label={t('toolbar.orderedList')}
         {...noDrag}
       >
         <FaListOl />
       </button>
       <button
-        onClick={() => applyWithUndo((t, s) => applyTable(t, s))}
-        title="表格 (Ctrl+T)"
+        onClick={() => applyWithUndo((t, s) => applyTable(t, s, tableTemplate))}
+        title={t('toolbar.table')}
+        aria-label={t('toolbar.table')}
         {...noDrag}
       >
         <FaTable />
       </button>
       <button
         onClick={() => applyWithUndo((t, s, e) => applyImage(t, s, e))}
-        title="图片 (Ctrl+Shift+I)"
+        title={t('toolbar.image')}
+        aria-label={t('toolbar.image')}
         {...noDrag}
       >
         <FaImage />

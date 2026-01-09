@@ -15,6 +15,7 @@ import {
 } from '../Toolbar/toolbarUtils';
 
 import { KeyboardShortcutsProps } from '../../types/keyboardShortcuts';
+import { useI18n } from '../../locales';
 
 const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({
   value,
@@ -24,6 +25,8 @@ const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({
   onSave,
   onSaveAs,
 }) => {
+  const { t } = useI18n();
+  const tableTemplate = t('toolbar.tableTemplate');
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!(e.target instanceof HTMLTextAreaElement)) return;
@@ -90,7 +93,7 @@ const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({
         case 't':
         case 'T':
           e.preventDefault();
-          newValue = applyTable(value, selectionStart);
+          newValue = applyTable(value, selectionStart, tableTemplate);
           break;
         default:
           break;
@@ -120,7 +123,7 @@ const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [value, setValue, selectionStart, selectionEnd, onSave, onSaveAs]);
+  }, [value, setValue, selectionStart, selectionEnd, onSave, onSaveAs, tableTemplate]);
 
   return null;
 };

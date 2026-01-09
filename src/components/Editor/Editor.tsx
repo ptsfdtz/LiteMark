@@ -3,6 +3,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import MonacoEditor, { OnMount } from '@monaco-editor/react';
 import styles from './Editor.module.css';
 import { EditorProps } from '../../types/editor';
+import { useI18n } from '../../locales';
 import {
   applyBold,
   applyItalic,
@@ -23,9 +24,11 @@ const Editor = React.forwardRef<any, EditorProps>(
     { value, onChange, onSelectionChange, className, theme, onSave, onSaveAs, minimapEnabled },
     ref,
   ) => {
+    const { t } = useI18n();
     const [resolvedTheme, setResolvedTheme] = useState('light');
     const onSaveRef = useRef(onSave);
     const onSaveAsRef = useRef(onSaveAs);
+    const tableTemplateRef = useRef(t('toolbar.tableTemplate'));
 
     useEffect(() => {
       onSaveRef.current = onSave;
@@ -34,6 +37,10 @@ const Editor = React.forwardRef<any, EditorProps>(
     useEffect(() => {
       onSaveAsRef.current = onSaveAs;
     }, [onSaveAs]);
+
+    useEffect(() => {
+      tableTemplateRef.current = t('toolbar.tableTemplate');
+    }, [t]);
 
     useEffect(() => {
       const updateTheme = () => {
@@ -76,9 +83,8 @@ const Editor = React.forwardRef<any, EditorProps>(
         }
       });
 
-      type Transform =
-        | ((text: string, start: number, end: number) => string)
-        | ((text: string, pos: number) => string);
+      type TableTransform = (text: string, pos: number, template?: string) => string;
+      type Transform = ((text: string, start: number, end: number) => string) | TableTransform;
 
       const applyEdit = (transform: Transform, isTable = false) => {
         const model = editor.getModel();
@@ -89,8 +95,8 @@ const Editor = React.forwardRef<any, EditorProps>(
           const text = model.getValue();
           let newText: string;
           if (isTable) {
-            const fn = transform as (text: string, pos: number) => string;
-            newText = fn(text, startOffset);
+            const fn = transform as TableTransform;
+            newText = fn(text, startOffset, tableTemplateRef.current);
           } else {
             const fn = transform as (text: string, start: number, end: number) => string;
             newText = fn(text, startOffset, endOffset);

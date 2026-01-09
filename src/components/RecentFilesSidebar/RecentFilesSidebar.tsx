@@ -5,6 +5,7 @@ import { open } from '@tauri-apps/plugin-dialog';
 import { invoke } from '@tauri-apps/api/core';
 import { FaFolderOpen, FaFile, FaFileAlt, FaTimes, FaTrash } from 'react-icons/fa';
 import { FaCheck } from 'react-icons/fa';
+import { useI18n } from '../../locales';
 
 const RecentFilesSidebar: React.FC<RecentFilesSidebarProps> = ({
   files,
@@ -19,6 +20,7 @@ const RecentFilesSidebar: React.FC<RecentFilesSidebarProps> = ({
   onDeleteFile,
   workDir,
 }) => {
+  const { locale, t } = useI18n();
   // Ctrl+N 新建文件快捷键
   useEffect(() => {
     if (!isOpen) return;
@@ -61,8 +63,8 @@ const RecentFilesSidebar: React.FC<RecentFilesSidebarProps> = ({
         multiple: false,
         directory: false,
         filters: [
-          { name: 'Markdown', extensions: ['md', 'markdown', 'txt'] },
-          { name: 'All Files', extensions: ['*'] },
+          { name: t('dialog.markdown'), extensions: ['md', 'markdown', 'txt'] },
+          { name: t('dialog.allFiles'), extensions: ['*'] },
         ],
       });
       if (!selected || Array.isArray(selected)) return;
@@ -85,7 +87,7 @@ const RecentFilesSidebar: React.FC<RecentFilesSidebarProps> = ({
         target =
           workDir.replace(/[\\/]$/, '') + (workDir.includes('\\') ? '\\' : '/') + 'untitled.md';
       }
-      const initialContent = '# 新建文档\n\n';
+      const initialContent = t('recent.newFileContent');
       await invoke('write_text_file', {
         path: target,
         content: initialContent,
@@ -130,24 +132,24 @@ const RecentFilesSidebar: React.FC<RecentFilesSidebarProps> = ({
         <button
           onClick={handleOpenDirectory}
           className={styles.openButton}
-          title="打开文件夹"
-          aria-label="打开文件夹"
+          title={t('recent.openFolder')}
+          aria-label={t('recent.openFolder')}
         >
           <FaFolderOpen />
         </button>
         <button
           onClick={handleOpenFile}
           className={styles.openButton}
-          title="打开文件"
-          aria-label="打开文件"
+          title={t('recent.openFile')}
+          aria-label={t('recent.openFile')}
         >
           <FaFile />
         </button>
         <button
           onClick={handleNewFile}
           className={styles.openButton}
-          title="新建文件"
-          aria-label="新建文件"
+          title={t('recent.newFile')}
+          aria-label={t('recent.newFile')}
         >
           <FaFileAlt />
         </button>
@@ -157,15 +159,15 @@ const RecentFilesSidebar: React.FC<RecentFilesSidebarProps> = ({
             if (onClose) onClose();
           }}
           className={styles.closeButton}
-          title="关闭"
-          aria-label="关闭"
+          title={t('recent.close')}
+          aria-label={t('recent.close')}
         >
           <FaTimes />
         </button>
       </div>
       <div className={styles.filesList}>
         {files.length === 0 ? (
-          <div className={styles.noFiles}>暂无最近文件</div>
+          <div className={styles.noFiles}>{t('recent.empty')}</div>
         ) : (
           files.map((file) => {
             return (
@@ -176,14 +178,18 @@ const RecentFilesSidebar: React.FC<RecentFilesSidebarProps> = ({
                 <div className={styles.fileContent} onClick={() => onSelectFile(file)}>
                   <div className={styles.fileName}>{file.name}</div>
                   <div className={styles.filePath}>{file.path}</div>
-                  <div className={styles.fileModified}>{file.modified.toLocaleString()}</div>
+                  <div className={styles.fileModified}>
+                    {file.modified.toLocaleString(
+                      locale === 'en' ? 'en-US' : locale === 'ja' ? 'ja-JP' : 'zh-CN',
+                    )}
+                  </div>
                 </div>
                 {confirmingId === file.id ? (
                   <span className={styles.confirmBtns}>
                     <button
                       className={styles.confirmButton}
-                      title="确认删除"
-                      aria-label={`确认删除 ${file.name}`}
+                      title={t('recent.confirmDelete')}
+                      aria-label={t('recent.confirmDeleteItem', { name: file.name })}
                       onClick={() => {
                         setDeletingId(file.id);
                         setConfirmingId(null);
@@ -198,8 +204,8 @@ const RecentFilesSidebar: React.FC<RecentFilesSidebarProps> = ({
                     </button>
                     <button
                       className={styles.cancelButton}
-                      title="取消"
-                      aria-label={`取消删除 ${file.name}`}
+                      title={t('recent.cancel')}
+                      aria-label={t('recent.cancelDeleteItem', { name: file.name })}
                       onClick={() => setConfirmingId(null)}
                       disabled={deletingId === file.id}
                     >
@@ -209,8 +215,8 @@ const RecentFilesSidebar: React.FC<RecentFilesSidebarProps> = ({
                 ) : (
                   <button
                     className={styles.trashButton}
-                    title="删除"
-                    aria-label={`删除 ${file.name}`}
+                    title={t('recent.delete')}
+                    aria-label={t('recent.deleteItem', { name: file.name })}
                     onClick={() => setConfirmingId(file.id)}
                     disabled={deletingId === file.id}
                   >

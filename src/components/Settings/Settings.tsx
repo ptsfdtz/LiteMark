@@ -5,6 +5,7 @@ import { SettingsProps } from '../../types/settings';
 import { open } from '@tauri-apps/plugin-dialog';
 import { FiSun, FiMoon, FiRepeat, FiMoreHorizontal } from 'react-icons/fi';
 import { FaCog, FaTimes } from 'react-icons/fa';
+import { useI18n } from '../../locales';
 
 const Settings: React.FC<SettingsProps> = ({
   theme,
@@ -18,6 +19,7 @@ const Settings: React.FC<SettingsProps> = ({
   onRequestClose,
   isClosing: externalIsClosing,
 }) => {
+  const { locale, setLocale, t } = useI18n();
   // 选择个人工作文件夹
   const handleChooseWorkDir = async () => {
     const selected = await open({ directory: true, multiple: false });
@@ -115,7 +117,12 @@ const Settings: React.FC<SettingsProps> = ({
     >
       <div className={styles.header}>
         <FaCog size={20} />
-        <button className={styles.closeButton} onClick={handleRequestClose}>
+        <button
+          className={styles.closeButton}
+          onClick={handleRequestClose}
+          title={t('window.close')}
+          aria-label={t('window.close')}
+        >
           <FaTimes />
         </button>
       </div>
@@ -133,14 +140,16 @@ const Settings: React.FC<SettingsProps> = ({
                       : ''
                 }`}
                 onClick={() => setTheme('light')}
-                title="浅色主题"
+                title={t('settings.themeLight')}
+                aria-label={t('settings.themeLight')}
               >
                 <FiSun size={18} />
               </button>
               <button
                 className={`${styles.switchButton} ${theme === 'system' ? styles.active : ''}`}
                 onClick={() => setTheme('system')}
-                title="跟随系统"
+                title={t('settings.themeSystem')}
+                aria-label={t('settings.themeSystem')}
               >
                 <FiRepeat size={18} />
               </button>
@@ -153,7 +162,8 @@ const Settings: React.FC<SettingsProps> = ({
                       : ''
                 }`}
                 onClick={() => setTheme('dark')}
-                title="深色主题"
+                title={t('settings.themeDark')}
+                aria-label={t('settings.themeDark')}
               >
                 <FiMoon size={18} />
               </button>
@@ -161,29 +171,68 @@ const Settings: React.FC<SettingsProps> = ({
           </div>
         </div>
         <div className={styles.settingGroup}>
-          <div style={{ marginBottom: 8, fontWeight: 500 }}>个人工作文件夹</div>
+          <div style={{ marginBottom: 8, fontWeight: 500 }}>{t('settings.workDirTitle')}</div>
           <div className={styles.workDirRow}>
             <input
               type="text"
               value={workDir}
               readOnly
               className={styles.workDirInput}
-              placeholder="未设置"
+              placeholder={t('settings.workDirPlaceholder')}
             />
             <button
               type="button"
               onClick={handleChooseWorkDir}
               className={styles.workDirBtn}
-              title="选择工作文件夹"
+              title={t('settings.chooseWorkDir')}
+              aria-label={t('settings.chooseWorkDir')}
             >
               <FiMoreHorizontal size={22} />
             </button>
           </div>
         </div>
         <div className={styles.settingGroup}>
+          <div className={styles.languageTitle}>{t('settings.language')}</div>
+          <div className={styles.languageButtons}>
+            <button
+              type="button"
+              className={`${styles.languageButton} ${
+                locale === 'zh-CN' ? styles.languageButtonActive : ''
+              }`}
+              onClick={() => setLocale('zh-CN')}
+              title={t('settings.langZh')}
+              aria-label={t('settings.langZh')}
+            >
+              {t('settings.langZh')}
+            </button>
+            <button
+              type="button"
+              className={`${styles.languageButton} ${
+                locale === 'en' ? styles.languageButtonActive : ''
+              }`}
+              onClick={() => setLocale('en')}
+              title={t('settings.langEn')}
+              aria-label={t('settings.langEn')}
+            >
+              {t('settings.langEn')}
+            </button>
+            <button
+              type="button"
+              className={`${styles.languageButton} ${
+                locale === 'ja' ? styles.languageButtonActive : ''
+              }`}
+              onClick={() => setLocale('ja')}
+              title={t('settings.langJa')}
+              aria-label={t('settings.langJa')}
+            >
+              {t('settings.langJa')}
+            </button>
+          </div>
+        </div>
+        <div className={styles.settingGroup}>
           <div className={styles.editorRow}>
             <label className={styles.minimapLabel} htmlFor="minimapToggle">
-              代码缩略图
+              {t('settings.minimap')}
             </label>
             <label className={styles.switch}>
               <input
