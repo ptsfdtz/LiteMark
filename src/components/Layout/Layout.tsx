@@ -382,7 +382,26 @@ const Layout: React.FC = () => {
         }}
         onLoadFile={handleLoadFile}
         onLoadDir={(files) => {
-          setRecentFiles(files);
+          setRecentFiles((prev) => {
+            const seen = new Set<string>();
+            const merged: RecentFile[] = [];
+
+            files.forEach((file) => {
+              const key = file.path || file.id;
+              if (seen.has(key)) return;
+              seen.add(key);
+              merged.push(file);
+            });
+
+            prev.forEach((file) => {
+              const key = file.path || file.id;
+              if (seen.has(key)) return;
+              seen.add(key);
+              merged.push(file);
+            });
+
+            return merged.slice(0, 50);
+          });
         }}
         onNewFile={(path, content) => {
           setMarkdown(content);
