@@ -11,13 +11,16 @@ name = "tauri_get_start_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
-tauri-build = { version = "2", features = [] }
+tauri-build = { version = "2.5.3", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = ["protocol-asset"] }
-tauri-plugin-dialog = "2"  # 添加对话框插件
-tauri-plugin-opener = "2"
-tauri-plugin-store = "2"
+tauri = { version = "2.9.1", features = ["protocol-asset"] }
+tauri-plugin-dialog = "2.5.0"  # 添加对话框插件
+tauri-plugin-opener = "2.5.3"
+tauri-plugin-store = "2.4.2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 md5 = "0.7"
+
+
+
