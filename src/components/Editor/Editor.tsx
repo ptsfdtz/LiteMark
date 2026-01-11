@@ -161,7 +161,9 @@ const Editor = React.forwardRef<any, EditorProps>(
             },
           ]);
           // place cursor after the new list marker
-          editor.setPosition(new monaco.Position(lineNumber + 1, indent.length + 3));
+          const nextPos = new monaco.Position(lineNumber + 1, indent.length + 3);
+          editor.setPosition(nextPos);
+          editor.revealPositionInCenterIfOutsideViewport(nextPos);
           return;
         }
 
@@ -177,9 +179,12 @@ const Editor = React.forwardRef<any, EditorProps>(
               forceMoveMarkers: true,
             },
           ]);
-          editor.setPosition(
-            new monaco.Position(lineNumber + 1, indent.length + String(next).length + 3),
+          const nextPos = new monaco.Position(
+            lineNumber + 1,
+            indent.length + String(next).length + 3,
           );
+          editor.setPosition(nextPos);
+          editor.revealPositionInCenterIfOutsideViewport(nextPos);
           return;
         }
 
