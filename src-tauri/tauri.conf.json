@@ -1,50 +1,31 @@
 {
-  "$schema": "https://schema.tauri.app/config/2",
-  "productName": "LiteMark",
-  "version": "0.1.9",
-  "identifier": "com.ptsfdtz.LiteMark",
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "litemark",
+  "version": "0.1.0",
+  "identifier": "com.tauri.dev",
   "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:5173",
     "beforeDevCommand": "pnpm dev",
-    "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "pnpm build",
-    "frontendDist": "../dist"
+    "beforeBuildCommand": "pnpm build"
   },
   "app": {
     "windows": [
       {
-        "title": "LiteMark",
-        "width": 1200,
-        "height": 800,
-        "minWidth": 1038,
-        "center": true,
-        "decorations": false
+        "title": "litemark",
+        "width": 800,
+        "height": 600,
+        "resizable": true,
+        "fullscreen": false
       }
     ],
     "security": {
-      "csp": null,
-      "capabilities": ["dialog", "store", "window"],
-      "assetProtocol": {
-        "enable": true,
-        "scope": ["$HOME/**"]
-      }
+      "csp": null
     }
   },
   "bundle": {
     "active": true,
     "targets": "all",
-    "icon": [
-      "icons/icon.ico",
-      "icons/icon.png",
-      "icons/icon.icns",
-      "icons/icon.svg"
-    ],
-    "fileAssociations": [
-      {
-        "ext": ["md", "markdown", "txt"],
-        "name": "Markdown",
-        "description": "Markdown Document",
-        "role": "Editor"
-      }
-    ]
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"]
   }
 }
