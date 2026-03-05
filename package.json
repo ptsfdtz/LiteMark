@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "eslint .",
+    "lint": "eslint . && pnpm docs:check",
+    "docs:check": "node scripts/check-docs.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
