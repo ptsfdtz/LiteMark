@@ -16,3 +16,8 @@ export interface MdDoc {
   content: string
   updatedAt: string
 }
+
+export interface MdMeta {
+  name: string
+  savedAt: string | null
+}
