@@ -1,14 +1,7 @@
 // src/components/Preview/Preview.tsx
-import React, { useEffect } from 'react';
+import React, { useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import remarkMath from 'remark-math';
-import remarkEmoji from 'remark-emoji';
-import rehypeHighlight from 'rehype-highlight';
-import rehypeRaw from 'rehype-raw';
-import rehypeKatex from 'rehype-katex';
 import './Preview.css';
-import hljs from 'highlight.js';
 import 'highlight.js/styles/github.css';
 import 'katex/dist/katex.min.css';
 import { useMathPreprocess } from './hooks/useMathPreprocess';
@@ -16,8 +9,15 @@ import { FaLink, FaUnlink, FaEdit, FaTimes } from 'react-icons/fa';
 import { PreviewProps } from '@/types/preview';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { useI18n } from '@/locales/useI18n';
+import {
+  createMarkdownPipeline,
+  isExternalLink,
+  sanitizeHref,
+  sanitizeImageSrc,
+} from '@/shared/markdown';
 
-const processSpecialEmojis = (content: string): string => {
+const processSpecialEmojis = (content: string, allowRawHtml: boolean): string => {
+  if (!allowRawHtml) return content;
   return content
     .replace(/:fa-([\w-]+):/g, '<i class="fa fa-$1" aria-hidden="true"></i>')
     .replace(/:editormd-logo(-\dx)?:/g, '<i class="editormd-logo$1" aria-hidden="true"></i>');
@@ -83,28 +83,11 @@ const Preview = React.forwardRef<HTMLDivElement, PreviewProps>(
   ) => {
     const { t } = useI18n();
     const { preprocessMathChinese } = useMathPreprocess();
-    const processedContent = preprocessMathChinese(processSpecialEmojis(content));
-    useEffect(() => {
-      (window as unknown as typeof globalThis & { hljs: typeof hljs }).hljs = hljs;
-      const highlightCode = () => {
-        document.querySelectorAll('pre code:not([data-highlighted])').forEach((block) => {
-          try {
-            hljs.highlightElement(block as HTMLElement);
-          } catch (e) {
-            console.warn('Highlight error:', e);
-          }
-        });
-      };
-      highlightCode();
-      const timers = [
-        setTimeout(highlightCode, 10),
-        setTimeout(highlightCode, 100),
-        setTimeout(highlightCode, 500),
-      ];
-      return () => {
-        timers.forEach((timer) => clearTimeout(timer));
-      };
-    }, [content]);
+    const pipeline = useMemo(() => createMarkdownPipeline(), []);
+    const processedContent = useMemo(
+      () => preprocessMathChinese(processSpecialEmojis(content, pipeline.security.allowRawHtml)),
+      [content, preprocessMathChinese, pipeline.security.allowRawHtml],
+    );
 
     return (
       <div ref={ref} className="preview-container">
@@ -129,17 +112,35 @@ const Preview = React.forwardRef<HTMLDivElement, PreviewProps>(
           </button>
         )}
         <ReactMarkdown
-          remarkPlugins={[remarkGfm, remarkMath, remarkEmoji]}
-          rehypePlugins={[rehypeHighlight, rehypeRaw, rehypeKatex]}
+          remarkPlugins={pipeline.remarkPlugins as []}
+          rehypePlugins={pipeline.rehypePlugins as []}
           components={{
-            img: ({ ...props }) => (
-              <img
-                {...props}
-                src={resolveImageSrc(props.src, filePath)}
-                style={{ maxWidth: '100%', height: 'auto' }}
-                alt={props.alt || t('preview.imageAlt')}
-              />
-            ),
+            a: ({ href, children, ...props }) => {
+              const safeHref = sanitizeHref(href, pipeline.security.allowedLinkProtocols);
+              if (!safeHref) {
+                return <span>{children}</span>;
+              }
+              const external = isExternalLink(safeHref);
+              return (
+                <a
+                  {...props}
+                  href={safeHref}
+                  target={external ? '_blank' : props.target}
+                  rel={external ? 'noopener noreferrer nofollow' : props.rel}
+                >
+                  {children}
+                </a>
+              );
+            },
+            img: ({ ...props }) => {
+              const resolvedSrc = resolveImageSrc(props.src, filePath);
+              const safeSrc = sanitizeImageSrc(
+                resolvedSrc,
+                pipeline.security.allowedImageProtocols,
+              );
+              if (!safeSrc) return null;
+              return <img {...props} src={safeSrc} alt={props.alt || t('preview.imageAlt')} />;
+            },
           }}
         >
           {processedContent}

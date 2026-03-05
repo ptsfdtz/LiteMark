@@ -8,6 +8,8 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
+    "test": "vitest",
+    "test:run": "vitest run",
     "tauri": "tauri",
     "prepare": "husky",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,css,scss,html}\"",
@@ -67,6 +69,8 @@
     "@commitlint/config-conventional": "^20.0.0",
     "@eslint/js": "^9.39.1",
     "@tauri-apps/cli": "^2.9.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@types/markdown-it-emoji": "^3.0.1",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
@@ -78,6 +82,7 @@
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
     "husky": "^9.1.7",
+    "jsdom": "^28.1.0",
     "lint-staged": "^16.2.7",
     "prettier": "^3.6.2",
     "stylelint": "^16.26.0",
@@ -85,8 +90,7 @@
     "stylelint-order": "^7.0.0",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.48.0",
-    "vite": "^7.2.4"
+    "vite": "^7.2.4",
+    "vitest": "^4.0.18"
   }
 }
-
-
