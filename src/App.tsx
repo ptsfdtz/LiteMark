@@ -1,127 +1,283 @@
-import './App.css';
-import { useEffect, useMemo, useState } from 'react';
-import Layout from './components/Layout/Layout';
-import Joyride, { Step } from 'react-joyride';
-import { useI18n } from './locales/useI18n';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { ChangeEvent } from 'react';
+import Placeholder from '@tiptap/extension-placeholder';
+import StarterKit from '@tiptap/starter-kit';
+import { EditorContent, useEditor } from '@tiptap/react';
+import { Bold, Code2, Download, Heading1, Italic, List, ListOrdered, Quote, Redo2, Undo2, Upload } from 'lucide-react';
 
-function getCssVar(name: string, fallback: string) {
-  if (typeof window === 'undefined') return fallback;
-  const val = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-  return val || fallback;
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
+import { useMarkdownStats } from '@/hooks';
+import { DEFAULT_MD, DRAFT_KEY, downloadMd, htmlToMd, mdToHtml, readFileAsText } from '@/lib/md';
+import type { MdMeta, MdToolbarAction } from '@/types/markdown-editor';
+
+const SAVE_DELAY = 600;
+
+const ICONS = {
+  h1: Heading1,
+  bold: Bold,
+  italic: Italic,
+  ul: List,
+  ol: ListOrdered,
+  quote: Quote,
+  code: Code2,
+  undo: Undo2,
+  redo: Redo2,
+};
+
+function getInitialMd(): string {
+  if (typeof window === 'undefined') {
+    return DEFAULT_MD;
+  }
+
+  const draft = window.localStorage.getItem(DRAFT_KEY);
+  return draft === null ? DEFAULT_MD : draft;
 }
 
-function App() {
-  const { t } = useI18n();
-  const [run, setRun] = useState(false);
-  const steps = useMemo<Step[]>(
-    () => [
-      {
-        target: 'body',
-        content: t('tour.welcome'),
-        placement: 'center',
-      },
-      {
-        target: '.' + '' + 'toolbar', // 工具栏
-        content: t('tour.toolbar'),
-        placement: 'bottom',
-      },
-      {
-        target: '.' + 'editor', // 编辑器
-        content: t('tour.editor'),
-        placement: 'right',
-      },
-      {
-        target: '.preview-container', // 预览区
-        content: t('tour.preview'),
-        placement: 'left',
-      },
-      {
-        target: '.settingsButton', // 设置按钮
-        content: t('tour.settings'),
-        placement: 'right-start',
-      },
-      {
-        target: '.folderButton', // 最近的文件按钮
-        content: t('tour.recentFiles'),
-        placement: 'left-start',
-      },
-    ],
-    [t],
-  );
-  useEffect(() => {
-    const seen = localStorage.getItem('joyride_seen');
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (!seen) setRun(true);
+function normalizeMd(value: string): string {
+  const next = value.replace(/\r\n/g, '\n').trimEnd();
+  return next ? `${next}\n` : '';
+}
+
+function normalizeFileName(name: string): string {
+  const next = name.trim();
+  if (!next) {
+    return 'note.md';
+  }
+
+  return next.endsWith('.md') ? next : `${next}.md`;
+}
+
+function formatSavedAt(value: string | null): string {
+  if (!value) {
+    return '未保存';
+  }
+
+  return new Intl.DateTimeFormat('zh-CN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  }).format(new Date(value));
+}
+
+export function App() {
+  const fileRef = useRef<HTMLInputElement | null>(null);
+  const syncRef = useRef<number | null>(null);
+  const lastHtmlRef = useRef<string>('');
+  const [md, setMd] = useState<string>(() => getInitialMd());
+  const [meta, setMeta] = useState<MdMeta>({ name: 'draft.md', savedAt: null });
+  const [note, setNote] = useState('');
+
+  const stats = useMarkdownStats(md);
+
+  const scheduleSync = useCallback((nextHtml: string) => {
+    lastHtmlRef.current = nextHtml;
+    if (syncRef.current !== null) {
+      window.clearTimeout(syncRef.current);
+    }
+
+    syncRef.current = window.setTimeout(() => {
+      const next = normalizeMd(htmlToMd(lastHtmlRef.current));
+      setMd(next);
+      window.localStorage.setItem(DRAFT_KEY, next);
+      setMeta(prev => ({ ...prev, savedAt: new Date().toISOString() }));
+    }, SAVE_DELAY);
   }, []);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleJoyrideCallback = (data: any) => {
-    if (data.status === 'finished' || data.status === 'skipped') {
-      localStorage.setItem('joyride_seen', '1');
-      setRun(false);
-    }
-  };
+  const editor = useEditor({
+    extensions: [
+      StarterKit,
+      Placeholder.configure({
+        placeholder: '输入 Markdown 语法，编辑区会直接显示渲染结果',
+      }),
+    ],
+    content: mdToHtml(md),
+    editorProps: {
+      attributes: {
+        class: 'md-editor',
+      },
+    },
+    onUpdate: ({ editor: current }) => {
+      scheduleSync(current.getHTML());
+    },
+  });
 
-  const joyrideStyles = {
-    options: {
-      zIndex: 10000,
-      primaryColor: getCssVar('--text-color', '#414141'),
-      backgroundColor: getCssVar('--background-color', '#fff'),
-      textColor: getCssVar('--text-color', '#222'),
-      arrowColor: getCssVar('--background-color', '#fff'),
-      overlayColor: 'rgba(0,0,0,0.3)',
+  useEffect(() => {
+    if (editor) {
+      lastHtmlRef.current = editor.getHTML();
+    }
+    return () => {
+      if (syncRef.current !== null) {
+        window.clearTimeout(syncRef.current);
+      }
+    };
+  }, [editor]);
+
+  const canUndo = editor?.can().chain().focus().undo().run() ?? false;
+  const canRedo = editor?.can().chain().focus().redo().run() ?? false;
+
+  const applyMd = useCallback(
+    (value: string) => {
+      const next = normalizeMd(value || DEFAULT_MD);
+      setMd(next);
+      if (editor) {
+        editor.commands.setContent(mdToHtml(next), { emitUpdate: true });
+      }
     },
-    buttonNext: {
-      backgroundColor: getCssVar('--blockquote-text', '#414141'),
-      color: '#fff',
-      borderRadius: 4,
+    [editor]
+  );
+
+  const onImport = useCallback(
+    async (event: ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      event.target.value = '';
+      if (!file) {
+        return;
+      }
+
+      try {
+        const text = await readFileAsText(file);
+        applyMd(text);
+        setMeta({ name: normalizeFileName(file.name), savedAt: null });
+        setNote(`已导入 ${file.name}`);
+      } catch (error) {
+        console.error(error);
+        setNote('导入失败：请确认文件编码为 UTF-8');
+      }
     },
-    buttonBack: {
-      color: getCssVar('--blockquote-text', '#414141'),
-    },
-  };
+    [applyMd]
+  );
+
+  const onExport = useCallback(() => {
+    const fileName = normalizeFileName(meta.name);
+    const currentMd = editor ? normalizeMd(htmlToMd(editor.getHTML())) : md;
+    downloadMd(currentMd, fileName);
+    setMd(currentMd);
+    window.localStorage.setItem(DRAFT_KEY, currentMd);
+    setMeta(prev => ({ ...prev, savedAt: new Date().toISOString() }));
+    setNote(`已导出 ${fileName}`);
+  }, [editor, md, meta.name]);
+
+  const toolbar = useMemo<MdToolbarAction[]>(() => {
+    if (!editor) {
+      return [];
+    }
+
+    return [
+      {
+        key: 'h1',
+        title: 'H1',
+        active: editor.isActive('heading', { level: 1 }),
+        onClick: () => editor.chain().focus().toggleHeading({ level: 1 }).run(),
+      },
+      {
+        key: 'bold',
+        title: '粗体',
+        active: editor.isActive('bold'),
+        onClick: () => editor.chain().focus().toggleBold().run(),
+      },
+      {
+        key: 'italic',
+        title: '斜体',
+        active: editor.isActive('italic'),
+        onClick: () => editor.chain().focus().toggleItalic().run(),
+      },
+      {
+        key: 'ul',
+        title: '无序',
+        active: editor.isActive('bulletList'),
+        onClick: () => editor.chain().focus().toggleBulletList().run(),
+      },
+      {
+        key: 'ol',
+        title: '有序',
+        active: editor.isActive('orderedList'),
+        onClick: () => editor.chain().focus().toggleOrderedList().run(),
+      },
+      {
+        key: 'quote',
+        title: '引用',
+        active: editor.isActive('blockquote'),
+        onClick: () => editor.chain().focus().toggleBlockquote().run(),
+      },
+      {
+        key: 'code',
+        title: '代码块',
+        active: editor.isActive('codeBlock'),
+        onClick: () => editor.chain().focus().toggleCodeBlock().run(),
+      },
+      {
+        key: 'undo',
+        title: '撤销',
+        active: false,
+        onClick: () => {
+          if (canUndo) {
+            editor.chain().focus().undo().run();
+          }
+        },
+      },
+      {
+        key: 'redo',
+        title: '重做',
+        active: false,
+        onClick: () => {
+          if (canRedo) {
+            editor.chain().focus().redo().run();
+          }
+        },
+      },
+    ];
+  }, [canRedo, canUndo, editor]);
+
   return (
-    <>
-      <Joyride
-        steps={steps}
-        run={run}
-        continuous
-        showSkipButton
-        showProgress
-        locale={{
-          back: t('tour.back'),
-          close: t('tour.close'),
-          last: t('tour.last'),
-          next: t('tour.next'),
-          skip: t('tour.skip'),
-        }}
-        styles={joyrideStyles}
-        callback={handleJoyrideCallback}
-      />
-      {/* <button
-        style={{
-          position: "fixed",
-          bottom: 16,
-          right: 16,
-          zIndex: 11000,
-          background: getCssVar("--primary-color", "#409EFF"),
-          color: "#fff",
-          border: "none",
-          borderRadius: 6,
-          padding: "8px 18px",
-          fontSize: 14,
-          cursor: "pointer",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-        }}
-        onClick={() => {
-          localStorage.removeItem("joyride_seen");
-          setRun(true);
-        }}
-      >
-        测试引导
-      </button> */}
-      <Layout />
-    </>
+    <main className="mx-auto flex min-h-screen w-full max-w-5xl items-start p-4 md:p-8">
+      <Card className="w-full">
+        <CardHeader className="gap-4">
+          <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+            <div className="space-y-1">
+              <CardTitle>LiteMark</CardTitle>
+              <CardDescription>编辑区即预览区，输入 Markdown 语法后会实时呈现样式</CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline">{stats.wordCount} words</Badge>
+              <Badge variant="outline">{stats.charCount} chars</Badge>
+              <Badge variant="secondary">保存: {formatSavedAt(meta.savedAt)}</Badge>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
+              <Upload />
+              导入
+            </Button>
+            <Button variant="outline" size="sm" onClick={onExport}>
+              <Download />
+              导出
+            </Button>
+            <Separator orientation="vertical" className="mx-1 h-6" />
+            {toolbar.map(action => {
+              const Icon = ICONS[action.key as keyof typeof ICONS];
+              const disabled = !editor || (action.key === 'undo' && !canUndo) || (action.key === 'redo' && !canRedo);
+
+              return (
+                <Button key={action.key} variant={action.active ? 'secondary' : 'outline'} size="sm" onClick={action.onClick} disabled={disabled}>
+                  <Icon />
+                  {action.title}
+                </Button>
+              );
+            })}
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="md-wrap">
+            <EditorContent editor={editor} />
+          </div>
+          <p className="text-muted-foreground text-xs">{note || '支持输入 #、-、>、``` 等基础语法，输入后立即生效'}</p>
+        </CardContent>
+      </Card>
+      <input ref={fileRef} type="file" accept=".md,text/markdown,text/plain" className="hidden" onChange={onImport} />
+    </main>
   );
 }
 
