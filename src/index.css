@@ -127,3 +127,65 @@
     @apply font-sans;
     }
 }
+
+@layer components {
+  .md-wrap {
+    @apply bg-background rounded-xl border;
+  }
+
+  .md-editor {
+    @apply min-h-[62vh] px-4 py-4 text-[15px] leading-7 outline-none;
+  }
+
+  .md-editor p.is-editor-empty:first-child::before {
+    @apply text-muted-foreground;
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    pointer-events: none;
+  }
+
+  .md-editor > * + * {
+    margin-top: 0.75rem;
+  }
+
+  .md-editor h1 {
+    @apply mt-4 text-3xl font-semibold tracking-tight;
+  }
+
+  .md-editor h2 {
+    @apply mt-4 text-2xl font-semibold tracking-tight;
+  }
+
+  .md-editor h3 {
+    @apply mt-3 text-xl font-semibold;
+  }
+
+  .md-editor ul {
+    @apply list-disc pl-6;
+  }
+
+  .md-editor ol {
+    @apply list-decimal pl-6;
+  }
+
+  .md-editor blockquote {
+    @apply text-muted-foreground border-l-4 pl-4 italic;
+  }
+
+  .md-editor pre {
+    @apply bg-muted overflow-x-auto rounded-lg border p-3;
+  }
+
+  .md-editor code {
+    @apply bg-muted rounded px-1 py-0.5 text-sm;
+  }
+
+  .md-editor pre code {
+    @apply bg-transparent p-0;
+  }
+
+  .md-editor a {
+    @apply text-primary underline underline-offset-4;
+  }
+}
