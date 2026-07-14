@@ -1,108 +1,40 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-use serde::Serialize;
+use document_storage::{FileInfo, StorageResult};
 use std::env;
-use std::fs::{read_to_string, write};
 use std::path::{Path, PathBuf};
 
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
+mod document_storage;
 
 /// Read a UTF-8 text file from an absolute path and return its contents.
 #[tauri::command]
-fn read_text_file(path: String) -> Result<String, String> {
-    let file_path = PathBuf::from(path);
-    read_to_string(file_path).map_err(|err| err.to_string())
+fn read_text_file(path: String) -> StorageResult<String> {
+    document_storage::read_text_file(Path::new(&path))
 }
 
-/// Write UTF-8 text content to an absolute path, creating parent directories if needed.
+/// Atomically replace a UTF-8 text file, creating parent directories if needed.
 #[tauri::command]
-fn write_text_file(path: String, content: String) -> Result<(), String> {
-    let file_path = PathBuf::from(&path);
-    if let Some(parent_dir) = file_path.parent() {
-        std::fs::create_dir_all(parent_dir).map_err(|err| err.to_string())?;
-    }
-    write(file_path, content).map_err(|err| err.to_string())
+fn write_text_file(path: String, content: String) -> StorageResult<()> {
+    document_storage::atomic_write_text_file(Path::new(&path), &content)
 }
 
-#[derive(Serialize)]
-struct FileInfo {
-    path: String,
-    name: String,
-    modified_ms: i64,
-}
-
-fn is_text_extension(path: &Path) -> bool {
-    match path
-        .extension()
-        .and_then(|s| s.to_str())
-        .map(|s| s.to_ascii_lowercase())
-    {
-        Some(ext) => matches!(ext.as_str(), "md" | "markdown" | "txt"),
-        None => false,
-    }
-}
-
-/// Delete a file at an absolute path.
+/// Create a markdown document with initial content without replacing an existing one.
 #[tauri::command]
-fn delete_file(path: String) -> Result<(), String> {
-    let file_path = PathBuf::from(path);
-    if file_path.exists() && file_path.is_file() {
-        std::fs::remove_file(file_path).map_err(|e| e.to_string())
-    } else {
-        Err("file does not exist or is not a file".to_string())
-    }
+fn create_untitled_file(dir_path: String, content: String) -> StorageResult<String> {
+    document_storage::create_untitled_file(Path::new(&dir_path), &content)
+        .map(|path| path.to_string_lossy().into_owned())
 }
 
 /// List markdown/text files in a directory (non-recursive), sorted by modified time desc.
 #[tauri::command]
-fn list_text_files(dir_path: String) -> Result<Vec<FileInfo>, String> {
-    let dir = PathBuf::from(dir_path);
-    let mut entries: Vec<FileInfo> = Vec::new();
-    let read_dir = std::fs::read_dir(&dir).map_err(|e| e.to_string())?;
-    for entry_res in read_dir {
-        let entry = entry_res.map_err(|e| e.to_string())?;
-        let path = entry.path();
-        if !path.is_file() || !is_text_extension(&path) {
-            continue;
-        }
-        let name = path
-            .file_name()
-            .and_then(|s| s.to_str())
-            .unwrap_or("")
-            .to_string();
-        let metadata = entry.metadata().map_err(|e| e.to_string())?;
-        let modified = metadata
-            .modified()
-            .unwrap_or_else(|_| std::time::SystemTime::UNIX_EPOCH);
-        let modified_ms = modified
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_millis() as i64;
-        entries.push(FileInfo {
-            path: path.to_string_lossy().to_string(),
-            name,
-            modified_ms,
-        });
-    }
-    entries.sort_by(|a, b| b.modified_ms.cmp(&a.modified_ms));
-    Ok(entries)
+fn list_text_files(dir_path: String) -> StorageResult<Vec<FileInfo>> {
+    document_storage::list_text_files(Path::new(&dir_path))
 }
 
-/// Rename a file from old_path to new_path.
+/// Rename a document within its current directory without replacing another file.
 #[tauri::command]
-fn rename_file(old_path: String, new_path: String) -> Result<(), String> {
-    let old = PathBuf::from(&old_path);
-    let new = PathBuf::from(&new_path);
-    std::fs::rename(&old, &new).map_err(|e| e.to_string())
-}
-
-/// Check if a file exists at the given path.
-#[tauri::command]
-fn file_exists(path: String) -> bool {
-    let file_path = std::path::PathBuf::from(path);
-    file_path.exists()
+fn rename_document(path: String, new_name: String) -> StorageResult<String> {
+    document_storage::rename_document(Path::new(&path), &new_name)
+        .map(|path| path.to_string_lossy().into_owned())
 }
 
 /// Return the first CLI argument that looks like a markdown/text file path.
@@ -110,7 +42,7 @@ fn file_exists(path: String) -> bool {
 fn get_startup_file() -> Option<String> {
     for arg in env::args().skip(1) {
         let path = PathBuf::from(&arg);
-        if path.is_file() && is_text_extension(&path) {
+        if path.is_file() && document_storage::is_text_extension(&path) {
             return Some(path.to_string_lossy().to_string());
         }
     }
@@ -121,16 +53,13 @@ fn get_startup_file() -> Option<String> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_store::Builder::default().build())
         .invoke_handler(tauri::generate_handler![
-            greet,
             read_text_file,
             write_text_file,
+            create_untitled_file,
             list_text_files,
-            delete_file,
-            rename_file,
-            file_exists,
+            rename_document,
             get_startup_file
         ])
         .run(tauri::generate_context!())

@@ -1,21 +1,14 @@
-export interface RecentFile {
-  id: string;
-  name: string;
-  path: string;
-  modified: Date;
-}
+import type { RecentDocument } from '@/modules/documentSession/useDocumentSession';
+
 export interface RecentFilesSidebarProps {
-    files: RecentFile[];
-    onSelectFile: (file: RecentFile) => void;
-    onClose?: () => void;
-    isOpen: boolean;
-    onRequestClose?: () => void;
-    onCloseComplete?: () => void;
-    onLoadFile?: (path: string, content: string) => void;
-    onLoadDir?: (
-      files: { id: string; name: string; path: string; modified: Date }[]
-    ) => void;
-    onNewFile?: (path: string, content: string) => void;
-    onDeleteFile?: (id: string) => void;
-    workDir?: string;
+  files: RecentDocument[];
+  onOpenDocument: (path: string) => boolean | Promise<boolean>;
+  onChooseDocument: () => boolean | Promise<boolean>;
+  onChooseDirectory: () => void | Promise<void>;
+  onCreateDocument: () => boolean | Promise<boolean>;
+  isOpen: boolean;
+  onRequestClose: () => void;
+  onCloseComplete?: () => void;
+  onRemoveRecentDocument?: (path: string) => void | Promise<void>;
+  canRemoveDocuments?: boolean;
 }

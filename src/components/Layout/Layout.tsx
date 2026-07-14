@@ -1,36 +1,38 @@
 // src/components/Layout/Layout.tsx
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { FaTimes } from 'react-icons/fa';
-import {
-  Editor,
-  Preview,
-  Toolbar,
-  Settings,
-  SettingsButton,
-  RecentFilesSidebar,
-  WindowControls,
-} from '@/components/index';
+import Editor from '@/components/Editor/Editor';
+import Preview from '@/components/Preview/Preview';
+import Toolbar from '@/components/Toolbar/Toolbar';
+import Settings from '@/components/Settings/Settings';
+import SettingsButton from '@/components/SettingsButton/SettingsButton';
+import RecentFilesSidebar from '@/components/RecentFilesSidebar/RecentFilesSidebar';
+import WindowControls from '@/components/WindowControls/WindowControls';
 import styles from './Layout.module.css';
-import { RecentFile } from '@/types/recentFiles';
 import CurrentFileName from './components/CurrentFileName';
-// import { loadRecentFiles, saveRecentFiles } from "@/utils/recentStore";
-import useFileManager from './hooks/useFileManager';
 import { loadWorkDir, saveWorkDir } from '@/utils/workDirStore';
 import SaveSuccessToast from './components/SaveSuccessToast';
 import { useI18n } from '@/locales/useI18n';
 import { loadTheme, saveTheme } from '@/utils/themeStore';
+import useDocumentSession from '@/modules/documentSession/useDocumentSession';
+import {
+  tauriDocumentStorage,
+  tauriRecentDocuments,
+} from '@/modules/documentSession/tauriDocumentSession';
+import { ask, message, open, save as saveDialog } from '@tauri-apps/plugin-dialog';
+import { getCurrentWindow } from '@tauri-apps/api/window';
+import type { MarkdownEditor } from '@/types/editor';
+import { registerWindowCloseGuard } from '@/modules/windowCloseGuard/registerWindowCloseGuard';
 
 const Layout: React.FC = () => {
   const { t } = useI18n();
-  const [markdown, setMarkdown] = useState('');
-  const [selection, setSelection] = useState({ start: 0, end: 0 });
   const [showSettings, setShowSettings] = useState(false);
   const [settingsClosing, setSettingsClosing] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('system');
   const [themeReady, setThemeReady] = useState(false);
   const [showRecentFiles, setShowRecentFiles] = useState(false);
   const [recentClosing, setRecentClosing] = useState(false);
-  // recentFiles and file operations are managed by useFileManager
+  // Document Session owns document content, persistence, and Recent Documents.
   const [scrollSyncEnabled, setScrollSyncEnabled] = useState(true);
   const [previewMode, setPreviewMode] = useState(false);
   const [editorOnly, setEditorOnly] = useState(false);
@@ -44,7 +46,6 @@ const Layout: React.FC = () => {
   });
   const [editorWidth, setEditorWidth] = useState(50);
   const [isResizing, setIsResizing] = useState(false);
-  const [currentFilePath, setCurrentFilePath] = useState<string | null>(null);
   const [workDir, setWorkDirState] = useState('');
   const [forceEditFileName, setForceEditFileName] = useState(false);
   const [showSaveToast, setShowSaveToast] = useState(false);
@@ -87,39 +88,201 @@ const Layout: React.FC = () => {
     })();
   }, [theme, themeReady]);
 
-  // 持久化个人工作文件夹
+  const showDocumentError = useCallback(
+    async (error: unknown, fallbackKey: Parameters<typeof t>[0]) => {
+      console.error('Document operation failed:', error);
+      await message(t(fallbackKey), { title: t('dialog.error') });
+    },
+    [t],
+  );
+
   const setWorkDir = (dir: string) => {
     setWorkDirState(dir);
-    saveWorkDir(dir);
+    void saveWorkDir(dir).catch((error) => {
+      void showDocumentError(error, 'dialog.settingsSaveFailed');
+    });
   };
 
-  // 启动时加载最近文件并自动打开最新的一个
-  const {
-    recentFiles,
-    setRecentFiles,
-    handleSelectFile,
-    handleLoadFile,
-    handleDeleteRecentFile,
-    handleSave,
-    handleSaveAs,
-    handleOpenFolder,
-  } = useFileManager({
-    markdown,
-    setMarkdown,
-    currentFilePath,
-    setCurrentFilePath,
-    setShowRecentFiles,
-    setForceEditFileName,
-    onSaveSuccess: () => {
-      setShowSaveToast(true);
-      setTimeout(() => setShowSaveToast(false), 1500);
-    },
-  });
+  const confirmDiscard = useCallback(
+    () =>
+      ask(t('dialog.unsavedChanges'), {
+        title: t('dialog.unsavedTitle'),
+        kind: 'warning',
+      }),
+    [t],
+  );
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const editorRef = useRef<any>(null);
+  const reportRecentDocumentsError = useCallback(
+    (error: unknown) => {
+      void showDocumentError(error, 'dialog.recentSaveFailed');
+    },
+    [showDocumentError],
+  );
+
+  const reportInitializationError = useCallback(
+    (error: unknown) => {
+      void showDocumentError(error, 'dialog.startupFileMissing');
+    },
+    [showDocumentError],
+  );
+
+  const documentSession = useDocumentSession({
+    storage: tauriDocumentStorage,
+    recentDocuments: tauriRecentDocuments,
+    confirmDiscard,
+    onRecentDocumentsError: reportRecentDocumentsError,
+    onInitializationError: reportInitializationError,
+  });
+  const {
+    ready: documentSessionReady,
+    content: markdown,
+    setContent: setMarkdown,
+    currentDocumentPath: currentFilePath,
+    isDirty,
+    recentDocuments,
+    directoryDocuments,
+  } = documentSession;
+
+  const showSaveSuccess = () => {
+    setShowSaveToast(true);
+    window.setTimeout(() => setShowSaveToast(false), 1500);
+  };
+
+  const handleSave = async () => {
+    if (!documentSessionReady) return;
+    try {
+      let saved: boolean;
+      if (currentFilePath) {
+        saved = await documentSession.saveDocument();
+      } else {
+        const selected = await saveDialog({
+          filters: [
+            { name: t('dialog.markdown'), extensions: ['md', 'markdown', 'txt'] },
+            { name: t('dialog.allFiles'), extensions: ['*'] },
+          ],
+          defaultPath: 'note.md',
+        });
+        if (!selected) return;
+        saved = await documentSession.saveDocumentAs(selected);
+      }
+      if (saved) showSaveSuccess();
+    } catch (error) {
+      await showDocumentError(error, 'dialog.saveFailed');
+    }
+  };
+
+  const handleSaveAs = async () => {
+    if (!documentSessionReady) return;
+    try {
+      const selected = await saveDialog({
+        filters: [
+          { name: t('dialog.markdown'), extensions: ['md', 'markdown', 'txt'] },
+          { name: t('dialog.allFiles'), extensions: ['*'] },
+        ],
+        defaultPath: currentFilePath?.split(/[/\\]/).pop() || 'note.md',
+      });
+      if (!selected) return;
+      const saved = await documentSession.saveDocumentAs(selected);
+      if (saved) showSaveSuccess();
+    } catch (error) {
+      await showDocumentError(error, 'dialog.saveFailed');
+    }
+  };
+
+  const handleOpenDocument = async (path: string) => {
+    if (!documentSessionReady) return false;
+    try {
+      return await documentSession.openDocument(path);
+    } catch (error) {
+      await showDocumentError(error, 'dialog.fileMissing');
+      return false;
+    }
+  };
+
+  const handleCreateDocument = async (directory: string) => {
+    if (!documentSessionReady) return false;
+    try {
+      const created = await documentSession.createDocument(directory, t('recent.newFileContent'));
+      if (created) setForceEditFileName(true);
+      return created;
+    } catch (error) {
+      await showDocumentError(error, 'dialog.createFailed');
+      return false;
+    }
+  };
+
+  const handleOpenDirectory = async (directory: string) => {
+    if (!documentSessionReady) return;
+    try {
+      await documentSession.loadDirectory(directory);
+    } catch (error) {
+      await showDocumentError(error, 'dialog.openFolderFailed');
+    }
+  };
+
+  const chooseDocument = async () => {
+    if (!documentSessionReady) return false;
+    try {
+      const selected = await open({
+        multiple: false,
+        directory: false,
+        filters: [
+          { name: t('dialog.markdown'), extensions: ['md', 'markdown', 'txt'] },
+          { name: t('dialog.allFiles'), extensions: ['*'] },
+        ],
+      });
+      if (!selected || Array.isArray(selected)) return false;
+      return await handleOpenDocument(selected);
+    } catch (error) {
+      await showDocumentError(error, 'dialog.fileMissing');
+      return false;
+    }
+  };
+
+  const chooseDirectory = async () => {
+    if (!documentSessionReady) return;
+    try {
+      const selected = await open({ multiple: false, directory: true });
+      if (!selected || Array.isArray(selected)) return;
+      await handleOpenDirectory(selected);
+    } catch (error) {
+      await showDocumentError(error, 'dialog.openFolderFailed');
+    }
+  };
+
+  const createDocument = async () => {
+    if (!documentSessionReady) return false;
+    try {
+      let directory = workDir;
+      if (!directory) {
+        const selected = await open({ multiple: false, directory: true });
+        if (!selected || Array.isArray(selected)) return false;
+        directory = selected;
+      }
+      return await handleCreateDocument(directory);
+    } catch (error) {
+      await showDocumentError(error, 'dialog.createFailed');
+      return false;
+    }
+  };
+
+  const handleOpenFolder = () => {
+    if (!documentSessionReady) return;
+    documentSession.clearDirectoryDocuments();
+    setShowRecentFiles(true);
+    setRecentClosing(false);
+  };
+
+  const editorRef = useRef<MarkdownEditor>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const canCloseRef = useRef(documentSession.canClose);
+  canCloseRef.current = documentSession.canClose;
+
+  useEffect(() => {
+    const appWindow = getCurrentWindow();
+    return registerWindowCloseGuard(appWindow, () => canCloseRef.current());
+  }, []);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -171,18 +334,8 @@ const Layout: React.FC = () => {
     let previewHandler: ((e: Event) => void) | null = null;
     let attachedPreviewEl: HTMLDivElement | null = null;
 
-    type EditorLike = {
-      getScrollTop: () => number;
-      getScrollHeight: () => number;
-      getLayoutInfo: () => { height: number };
-      setScrollTop: (v: number) => void;
-      onDidScrollChange: (cb: (e: { scrollTopChanged?: boolean }) => void) => {
-        dispose: () => void;
-      };
-    };
-
     const tryAttach = () => {
-      const editorInstance = editorRef.current as EditorLike | null;
+      const editorInstance = editorRef.current;
       const previewElement = previewRef.current;
 
       if (!editorInstance || !previewElement || !scrollSyncEnabled) return false;
@@ -228,8 +381,7 @@ const Layout: React.FC = () => {
       };
 
       // Attach editor scroll listener
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      disposable = editorInstance.onDidScrollChange((e: any) => {
+      disposable = editorInstance.onDidScrollChange((e) => {
         if (e.scrollTopChanged) {
           handleEditorScroll();
         }
@@ -300,10 +452,6 @@ const Layout: React.FC = () => {
     };
   }, [isResizing]);
 
-  const handleCloseSidebar = () => {
-    setShowRecentFiles(false);
-  };
-
   const toggleScrollSync = () => {
     setScrollSyncEnabled(!scrollSyncEnabled);
   };
@@ -346,14 +494,11 @@ const Layout: React.FC = () => {
     <div className={styles.container}>
       <div style={{ position: 'relative' }} data-tauri-drag-region="true">
         <Toolbar
-          value={markdown}
-          setValue={setMarkdown}
-          selectionStart={selection.start}
-          selectionEnd={selection.end}
           onOpenFolder={handleOpenFolder}
           onSave={handleSave}
           onSaveAs={handleSaveAs}
           editorRef={editorRef}
+          disabled={!documentSessionReady}
           className="toolbar"
         />
         <div className={styles.topRightControls}>
@@ -368,59 +513,25 @@ const Layout: React.FC = () => {
         </div>
       </div>
       <RecentFilesSidebar
-        files={recentFiles}
-        onSelectFile={(f) => {
-          handleSelectFile(f);
-          setRecentClosing(true);
-        }}
-        onClose={handleCloseSidebar}
+        files={directoryDocuments ?? recentDocuments}
+        canRemoveDocuments={directoryDocuments === null}
+        onOpenDocument={handleOpenDocument}
+        onChooseDocument={chooseDocument}
+        onChooseDirectory={chooseDirectory}
+        onCreateDocument={createDocument}
         isOpen={showRecentFiles && !recentClosing}
         onRequestClose={() => setRecentClosing(true)}
         onCloseComplete={() => {
           setShowRecentFiles(false);
           setRecentClosing(false);
         }}
-        onLoadFile={handleLoadFile}
-        onLoadDir={(files) => {
-          setRecentFiles((prev) => {
-            const seen = new Set<string>();
-            const merged: RecentFile[] = [];
-
-            files.forEach((file) => {
-              const key = file.path || file.id;
-              if (seen.has(key)) return;
-              seen.add(key);
-              merged.push(file);
-            });
-
-            prev.forEach((file) => {
-              const key = file.path || file.id;
-              if (seen.has(key)) return;
-              seen.add(key);
-              merged.push(file);
-            });
-
-            return merged.slice(0, 50);
-          });
+        onRemoveRecentDocument={async (path) => {
+          try {
+            await documentSession.removeRecentDocument(path);
+          } catch (error) {
+            await showDocumentError(error, 'dialog.recentSaveFailed');
+          }
         }}
-        onNewFile={(path, content) => {
-          setMarkdown(content);
-          setCurrentFilePath(path);
-          const name = path.split(/[/\\]/).pop() || path;
-          const item: RecentFile = {
-            id: path,
-            name,
-            path,
-            modified: new Date(),
-          };
-          setRecentFiles((prev) => {
-            const withoutDup = prev.filter((f) => f.path !== path && f.id !== path);
-            return [item, ...withoutDup].slice(0, 50);
-          });
-          setForceEditFileName(true); // 新建后强制编辑
-        }}
-        onDeleteFile={handleDeleteRecentFile}
-        workDir={workDir}
       />
       <div
         ref={containerRef}
@@ -433,7 +544,7 @@ const Layout: React.FC = () => {
               ref={editorRef}
               value={markdown}
               onChange={setMarkdown}
-              onSelectionChange={(start, end) => setSelection({ start, end })}
+              readOnly={!documentSessionReady}
               className={styles.editor}
               theme={theme}
               minimapEnabled={minimapEnabled}
@@ -458,7 +569,7 @@ const Layout: React.FC = () => {
                     ref={editorRef}
                     value={markdown}
                     onChange={setMarkdown}
-                    onSelectionChange={(start, end) => setSelection({ start, end })}
+                    readOnly={!documentSessionReady}
                     className={styles.editor}
                     theme={theme}
                     minimapEnabled={minimapEnabled}
@@ -481,7 +592,6 @@ const Layout: React.FC = () => {
                 filePath={currentFilePath}
                 scrollSyncEnabled={scrollSyncEnabled}
                 onScrollSyncToggle={toggleScrollSync}
-                previewMode={previewMode}
                 onExitPreviewMode={exitPreviewMode}
                 onEnterPreviewMode={enterPreviewMode}
                 onEnterEditorMode={enterEditorOnly}
@@ -494,9 +604,8 @@ const Layout: React.FC = () => {
       {currentFilePath && (
         <CurrentFileName
           filePath={currentFilePath}
-          recentFiles={recentFiles}
-          setRecentFiles={setRecentFiles}
-          setCurrentFilePath={setCurrentFilePath}
+          onRename={documentSession.renameDocument}
+          isDirty={isDirty}
           forceEdit={forceEditFileName}
           setForceEdit={setForceEditFileName}
         />

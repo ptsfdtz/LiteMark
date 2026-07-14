@@ -88,5 +88,3 @@ export function useMathPreprocess() {
 
   return { preprocessMathChinese };
 }
-
-export default useMathPreprocess;

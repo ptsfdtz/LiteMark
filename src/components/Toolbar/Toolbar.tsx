@@ -14,7 +14,7 @@ import {
   applyOrderedList,
   applyTable,
   applyImage,
-} from './toolbarUtils';
+} from '@/modules/markdownEditing/markdownTransforms';
 
 import {
   FaBold,
@@ -33,83 +33,25 @@ import {
   FaCopy,
 } from 'react-icons/fa';
 import { useI18n } from '@/locales/useI18n';
+import { applyMarkdownTransform } from '@/modules/markdownEditing/applyMarkdownTransform';
 
 const Toolbar: React.FC<ToolbarProps> = ({
-  value,
-  setValue,
-  selectionStart,
-  selectionEnd,
   onOpenFolder,
   onSave,
   onSaveAs,
   className,
   editorRef,
+  disabled,
 }) => {
   const { t } = useI18n();
   const tableTemplate = t('toolbar.tableTemplate');
   const noDrag = { 'data-tauri-drag-region': 'false' } as const;
 
   const applyWithUndo = (transform: (text: string, start: number, end: number) => string) => {
-    const editor = editorRef?.current;
-
-    // Handle Monaco Editor
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if (editor && (editor as any).getModel) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const model = (editor as any).getModel();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const selection = (editor as any).getSelection();
-      if (model && selection) {
-        const startOffset = model.getOffsetAt(selection.getStartPosition());
-        const endOffset = model.getOffsetAt(selection.getEndPosition());
-        const text = model.getValue();
-
-        const newText = transform(text, startOffset, endOffset);
-
-        // Use executeEdits to preserve undo stack
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (editor as any).executeEdits('toolbar', [
-          {
-            range: model.getFullModelRange(),
-            text: newText,
-            forceMoveMarkers: true,
-          },
-        ]);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (editor as any).focus();
-        return;
-      }
+    const editor = editorRef.current;
+    if (!disabled && editor && applyMarkdownTransform(editor, transform, 'toolbar')) {
+      editor.focus();
     }
-
-    // Handle HTMLTextAreaElement (fallback)
-    const el = editorRef && (editorRef.current as HTMLTextAreaElement | HTMLInputElement);
-    if (el && el.setSelectionRange) {
-      el.focus();
-      const s = el.selectionStart ?? 0;
-      const e = el.selectionEnd ?? 0;
-      const originalValue = el.value;
-      const newValue = transform(originalValue, s, e);
-      const replacement = newValue.slice(s, newValue.length - (originalValue.length - e));
-      let success = false;
-      try {
-        el.setSelectionRange(s, e);
-        success = document.execCommand('insertText', false, replacement);
-      } catch (err) {
-        console.error('execCommand failed', err);
-      }
-
-      if (!success) {
-        if (typeof el.setRangeText === 'function') {
-          el.setRangeText(replacement, s, e, 'end');
-          el.dispatchEvent(new Event('input', { bubbles: true }));
-          setValue(el.value);
-        } else {
-          setValue(newValue);
-        }
-      }
-      return;
-    }
-    setValue(transform(value, selectionStart, selectionEnd));
   };
   return (
     <div className={`${styles.toolbar} ${className}`} data-tauri-drag-region="true">
@@ -119,6 +61,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
           title={t('toolbar.recentFiles')}
           aria-label={t('toolbar.recentFiles')}
           className="folderButton"
+          disabled={disabled}
           {...noDrag}
         >
           <FaFolderOpen />
@@ -129,6 +72,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
           onClick={onSave}
           title={t('toolbar.save')}
           aria-label={t('toolbar.save')}
+          disabled={disabled}
           {...noDrag}
         >
           <FaSave />
@@ -139,6 +83,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
           onClick={onSaveAs}
           title={t('toolbar.saveAs')}
           aria-label={t('toolbar.saveAs')}
+          disabled={disabled}
           {...noDrag}
         >
           <FaCopy />
@@ -148,6 +93,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
         onClick={() => applyWithUndo((t, s, e) => applyBold(t, s, e))}
         title={t('toolbar.bold')}
         aria-label={t('toolbar.bold')}
+        disabled={disabled}
         {...noDrag}
       >
         <FaBold />
@@ -156,6 +102,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
         onClick={() => applyWithUndo((t, s, e) => applyItalic(t, s, e))}
         title={t('toolbar.italic')}
         aria-label={t('toolbar.italic')}
+        disabled={disabled}
         {...noDrag}
       >
         <FaItalic />
@@ -164,6 +111,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
         onClick={() => applyWithUndo((t, s, e) => applyStrikethrough(t, s, e))}
         title={t('toolbar.strikethrough')}
         aria-label={t('toolbar.strikethrough')}
+        disabled={disabled}
         {...noDrag}
       >
         <FaStrikethrough />
@@ -172,6 +120,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
         onClick={() => applyWithUndo((t, s, e) => applyCode(t, s, e))}
         title={t('toolbar.code')}
         aria-label={t('toolbar.code')}
+        disabled={disabled}
         {...noDrag}
       >
         <FaCode />
@@ -180,6 +129,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
         onClick={() => applyWithUndo((t, s, e) => applyLink(t, s, e))}
         title={t('toolbar.link')}
         aria-label={t('toolbar.link')}
+        disabled={disabled}
         {...noDrag}
       >
         <FaLink />
@@ -188,6 +138,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
         onClick={() => applyWithUndo((t, s, e) => applyHeading(t, s, e))}
         title={t('toolbar.heading')}
         aria-label={t('toolbar.heading')}
+        disabled={disabled}
         {...noDrag}
       >
         <FaHeading />
@@ -196,6 +147,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
         onClick={() => applyWithUndo((t, s, e) => applyQuote(t, s, e))}
         title={t('toolbar.quote')}
         aria-label={t('toolbar.quote')}
+        disabled={disabled}
         {...noDrag}
       >
         <FaQuoteRight />
@@ -204,6 +156,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
         onClick={() => applyWithUndo((t, s, e) => applyUnorderedList(t, s, e))}
         title={t('toolbar.unorderedList')}
         aria-label={t('toolbar.unorderedList')}
+        disabled={disabled}
         {...noDrag}
       >
         <FaListUl />
@@ -212,6 +165,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
         onClick={() => applyWithUndo((t, s, e) => applyOrderedList(t, s, e))}
         title={t('toolbar.orderedList')}
         aria-label={t('toolbar.orderedList')}
+        disabled={disabled}
         {...noDrag}
       >
         <FaListOl />
@@ -220,6 +174,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
         onClick={() => applyWithUndo((t, s) => applyTable(t, s, tableTemplate))}
         title={t('toolbar.table')}
         aria-label={t('toolbar.table')}
+        disabled={disabled}
         {...noDrag}
       >
         <FaTable />
@@ -228,6 +183,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
         onClick={() => applyWithUndo((t, s, e) => applyImage(t, s, e))}
         title={t('toolbar.image')}
         aria-label={t('toolbar.image')}
+        disabled={disabled}
         {...noDrag}
       >
         <FaImage />

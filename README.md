@@ -23,7 +23,7 @@ LiteMark supports both **light** and **dark** themes.
 * ⚡ **Lightweight & Fast** — Tauri-based, minimal memory usage
 * 🧘 **Minimal UI** — distraction-free writing
 * 🪶 **Live Preview** — instant Markdown rendering
-* 💾 **Auto Save** — never lose your drafts
+* 💾 **Safe Saves** — atomic writes and unsaved-change protection
 * 🌙 **Dark / Light Mode** — follows system theme
 * 🧩 **Cross-platform** — Windows, macOS, Linux
 

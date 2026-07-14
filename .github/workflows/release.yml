@@ -2,14 +2,19 @@ name: 'publish'
 
 on:
   push:
-    branches:
-      - release
     tags:
       - 'v*'
   workflow_dispatch:
 
 jobs:
+  validate:
+    name: Validate release
+    permissions:
+      contents: read
+    uses: ./.github/workflows/ci.yml
+
   publish-tauri:
+    needs: validate
     permissions:
       contents: write
     strategy:
@@ -20,26 +25,30 @@ jobs:
             args: '--target aarch64-apple-darwin'
           - platform: 'macos-latest'
             args: '--target x86_64-apple-darwin'
-          - platform: "ubuntu-22.04"
-            args: ""
+          - platform: 'ubuntu-22.04'
+            args: ''
           - platform: 'windows-latest'
             args: ''
 
     runs-on: ${{ matrix.platform }}
     steps:
-      - uses: actions/checkout@v4
-
-      - name: setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          node-version: lts/*
+          persist-credentials: false
 
       - name: install pnpm
-        run: npm install -g pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
 
-      - name: install Rust stable
-        uses: dtolnay/rust-toolchain@stable
+      - name: setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
+          node-version: 22
+          cache: pnpm
+
+      - name: install Rust
+        uses: dtolnay/rust-toolchain@fa04a1451ff1842e2626ccb99004d0195b455a88 # master, 2026-07-14
+        with:
+          toolchain: 1.96.0
           targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
       - name: install Linux dependencies (Ubuntu only)
@@ -49,16 +58,13 @@ jobs:
           sudo apt-get install -y libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
       - name: install frontend dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
-      - name: build frontend
-        run: pnpm build
-
-      - uses: tauri-apps/tauri-action@v0
+      - uses: tauri-apps/tauri-action@fce9c6108b31ea247710505d3aaaa893ee6768d4 # v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: app-v__VERSION__
+          tagName: v__VERSION__
           releaseName: 'App v__VERSION__'
           releaseBody: 'See the assets to download this version and install.'
           releaseDraft: true

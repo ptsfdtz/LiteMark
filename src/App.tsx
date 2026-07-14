@@ -1,7 +1,14 @@
 import './App.css';
 import { useEffect, useMemo, useState } from 'react';
 import Layout from './components/Layout/Layout';
-import Joyride, { Step } from 'react-joyride';
+import {
+  Joyride,
+  STATUS,
+  type EventData,
+  type Options,
+  type Step,
+  type Styles,
+} from 'react-joyride';
 import { useI18n } from './locales/useI18n';
 
 function getCssVar(name: string, fallback: string) {
@@ -26,7 +33,7 @@ function App() {
         placement: 'bottom',
       },
       {
-        target: '.' + 'editor', // 编辑器
+        target: '[data-tour="editor"]', // 编辑器
         content: t('tour.editor'),
         placement: 'right',
       },
@@ -54,24 +61,25 @@ function App() {
     if (!seen) setRun(true);
   }, []);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleJoyrideCallback = (data: any) => {
-    if (data.status === 'finished' || data.status === 'skipped') {
+  const handleJoyrideEvent = (data: EventData) => {
+    if (data.status === STATUS.FINISHED || data.status === STATUS.SKIPPED) {
       localStorage.setItem('joyride_seen', '1');
       setRun(false);
     }
   };
 
-  const joyrideStyles = {
-    options: {
-      zIndex: 10000,
-      primaryColor: getCssVar('--text-color', '#414141'),
-      backgroundColor: getCssVar('--background-color', '#fff'),
-      textColor: getCssVar('--text-color', '#222'),
-      arrowColor: getCssVar('--background-color', '#fff'),
-      overlayColor: 'rgba(0,0,0,0.3)',
-    },
-    buttonNext: {
+  const joyrideOptions: Partial<Options> = {
+    zIndex: 10000,
+    primaryColor: getCssVar('--text-color', '#414141'),
+    backgroundColor: getCssVar('--background-color', '#fff'),
+    textColor: getCssVar('--text-color', '#222'),
+    arrowColor: getCssVar('--background-color', '#fff'),
+    overlayColor: 'rgba(0,0,0,0.3)',
+    showProgress: true,
+    buttons: ['back', 'primary', 'skip'],
+  };
+  const joyrideStyles: Partial<Styles> = {
+    buttonPrimary: {
       backgroundColor: getCssVar('--blockquote-text', '#414141'),
       color: '#fff',
       borderRadius: 4,
@@ -86,8 +94,7 @@ function App() {
         steps={steps}
         run={run}
         continuous
-        showSkipButton
-        showProgress
+        options={joyrideOptions}
         locale={{
           back: t('tour.back'),
           close: t('tour.close'),
@@ -96,30 +103,8 @@ function App() {
           skip: t('tour.skip'),
         }}
         styles={joyrideStyles}
-        callback={handleJoyrideCallback}
+        onEvent={handleJoyrideEvent}
       />
-      {/* <button
-        style={{
-          position: "fixed",
-          bottom: 16,
-          right: 16,
-          zIndex: 11000,
-          background: getCssVar("--primary-color", "#409EFF"),
-          color: "#fff",
-          border: "none",
-          borderRadius: 6,
-          padding: "8px 18px",
-          fontSize: 14,
-          cursor: "pointer",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-        }}
-        onClick={() => {
-          localStorage.removeItem("joyride_seen");
-          setRun(true);
-        }}
-      >
-        测试引导
-      </button> */}
       <Layout />
     </>
   );

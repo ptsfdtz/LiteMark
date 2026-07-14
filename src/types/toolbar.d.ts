@@ -1,11 +1,11 @@
+import type { RefObject } from 'react';
+import type { MarkdownEditor } from '@/types/editor';
+
 export interface ToolbarProps {
-value: string;
-  setValue: (newValue: string) => void;
-  selectionStart: number;
-  selectionEnd: number;
   onOpenFolder?: () => void;
   onSave?: () => void;
   onSaveAs?: () => void;
   className?: string;
-  editorRef?: React.RefObject<HTMLTextAreaElement | null>;
+  editorRef: RefObject<MarkdownEditor | null>;
+  disabled?: boolean;
 }

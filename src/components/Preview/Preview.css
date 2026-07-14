@@ -189,8 +189,12 @@
 }
 
 .previewModeButton {
-  &.enter {
+  &.previewOnly {
     bottom: 60px;
+  }
+
+  &.editorOnly {
+    bottom: 100px;
   }
 
   &.exit {

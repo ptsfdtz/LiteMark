@@ -1,24 +1,21 @@
-// src/components/Layout/hooks/CurrentFileName.tsx
+// src/components/Layout/components/CurrentFileName.tsx
 import React from 'react';
 import styles from '@/components/Layout/Layout.module.css';
-import { RecentFile } from '@/types/recentFiles';
-import { invoke } from '@tauri-apps/api/core';
 import { message } from '@tauri-apps/plugin-dialog';
 import { useI18n } from '@/locales/useI18n';
 
 interface CurrentFileNameProps {
   filePath: string;
-  recentFiles: RecentFile[];
-  setRecentFiles: React.Dispatch<React.SetStateAction<RecentFile[]>>;
-  setCurrentFilePath: (p: string) => void;
+  onRename: (newName: string) => Promise<boolean>;
+  isDirty?: boolean;
   forceEdit?: boolean;
   setForceEdit?: (v: boolean) => void;
 }
 
 const CurrentFileName: React.FC<CurrentFileNameProps> = ({
   filePath,
-  setRecentFiles,
-  setCurrentFilePath,
+  onRename,
+  isDirty,
   forceEdit,
   setForceEdit,
 }) => {
@@ -56,31 +53,25 @@ const CurrentFileName: React.FC<CurrentFileNameProps> = ({
     if (!/\.[a-zA-Z0-9]+$/.test(newName)) {
       newName += '.md';
     }
-    const dir = filePath.replace(/[/\\\\][^/\\\\]+$/, '');
-    const newPath =
-      dir +
-      (dir.endsWith('/') || dir.endsWith('\\\\') ? '' : dir.includes('\\\\') ? '\\\\' : '/') +
-      newName;
     try {
-      const exists = await invoke('file_exists', { path: newPath });
-      if (exists) {
-        await message(t('dialog.renameExists'), {
-          title: t('dialog.renameFailed'),
-        });
+      const renamed = await onRename(newName);
+      if (!renamed) {
         setEditing(true);
         inputRef.current?.focus();
         inputRef.current?.select();
         return;
       }
-      await invoke('rename_file', { oldPath: filePath, newPath });
-      setCurrentFilePath(newPath);
-      setRecentFiles((prev) =>
-        prev.map((f) =>
-          f.path === filePath ? { ...f, id: newPath, name: newName, path: newPath } : f,
-        ),
-      );
     } catch (err) {
       console.error('重命名失败:', err);
+      const category = (err as { category?: string } | null)?.category;
+      await message(
+        category === 'already_exists' ? t('dialog.renameExists') : t('dialog.renameFailed'),
+        { title: t('dialog.renameFailed') },
+      );
+      setEditing(true);
+      inputRef.current?.focus();
+      inputRef.current?.select();
+      return;
     }
     setEditing(false);
   };
@@ -95,18 +86,22 @@ const CurrentFileName: React.FC<CurrentFileNameProps> = ({
       onBlur={handleRename}
       onKeyDown={(e) => {
         if (e.key === 'Enter') handleRename();
-        if (e.key === 'Escape') setEditing(false);
+        if (e.key === 'Escape') {
+          setValue(filePath.split(/[/\\]/).pop() || '');
+          setEditing(false);
+        }
       }}
       style={{ minWidth: 60, maxWidth: 300 }}
     />
   ) : (
     <div
       className={styles.currentFileName}
-      title={t('file.renameHint')}
+      title={isDirty ? t('file.unsaved') : t('file.renameHint')}
       style={{ cursor: 'pointer', userSelect: 'text' }}
       onDoubleClick={() => setEditing(true)}
     >
       {filePath.split(/[/\\\\]/).pop()}
+      {isDirty ? ' *' : ''}
     </div>
   );
 };

@@ -1,21 +1,39 @@
 // src/components/Preview/Preview.tsx
-import React, { useEffect } from 'react';
+import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import remarkEmoji from 'remark-emoji';
 import rehypeHighlight from 'rehype-highlight';
 import rehypeRaw from 'rehype-raw';
+import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import rehypeKatex from 'rehype-katex';
 import './Preview.css';
-import hljs from 'highlight.js';
 import 'highlight.js/styles/github.css';
 import 'katex/dist/katex.min.css';
 import { useMathPreprocess } from './hooks/useMathPreprocess';
-import { FaLink, FaUnlink, FaEdit, FaTimes } from 'react-icons/fa';
+import { FaLink, FaUnlink, FaEdit, FaExpand, FaTimes } from 'react-icons/fa';
 import { PreviewProps } from '@/types/preview';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { useI18n } from '@/locales/useI18n';
+
+const previewSanitizeSchema = {
+  ...defaultSchema,
+  attributes: {
+    ...defaultSchema.attributes,
+    code: [
+      ...(defaultSchema.attributes?.code || []),
+      ['className', /^lang-./, 'no-highlight', 'nohighlight'],
+    ],
+    div: [...(defaultSchema.attributes?.div || []), ['className', 'math', 'math-display']],
+    i: [
+      ...(defaultSchema.attributes?.i || []),
+      ['className', 'fa', /^fa-[\w-]+$/, 'editormd-logo', /^editormd-logo-[2-5]x$/],
+      ['ariaHidden', 'true'],
+    ],
+    span: [...(defaultSchema.attributes?.span || []), ['className', 'math', 'math-inline']],
+  },
+};
 
 const processSpecialEmojis = (content: string): string => {
   return content
@@ -74,8 +92,8 @@ const Preview = React.forwardRef<HTMLDivElement, PreviewProps>(
       filePath,
       scrollSyncEnabled = true,
       onScrollSyncToggle,
-      // previewMode = false,
       onExitPreviewMode,
+      onEnterPreviewMode,
       onEnterEditorMode,
       isPreviewOnly,
     },
@@ -84,33 +102,22 @@ const Preview = React.forwardRef<HTMLDivElement, PreviewProps>(
     const { t } = useI18n();
     const { preprocessMathChinese } = useMathPreprocess();
     const processedContent = preprocessMathChinese(processSpecialEmojis(content));
-    useEffect(() => {
-      (window as unknown as typeof globalThis & { hljs: typeof hljs }).hljs = hljs;
-      const highlightCode = () => {
-        document.querySelectorAll('pre code:not([data-highlighted])').forEach((block) => {
-          try {
-            hljs.highlightElement(block as HTMLElement);
-          } catch (e) {
-            console.warn('Highlight error:', e);
-          }
-        });
-      };
-      highlightCode();
-      const timers = [
-        setTimeout(highlightCode, 10),
-        setTimeout(highlightCode, 100),
-        setTimeout(highlightCode, 500),
-      ];
-      return () => {
-        timers.forEach((timer) => clearTimeout(timer));
-      };
-    }, [content]);
 
     return (
       <div ref={ref} className="preview-container">
+        {!isPreviewOnly && onEnterPreviewMode && (
+          <button
+            className="previewModeButton previewOnly"
+            onClick={onEnterPreviewMode}
+            title={t('preview.enterPreviewMode')}
+            aria-label={t('preview.enterPreviewMode')}
+          >
+            <FaExpand />
+          </button>
+        )}
         {!isPreviewOnly && onEnterEditorMode && (
           <button
-            className="previewModeButton enter"
+            className="previewModeButton editorOnly"
             onClick={onEnterEditorMode}
             title={t('preview.enterEditMode')}
             aria-label={t('preview.enterEditMode')}
@@ -130,16 +137,25 @@ const Preview = React.forwardRef<HTMLDivElement, PreviewProps>(
         )}
         <ReactMarkdown
           remarkPlugins={[remarkGfm, remarkMath, remarkEmoji]}
-          rehypePlugins={[rehypeHighlight, rehypeRaw, rehypeKatex]}
+          rehypePlugins={[
+            rehypeRaw,
+            [rehypeSanitize, previewSanitizeSchema],
+            rehypeKatex,
+            rehypeHighlight,
+          ]}
           components={{
-            img: ({ ...props }) => (
-              <img
-                {...props}
-                src={resolveImageSrc(props.src, filePath)}
-                style={{ maxWidth: '100%', height: 'auto' }}
-                alt={props.alt || t('preview.imageAlt')}
-              />
-            ),
+            img: (componentProps) => {
+              const props = { ...componentProps };
+              delete props.node;
+              return (
+                <img
+                  {...props}
+                  src={resolveImageSrc(props.src, filePath)}
+                  style={{ maxWidth: '100%', height: 'auto' }}
+                  alt={props.alt || t('preview.imageAlt')}
+                />
+              );
+            },
           }}
         >
           {processedContent}
