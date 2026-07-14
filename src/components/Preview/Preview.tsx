@@ -1,6 +1,6 @@
 // src/components/Preview/Preview.tsx
 import React from 'react';
-import ReactMarkdown from 'react-markdown';
+import ReactMarkdown, { type Components, type ExtraProps } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import remarkEmoji from 'remark-emoji';
@@ -33,6 +33,31 @@ const previewSanitizeSchema = {
     ],
     span: [...(defaultSchema.attributes?.span || []), ['className', 'math', 'math-inline']],
   },
+};
+
+const getSourceLine = (node: ExtraProps['node']) => node?.position?.start.line;
+
+const sourceLineComponents: Components = {
+  h1: ({ node, ...props }) => <h1 {...props} data-source-line={getSourceLine(node)} />,
+  h2: ({ node, ...props }) => <h2 {...props} data-source-line={getSourceLine(node)} />,
+  h3: ({ node, ...props }) => <h3 {...props} data-source-line={getSourceLine(node)} />,
+  h4: ({ node, ...props }) => <h4 {...props} data-source-line={getSourceLine(node)} />,
+  h5: ({ node, ...props }) => <h5 {...props} data-source-line={getSourceLine(node)} />,
+  h6: ({ node, ...props }) => <h6 {...props} data-source-line={getSourceLine(node)} />,
+  p: ({ node, ...props }) => <p {...props} data-source-line={getSourceLine(node)} />,
+  blockquote: ({ node, ...props }) => (
+    <blockquote {...props} data-source-line={getSourceLine(node)} />
+  ),
+  ul: ({ node, ...props }) => <ul {...props} data-source-line={getSourceLine(node)} />,
+  ol: ({ node, ...props }) => <ol {...props} data-source-line={getSourceLine(node)} />,
+  li: ({ node, ...props }) => <li {...props} data-source-line={getSourceLine(node)} />,
+  pre: ({ node, ...props }) => <pre {...props} data-source-line={getSourceLine(node)} />,
+  table: ({ node, ...props }) => <table {...props} data-source-line={getSourceLine(node)} />,
+  thead: ({ node, ...props }) => <thead {...props} data-source-line={getSourceLine(node)} />,
+  tbody: ({ node, ...props }) => <tbody {...props} data-source-line={getSourceLine(node)} />,
+  tr: ({ node, ...props }) => <tr {...props} data-source-line={getSourceLine(node)} />,
+  hr: ({ node, ...props }) => <hr {...props} data-source-line={getSourceLine(node)} />,
+  div: ({ node, ...props }) => <div {...props} data-source-line={getSourceLine(node)} />,
 };
 
 const processSpecialEmojis = (content: string): string => {
@@ -135,31 +160,36 @@ const Preview = React.forwardRef<HTMLDivElement, PreviewProps>(
             <FaTimes />
           </button>
         )}
-        <ReactMarkdown
-          remarkPlugins={[remarkGfm, remarkMath, remarkEmoji]}
-          rehypePlugins={[
-            rehypeRaw,
-            [rehypeSanitize, previewSanitizeSchema],
-            rehypeKatex,
-            rehypeHighlight,
-          ]}
-          components={{
-            img: (componentProps) => {
-              const props = { ...componentProps };
-              delete props.node;
-              return (
-                <img
-                  {...props}
-                  src={resolveImageSrc(props.src, filePath)}
-                  style={{ maxWidth: '100%', height: 'auto' }}
-                  alt={props.alt || t('preview.imageAlt')}
-                />
-              );
-            },
-          }}
-        >
-          {processedContent}
-        </ReactMarkdown>
+        <div className="preview-content" data-preview-content>
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm, remarkMath, remarkEmoji]}
+            rehypePlugins={[
+              rehypeRaw,
+              [rehypeSanitize, previewSanitizeSchema],
+              rehypeKatex,
+              rehypeHighlight,
+            ]}
+            components={{
+              ...sourceLineComponents,
+              img: (componentProps) => {
+                const props = { ...componentProps };
+                const sourceLine = getSourceLine(props.node);
+                delete props.node;
+                return (
+                  <img
+                    {...props}
+                    data-source-line={sourceLine}
+                    src={resolveImageSrc(props.src, filePath)}
+                    style={{ maxWidth: '100%', height: 'auto' }}
+                    alt={props.alt || t('preview.imageAlt')}
+                  />
+                );
+              },
+            }}
+          >
+            {processedContent}
+          </ReactMarkdown>
+        </div>
         {onScrollSyncToggle && (
           <button
             className={`scrollSyncButton ${scrollSyncEnabled ? 'active' : ''}`}

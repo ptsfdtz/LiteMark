@@ -23,6 +23,7 @@ import { ask, message, open, save as saveDialog } from '@tauri-apps/plugin-dialo
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import type { MarkdownEditor } from '@/types/editor';
 import { registerWindowCloseGuard } from '@/modules/windowCloseGuard/registerWindowCloseGuard';
+import { connectScrollSync } from '@/modules/scrollSync/connectScrollSync';
 
 const Layout: React.FC = () => {
   const { t } = useI18n();
@@ -273,11 +274,21 @@ const Layout: React.FC = () => {
     setRecentClosing(false);
   };
 
-  const editorRef = useRef<MarkdownEditor>(null);
-  const previewRef = useRef<HTMLDivElement>(null);
+  const editorRef = useRef<MarkdownEditor | null>(null);
+  const [editorInstance, setEditorInstance] = useState<MarkdownEditor | null>(null);
+  const [previewElement, setPreviewElement] = useState<HTMLDivElement | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const canCloseRef = useRef(documentSession.canClose);
   canCloseRef.current = documentSession.canClose;
+
+  const attachEditor = useCallback((instance: MarkdownEditor | null) => {
+    editorRef.current = instance;
+    setEditorInstance((current) => (current === instance ? current : instance));
+  }, []);
+
+  const attachPreview = useCallback((element: HTMLDivElement | null) => {
+    setPreviewElement((current) => (current === element ? current : element));
+  }, []);
 
   useEffect(() => {
     const appWindow = getCurrentWindow();
@@ -329,101 +340,12 @@ const Layout: React.FC = () => {
   }, [theme]);
 
   useEffect(() => {
-    let intervalId: number | null = null;
-    let disposable: { dispose: () => void } | null = null;
-    let previewHandler: ((e: Event) => void) | null = null;
-    let attachedPreviewEl: HTMLDivElement | null = null;
-
-    const tryAttach = () => {
-      const editorInstance = editorRef.current;
-      const previewElement = previewRef.current;
-
-      if (!editorInstance || !previewElement || !scrollSyncEnabled) return false;
-
-      let isSyncingEditor = false;
-      let isSyncingPreview = false;
-
-      const handleEditorScroll = () => {
-        if (isSyncingPreview) return;
-        isSyncingEditor = true;
-        const scrollTop = editorInstance.getScrollTop();
-        const scrollHeight = editorInstance.getScrollHeight();
-        const clientHeight = editorInstance.getLayoutInfo().height;
-
-        const editorScrollableHeight = scrollHeight - clientHeight;
-        if (editorScrollableHeight > 0) {
-          const ratio = scrollTop / editorScrollableHeight;
-          const previewScrollHeight = previewElement.scrollHeight - previewElement.clientHeight;
-          previewElement.scrollTop = ratio * previewScrollHeight;
-        }
-        setTimeout(() => {
-          isSyncingEditor = false;
-        }, 50);
-      };
-
-      const handlePreviewScroll = () => {
-        if (isSyncingEditor) return;
-        isSyncingPreview = true;
-
-        const previewScrollTop = previewElement.scrollTop;
-        const previewScrollHeight = previewElement.scrollHeight - previewElement.clientHeight;
-
-        if (previewScrollHeight > 0) {
-          const ratio = previewScrollTop / previewScrollHeight;
-          const editorScrollHeight = editorInstance.getScrollHeight();
-          const editorClientHeight = editorInstance.getLayoutInfo().height;
-          const editorScrollableHeight = editorScrollHeight - editorClientHeight;
-          editorInstance.setScrollTop(ratio * editorScrollableHeight);
-        }
-        setTimeout(() => {
-          isSyncingPreview = false;
-        }, 50);
-      };
-
-      // Attach editor scroll listener
-      disposable = editorInstance.onDidScrollChange((e) => {
-        if (e.scrollTopChanged) {
-          handleEditorScroll();
-        }
-      });
-
-      // Attach preview listener only when preview pane is shown
-      if (!previewMode) {
-        previewElement.addEventListener('scroll', handlePreviewScroll);
-        previewHandler = handlePreviewScroll;
-        attachedPreviewEl = previewElement;
-      }
-
-      return true;
-    };
-
-    if (scrollSyncEnabled) {
-      // Try immediate attach; if not ready, poll briefly (up to ~1s)
-      if (!tryAttach()) {
-        let attempts = 0;
-        intervalId = window.setInterval(() => {
-          attempts += 1;
-          if (tryAttach() || attempts > 20) {
-            if (intervalId !== null) {
-              clearInterval(intervalId);
-              intervalId = null;
-            }
-          }
-        }, 50) as unknown as number;
-      }
+    if (!scrollSyncEnabled || previewMode || editorOnly || !editorInstance || !previewElement) {
+      return;
     }
 
-    return () => {
-      if (intervalId !== null) {
-        clearInterval(intervalId);
-        intervalId = null;
-      }
-      if (disposable && disposable.dispose) disposable.dispose();
-      if (previewHandler && attachedPreviewEl) {
-        attachedPreviewEl.removeEventListener('scroll', previewHandler);
-      }
-    };
-  }, [scrollSyncEnabled, previewMode, editorOnly]);
+    return connectScrollSync(editorInstance, previewElement);
+  }, [editorInstance, editorOnly, previewElement, previewMode, scrollSyncEnabled]);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -470,10 +392,6 @@ const Layout: React.FC = () => {
 
   const exitEditorOnly = () => {
     setEditorOnly(false);
-    if (scrollSyncEnabled) {
-      setScrollSyncEnabled(false);
-      setTimeout(() => setScrollSyncEnabled(true), 60);
-    }
   };
 
   const setMinimapEnabled = (v: boolean) => {
@@ -541,7 +459,7 @@ const Layout: React.FC = () => {
         {editorOnly ? (
           <div className={styles.editorPanel} style={{ width: `100%`, position: 'relative' }}>
             <Editor
-              ref={editorRef}
+              ref={attachEditor}
               value={markdown}
               onChange={setMarkdown}
               readOnly={!documentSessionReady}
@@ -566,7 +484,7 @@ const Layout: React.FC = () => {
               <>
                 <div className={styles.editorPanel} style={{ width: `${editorWidth}%` }}>
                   <Editor
-                    ref={editorRef}
+                    ref={attachEditor}
                     value={markdown}
                     onChange={setMarkdown}
                     readOnly={!documentSessionReady}
@@ -587,7 +505,7 @@ const Layout: React.FC = () => {
               }}
             >
               <Preview
-                ref={previewRef}
+                ref={attachPreview}
                 content={markdown}
                 filePath={currentFilePath}
                 scrollSyncEnabled={scrollSyncEnabled}

@@ -48,6 +48,16 @@ const answer = true;
     expect(container.querySelector('i.editormd-logo-2x')).toBeInTheDocument();
   });
 
+  it('preserves source line anchors for rendered Markdown blocks', () => {
+    const { container } = renderPreview(
+      '# Heading\n\nParagraph\n\n```typescript\nconst answer = true;\n```',
+    );
+
+    expect(container.querySelector('h1')).toHaveAttribute('data-source-line', '1');
+    expect(container.querySelector('p')).toHaveAttribute('data-source-line', '3');
+    expect(container.querySelector('pre')).toHaveAttribute('data-source-line', '5');
+  });
+
   it('offers both preview-only and editor-only focus modes', async () => {
     const user = userEvent.setup();
     const enterPreviewMode = vi.fn();

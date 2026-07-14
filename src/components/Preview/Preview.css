@@ -134,6 +134,11 @@
   }
 }
 
+.preview-content {
+  display: flow-root;
+  min-height: 100%;
+}
+
 /* 特殊图标样式 */
 .editormd-logo {
   display: inline-block;
