@@ -24,6 +24,7 @@ const common = {
   'settings.langJa': '日本語',
   'window.minimize': 'Minimize',
   'window.maximize': 'Maximize',
+  'window.restore': 'Restore window',
   'window.close': 'Close',
   'toolbar.recentFiles': 'Recent files',
   'toolbar.save': 'Save (Ctrl+S)',

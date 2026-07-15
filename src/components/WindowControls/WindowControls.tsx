@@ -1,20 +1,49 @@
 // src/components/WindowControls/WindowControls.tsx
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { FaTimes, FaMinus, FaRegSquare } from 'react-icons/fa';
+import { FaMinus, FaRegSquare, FaRegWindowRestore, FaTimes } from 'react-icons/fa';
 import styles from './WindowControls.module.css';
 import { useI18n } from '@/locales/useI18n';
 
 const WindowControls: React.FC = () => {
   const { t } = useI18n();
+  const [isMaximized, setIsMaximized] = useState(false);
+
+  useEffect(() => {
+    const appWindow = getCurrentWindow();
+    let disposed = false;
+    let unlisten: (() => void) | undefined;
+
+    const syncMaximizedState = async () => {
+      const maximized = await appWindow.isMaximized();
+      if (!disposed) setIsMaximized(maximized);
+    };
+
+    void syncMaximizedState();
+    void appWindow
+      .onResized(() => {
+        void syncMaximizedState();
+      })
+      .then((stopListening) => {
+        if (disposed) stopListening();
+        else unlisten = stopListening;
+      });
+
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
+  }, []);
+
   const handleMinimize = () => {
     const appWindow = getCurrentWindow();
     void appWindow.minimize();
   };
 
-  const handleToggleMaximize = () => {
+  const handleToggleMaximize = async () => {
     const appWindow = getCurrentWindow();
-    void appWindow.toggleMaximize();
+    await appWindow.toggleMaximize();
+    setIsMaximized(await appWindow.isMaximized());
   };
 
   const handleClose = () => {
@@ -37,12 +66,12 @@ const WindowControls: React.FC = () => {
       <button
         type="button"
         className={styles.button}
-        aria-label={t('window.maximize')}
-        title={t('window.maximize')}
-        onClick={handleToggleMaximize}
+        aria-label={t(isMaximized ? 'window.restore' : 'window.maximize')}
+        title={t(isMaximized ? 'window.restore' : 'window.maximize')}
+        onClick={() => void handleToggleMaximize()}
         data-tauri-drag-region="false"
       >
-        <FaRegSquare />
+        {isMaximized ? <FaRegWindowRestore /> : <FaRegSquare />}
       </button>
       <button
         type="button"
