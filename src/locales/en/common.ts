@@ -45,6 +45,8 @@ const common = {
   'preview.exitPreviewMode': 'Exit preview mode',
   'preview.disableScrollSync': 'Disable scroll sync',
   'preview.enableScrollSync': 'Enable scroll sync',
+  'preview.copyCode': 'Copy code',
+  'preview.codeCopied': 'Copied',
   'preview.imageAlt': 'Image',
   'layout.exitEditMode': 'Exit edit mode',
   'recent.openFolder': 'Open folder',

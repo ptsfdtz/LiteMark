@@ -1,5 +1,5 @@
 // src/components/Preview/Preview.tsx
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import ReactMarkdown, { type Components, type ExtraProps } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -12,7 +12,7 @@ import './Preview.css';
 import 'highlight.js/styles/github.css';
 import 'katex/dist/katex.min.css';
 import { useMathPreprocess } from './hooks/useMathPreprocess';
-import { FaLink, FaUnlink, FaEdit, FaExpand, FaTimes } from 'react-icons/fa';
+import { FaCheck, FaCopy, FaEdit, FaExpand, FaLink, FaTimes, FaUnlink } from 'react-icons/fa';
 import { PreviewProps } from '@/types/preview';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { useI18n } from '@/locales/useI18n';
@@ -36,6 +36,94 @@ const previewSanitizeSchema = {
 };
 
 const getSourceLine = (node: ExtraProps['node']) => node?.position?.start.line;
+
+interface MarkdownTextNode {
+  value?: string;
+  children?: MarkdownTextNode[];
+}
+
+const getMarkdownText = (node: MarkdownTextNode | undefined): string =>
+  node?.value ?? node?.children?.map(getMarkdownText).join('') ?? '';
+
+const copyText = async (text: string): Promise<boolean> => {
+  if (!text) return false;
+
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // Fall back to the legacy API for webviews without clipboard permission.
+  }
+
+  if (typeof document.execCommand !== 'function') return false;
+
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.setAttribute('readonly', '');
+  textarea.setAttribute('aria-hidden', 'true');
+  textarea.style.position = 'fixed';
+  textarea.style.opacity = '0';
+  document.body.append(textarea);
+  textarea.select();
+  const copied = document.execCommand('copy');
+  textarea.remove();
+  return copied;
+};
+
+type CodeBlockProps = React.ComponentPropsWithoutRef<'pre'> & ExtraProps;
+
+const CodeBlock = ({ node, children, ...props }: CodeBlockProps) => {
+  const { t } = useI18n();
+  const [copiedCodeBlock, setCopiedCodeBlock] = useState<string | null>(null);
+  const copiedResetTimer = useRef<number | null>(null);
+  const sourceLine = getSourceLine(node);
+  const code = getMarkdownText(node as unknown as MarkdownTextNode);
+  const codeBlockId = `${sourceLine ?? 'unknown'}:${code}`;
+  const copied = copiedCodeBlock === codeBlockId;
+
+  useEffect(
+    () => () => {
+      if (copiedResetTimer.current !== null) clearTimeout(copiedResetTimer.current);
+    },
+    [],
+  );
+
+  const handleCopyCode = async () => {
+    if (!(await copyText(code))) return;
+
+    setCopiedCodeBlock(codeBlockId);
+    if (copiedResetTimer.current !== null) clearTimeout(copiedResetTimer.current);
+    copiedResetTimer.current = window.setTimeout(() => {
+      setCopiedCodeBlock(null);
+      copiedResetTimer.current = null;
+    }, 1800);
+  };
+
+  return (
+    <div className="code-block" data-source-line={sourceLine}>
+      <button
+        type="button"
+        className={`code-copy-button${copied ? ' is-copied' : ''}`}
+        onClick={() => void handleCopyCode()}
+        title={t(copied ? 'preview.codeCopied' : 'preview.copyCode')}
+        aria-label={t(copied ? 'preview.codeCopied' : 'preview.copyCode')}
+      >
+        <span className="code-copy-icon" aria-hidden="true">
+          <FaCopy className="code-copy-icon-copy" />
+          <FaCheck className="code-copy-icon-check" />
+        </span>
+      </button>
+      <span className="code-copy-status" role="status">
+        {copied ? t('preview.codeCopied') : ''}
+      </span>
+      <pre {...props} data-source-line={sourceLine}>
+        {children}
+      </pre>
+    </div>
+  );
+};
 
 const sourceLineComponents: Components = {
   h1: ({ node, ...props }) => <h1 {...props} data-source-line={getSourceLine(node)} />,
@@ -171,6 +259,7 @@ const Preview = React.forwardRef<HTMLDivElement, PreviewProps>(
             ]}
             components={{
               ...sourceLineComponents,
+              pre: CodeBlock,
               img: (componentProps) => {
                 const props = { ...componentProps };
                 const sourceLine = getSourceLine(props.node);

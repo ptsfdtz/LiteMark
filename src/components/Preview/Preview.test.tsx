@@ -48,6 +48,36 @@ const answer = true;
     expect(container.querySelector('i.editormd-logo-2x')).toBeInTheDocument();
   });
 
+  it('copies fenced code from its code block control', async () => {
+    const user = userEvent.setup();
+    const originalClipboard = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
+    const clipboard = { writeText: vi.fn().mockResolvedValue(undefined) };
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: clipboard,
+    });
+
+    try {
+      const { getByRole } = renderPreview('```typescript\nconst answer = true;\n```');
+      const copyButton = getByRole('button', { name: 'Copy code' });
+
+      expect(copyButton.querySelector('.code-copy-icon-copy')).toBeInTheDocument();
+      expect(copyButton.querySelector('.code-copy-icon-check')).toBeInTheDocument();
+
+      await user.click(copyButton);
+
+      expect(clipboard.writeText).toHaveBeenCalledWith('const answer = true;\n');
+      const copiedButton = getByRole('button', { name: 'Copied' });
+      expect(copiedButton).toBe(copyButton);
+      expect(copiedButton).toHaveClass('is-copied');
+      expect(copiedButton.querySelector('.code-copy-icon-copy')).toBeInTheDocument();
+      expect(copiedButton.querySelector('.code-copy-icon-check')).toBeInTheDocument();
+    } finally {
+      if (originalClipboard) Object.defineProperty(navigator, 'clipboard', originalClipboard);
+      else Reflect.deleteProperty(navigator, 'clipboard');
+    }
+  });
+
   it('preserves source line anchors for rendered Markdown blocks', () => {
     const { container } = renderPreview(
       '# Heading\n\nParagraph\n\n```typescript\nconst answer = true;\n```',

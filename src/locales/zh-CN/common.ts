@@ -45,6 +45,8 @@ const common = {
   'preview.exitPreviewMode': '退出预览模式',
   'preview.disableScrollSync': '禁用滚动同步',
   'preview.enableScrollSync': '启用滚动同步',
+  'preview.copyCode': '复制代码',
+  'preview.codeCopied': '已复制',
   'preview.imageAlt': '图片',
   'layout.exitEditMode': '退出编辑模式',
   'recent.openFolder': '打开文件夹',

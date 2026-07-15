@@ -17,6 +17,8 @@
   --table-even-row-bg: #f9f9f9;
   --table-odd-row-bg: #fff;
   --code-block-bg: #f5f5f5;
+  --success-feedback-bg: linear-gradient(135deg, #4fcf70 0%, #36b37e 100%);
+  --success-feedback-shadow: 0 2px 16px rgb(0 0 0 / 12%);
   --inline-code-bg: #f5f5f5;
   --blockquote-border: #ddd;
   --blockquote-text: #666;

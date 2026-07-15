@@ -45,6 +45,8 @@ const common = {
   'preview.exitPreviewMode': 'プレビューモードを終了',
   'preview.disableScrollSync': 'スクロール同期を無効',
   'preview.enableScrollSync': 'スクロール同期を有効',
+  'preview.copyCode': 'コードをコピー',
+  'preview.codeCopied': 'コピーしました',
   'preview.imageAlt': '画像',
   'layout.exitEditMode': '編集モードを終了',
   'recent.openFolder': 'フォルダを開く',
