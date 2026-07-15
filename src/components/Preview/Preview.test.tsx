@@ -88,6 +88,27 @@ const answer = true;
     expect(container.querySelector('pre')).toHaveAttribute('data-source-line', '5');
   });
 
+  it('updates a task item through its source line when its preview checkbox is clicked', async () => {
+    const user = userEvent.setup();
+    const onTaskToggle = vi.fn();
+    const { getByRole } = render(
+      <I18nProvider>
+        <Preview content={'- [x] Finished\n- [ ] Pending'} onTaskToggle={onTaskToggle} />
+      </I18nProvider>,
+    );
+
+    const completedTask = getByRole('checkbox', { name: 'Mark task incomplete' });
+    const pendingTask = getByRole('checkbox', { name: 'Mark task complete' });
+
+    expect(completedTask).toBeChecked();
+    expect(completedTask).not.toBeDisabled();
+    expect(pendingTask).not.toBeDisabled();
+
+    await user.click(pendingTask);
+
+    expect(onTaskToggle).toHaveBeenCalledWith(2, true);
+  });
+
   it('offers both preview-only and editor-only focus modes', async () => {
     const user = userEvent.setup();
     const enterPreviewMode = vi.fn();

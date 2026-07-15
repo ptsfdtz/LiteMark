@@ -24,6 +24,10 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import type { MarkdownEditor } from '@/types/editor';
 import { registerWindowCloseGuard } from '@/modules/windowCloseGuard/registerWindowCloseGuard';
 import { connectScrollSync } from '@/modules/scrollSync/connectScrollSync';
+import {
+  setTaskListItemChecked,
+  setTaskListItemCheckedInEditor,
+} from '@/modules/markdownEditing/taskList';
 
 const Layout: React.FC = () => {
   const { t } = useI18n();
@@ -290,6 +294,22 @@ const Layout: React.FC = () => {
     setPreviewElement((current) => (current === element ? current : element));
   }, []);
 
+  const handlePreviewTaskToggle = useCallback(
+    (sourceLine: number, checked: boolean) => {
+      if (!documentSessionReady) return;
+
+      const editor = editorRef.current;
+      if (editor) {
+        setTaskListItemCheckedInEditor(editor, sourceLine, checked);
+        return;
+      }
+
+      const nextMarkdown = setTaskListItemChecked(markdown, sourceLine, checked);
+      if (nextMarkdown !== markdown) setMarkdown(nextMarkdown);
+    },
+    [documentSessionReady, markdown, setMarkdown],
+  );
+
   useEffect(() => {
     const appWindow = getCurrentWindow();
     return registerWindowCloseGuard(appWindow, () => canCloseRef.current());
@@ -510,6 +530,7 @@ const Layout: React.FC = () => {
                 filePath={currentFilePath}
                 scrollSyncEnabled={scrollSyncEnabled}
                 onScrollSyncToggle={toggleScrollSync}
+                onTaskToggle={documentSessionReady ? handlePreviewTaskToggle : undefined}
                 onExitPreviewMode={exitPreviewMode}
                 onEnterPreviewMode={enterPreviewMode}
                 onEnterEditorMode={enterEditorOnly}

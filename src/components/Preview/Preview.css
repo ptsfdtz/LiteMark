@@ -64,6 +64,10 @@
     color: var(--blockquote-text, #666);
   }
 
+  & li.task-list-item > input[type='checkbox']:not(:disabled) {
+    cursor: pointer;
+  }
+
   /* 图片样式 */
   & img {
     max-width: 100%;

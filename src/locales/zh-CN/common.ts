@@ -48,6 +48,8 @@ const common = {
   'preview.enableScrollSync': '启用滚动同步',
   'preview.copyCode': '复制代码',
   'preview.codeCopied': '已复制',
+  'preview.markTaskComplete': '标记任务为已完成',
+  'preview.markTaskIncomplete': '标记任务为未完成',
   'preview.imageAlt': '图片',
   'layout.exitEditMode': '退出编辑模式',
   'recent.openFolder': '打开文件夹',

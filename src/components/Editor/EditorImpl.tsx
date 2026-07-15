@@ -184,8 +184,7 @@ const Editor = React.forwardRef<MarkdownEditor, EditorProps>(
             fontSize: 14,
             scrollBeyondLastLine: false,
             automaticLayout: true,
-            fontFamily:
-              "'Consolas', 'Menlo', 'Monaco', 'Courier New', monospace, 'Microsoft YaHei'",
+            fontFamily: "Consolas, 'Courier New', monospace",
           }}
         />
       </div>

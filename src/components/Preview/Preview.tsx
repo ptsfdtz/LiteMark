@@ -37,6 +37,16 @@ const previewSanitizeSchema = {
 
 const getSourceLine = (node: ExtraProps['node']) => node?.position?.start.line;
 
+interface TaskListItemContextValue {
+  sourceLine: number | undefined;
+  isTaskListItem: boolean;
+}
+
+const TaskListItemContext = React.createContext<TaskListItemContextValue>({
+  sourceLine: undefined,
+  isTaskListItem: false,
+});
+
 interface MarkdownTextNode {
   value?: string;
   children?: MarkdownTextNode[];
@@ -73,6 +83,10 @@ const copyText = async (text: string): Promise<boolean> => {
 };
 
 type CodeBlockProps = React.ComponentPropsWithoutRef<'pre'> & ExtraProps;
+type ListItemProps = React.ComponentPropsWithoutRef<'li'> & ExtraProps;
+type TaskListItemCheckboxProps = React.ComponentPropsWithoutRef<'input'> & {
+  onTaskToggle?: (sourceLine: number, checked: boolean) => void;
+};
 
 const CodeBlock = ({ node, children, ...props }: CodeBlockProps) => {
   const { t } = useI18n();
@@ -125,6 +139,50 @@ const CodeBlock = ({ node, children, ...props }: CodeBlockProps) => {
   );
 };
 
+const SourceLinkedListItem = ({ node, className, ...props }: ListItemProps) => {
+  const sourceLine = getSourceLine(node);
+  const isTaskListItem = className?.split(/\s+/).includes('task-list-item') ?? false;
+
+  return (
+    <TaskListItemContext.Provider value={{ sourceLine, isTaskListItem }}>
+      <li {...props} className={className} data-source-line={sourceLine} />
+    </TaskListItemContext.Provider>
+  );
+};
+
+const TaskListItemCheckbox = ({
+  checked,
+  disabled,
+  onChange,
+  onTaskToggle,
+  type,
+  ...props
+}: TaskListItemCheckboxProps) => {
+  const { t } = useI18n();
+  const { sourceLine, isTaskListItem } = React.useContext(TaskListItemContext);
+  const taskSourceLine =
+    typeof sourceLine === 'number' && Number.isInteger(sourceLine) && sourceLine > 0
+      ? sourceLine
+      : undefined;
+
+  if (type !== 'checkbox' || !isTaskListItem || taskSourceLine === undefined || !onTaskToggle) {
+    return (
+      <input {...props} type={type} checked={checked} disabled={disabled} onChange={onChange} />
+    );
+  }
+
+  return (
+    <input
+      {...props}
+      type="checkbox"
+      checked={Boolean(checked)}
+      disabled={false}
+      aria-label={t(checked ? 'preview.markTaskIncomplete' : 'preview.markTaskComplete')}
+      onChange={(event) => onTaskToggle(taskSourceLine, event.currentTarget.checked)}
+    />
+  );
+};
+
 const sourceLineComponents: Components = {
   h1: ({ node, ...props }) => <h1 {...props} data-source-line={getSourceLine(node)} />,
   h2: ({ node, ...props }) => <h2 {...props} data-source-line={getSourceLine(node)} />,
@@ -138,7 +196,7 @@ const sourceLineComponents: Components = {
   ),
   ul: ({ node, ...props }) => <ul {...props} data-source-line={getSourceLine(node)} />,
   ol: ({ node, ...props }) => <ol {...props} data-source-line={getSourceLine(node)} />,
-  li: ({ node, ...props }) => <li {...props} data-source-line={getSourceLine(node)} />,
+  li: SourceLinkedListItem,
   pre: ({ node, ...props }) => <pre {...props} data-source-line={getSourceLine(node)} />,
   table: ({ node, ...props }) => <table {...props} data-source-line={getSourceLine(node)} />,
   thead: ({ node, ...props }) => <thead {...props} data-source-line={getSourceLine(node)} />,
@@ -205,6 +263,7 @@ const Preview = React.forwardRef<HTMLDivElement, PreviewProps>(
       filePath,
       scrollSyncEnabled = true,
       onScrollSyncToggle,
+      onTaskToggle,
       onExitPreviewMode,
       onEnterPreviewMode,
       onEnterEditorMode,
@@ -260,6 +319,11 @@ const Preview = React.forwardRef<HTMLDivElement, PreviewProps>(
             components={{
               ...sourceLineComponents,
               pre: CodeBlock,
+              input: (componentProps) => {
+                const props = { ...componentProps };
+                delete props.node;
+                return <TaskListItemCheckbox {...props} onTaskToggle={onTaskToggle} />;
+              },
               img: (componentProps) => {
                 const props = { ...componentProps };
                 const sourceLine = getSourceLine(props.node);
