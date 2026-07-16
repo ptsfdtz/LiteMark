@@ -8,6 +8,8 @@ import rehypeHighlight from 'rehype-highlight';
 import rehypeRaw from 'rehype-raw';
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import rehypeKatex from 'rehype-katex';
+import rehypeSlug from 'rehype-slug';
+import { slug } from 'github-slugger';
 import './Preview.css';
 import 'highlight.js/styles/github.css';
 import 'katex/dist/katex.min.css';
@@ -36,6 +38,18 @@ const previewSanitizeSchema = {
 };
 
 const getSourceLine = (node: ExtraProps['node']) => node?.position?.start.line;
+const HEADING_ID_PREFIX = 'preview-heading-';
+
+const getHeadingTargetId = (href: string | undefined): string | undefined => {
+  if (!href?.startsWith('#') || href.length === 1) return undefined;
+
+  try {
+    const headingSlug = slug(decodeURIComponent(href.slice(1)));
+    return headingSlug ? `${HEADING_ID_PREFIX}${headingSlug}` : undefined;
+  } catch {
+    return undefined;
+  }
+};
 
 const MarkdownSourceContext = React.createContext<readonly string[]>([]);
 const OrderedListStartLineContext = React.createContext<number | undefined>(undefined);
@@ -120,6 +134,7 @@ const copyText = async (text: string): Promise<boolean> => {
 type CodeBlockProps = React.ComponentPropsWithoutRef<'pre'> & ExtraProps;
 type ListItemProps = React.ComponentPropsWithoutRef<'li'> & ExtraProps;
 type OrderedListProps = React.ComponentPropsWithoutRef<'ol'> & ExtraProps;
+type PreviewAnchorProps = React.ComponentPropsWithoutRef<'a'>;
 type TaskListItemCheckboxProps = React.ComponentPropsWithoutRef<'input'> & {
   onTaskToggle?: (sourceLine: number, checked: boolean) => void;
 };
@@ -173,6 +188,23 @@ const CodeBlock = ({ node, children, ...props }: CodeBlockProps) => {
       </pre>
     </div>
   );
+};
+
+const PreviewAnchor = ({ href, onClick, ...props }: PreviewAnchorProps) => {
+  const handleClick: React.MouseEventHandler<HTMLAnchorElement> = (event) => {
+    onClick?.(event);
+    if (event.defaultPrevented) return;
+
+    const targetId = getHeadingTargetId(href);
+    const preview = event.currentTarget.closest('.preview-container');
+    const target = targetId ? event.currentTarget.ownerDocument.getElementById(targetId) : null;
+    if (!preview || !target || !preview.contains(target)) return;
+
+    event.preventDefault();
+    target.scrollIntoView({ behavior: 'auto', block: 'start' });
+  };
+
+  return <a {...props} href={href} onClick={handleClick} />;
 };
 
 const SourceLinkedOrderedList = ({ node, ...props }: OrderedListProps) => {
@@ -428,12 +460,18 @@ const Preview = React.forwardRef<HTMLDivElement, PreviewProps>(
               rehypePlugins={[
                 rehypeRaw,
                 [rehypeSanitize, previewSanitizeSchema],
+                [rehypeSlug, { prefix: HEADING_ID_PREFIX }],
                 rehypeKatex,
                 rehypeHighlight,
               ]}
               components={{
                 ...sourceLineComponents,
                 pre: CodeBlock,
+                a: (componentProps) => {
+                  const props = { ...componentProps };
+                  delete props.node;
+                  return <PreviewAnchor {...props} />;
+                },
                 input: (componentProps) => {
                   const props = { ...componentProps };
                   delete props.node;

@@ -111,6 +111,47 @@ const answer = true;
     expect(getByText('Still visible')).toBeInTheDocument();
   });
 
+  it('navigates table-of-contents links to generated heading anchors', async () => {
+    const user = userEvent.setup();
+    const { container, getByRole } = renderPreview(
+      [
+        '## 目录',
+        '',
+        '- [标题测试](#标题测试)',
+        '- [HTML 混排](#html-混排)',
+        '',
+        '# 标题测试',
+        '',
+        '## HTML 混排',
+        '',
+        '## 重复标题',
+        '',
+        '## 重复标题',
+      ].join('\n'),
+    );
+    const target = getByRole('heading', { name: '标题测试' });
+    const scrollIntoView = vi.fn();
+    target.scrollIntoView = scrollIntoView;
+
+    expect(target).toHaveAttribute('id', 'preview-heading-标题测试');
+    expect(getByRole('heading', { name: 'HTML 混排' })).toHaveAttribute(
+      'id',
+      'preview-heading-html-混排',
+    );
+    expect(
+      Array.from(container.querySelectorAll('h2')).filter((heading) =>
+        heading.textContent?.includes('重复标题'),
+      ),
+    ).toEqual([
+      expect.objectContaining({ id: 'preview-heading-重复标题' }),
+      expect.objectContaining({ id: 'preview-heading-重复标题-1' }),
+    ]);
+
+    await user.click(getByRole('link', { name: '标题测试' }));
+
+    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'auto', block: 'start' });
+  });
+
   it('renders the explicit numbers from blank ordered list items', () => {
     const content = [
       '1.',
