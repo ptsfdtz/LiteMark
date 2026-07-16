@@ -113,6 +113,8 @@ const collectPreviewAnchors = (preview: HTMLElement, lineCount: number): SourceA
   ];
 
   preview.querySelectorAll<HTMLElement>('[data-source-line]').forEach((element) => {
+    if (element.closest('[data-footnotes]')) return;
+
     const line = Number(element.dataset.sourceLine);
     if (!Number.isInteger(line) || line < 1 || line > lineCount) return;
 

@@ -64,8 +64,16 @@
     color: var(--blockquote-text, #666);
   }
 
-  & li.task-list-item > input[type='checkbox']:not(:disabled) {
-    cursor: pointer;
+  & li.task-list-item > input[type='checkbox'] {
+    font-size: inherit;
+    width: 1em;
+    height: 1em;
+    margin: 0 0.4em 0 0;
+    vertical-align: -0.125em;
+
+    &:not(:disabled) {
+      cursor: pointer;
+    }
   }
 
   /* 图片样式 */

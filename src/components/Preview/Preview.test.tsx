@@ -101,6 +101,16 @@ const answer = true;
     expect(container.querySelector('pre')).toHaveAttribute('data-source-line', '5');
   });
 
+  it('keeps rendering after an unclosed fenced code marker', () => {
+    const { getByRole, getByText } = renderPreview(
+      ['## Before', '', '~~~~', '', '## After', '', 'Still visible'].join('\n'),
+    );
+
+    expect(getByText('~~~~')).toBeInTheDocument();
+    expect(getByRole('heading', { name: 'After' })).toBeInTheDocument();
+    expect(getByText('Still visible')).toBeInTheDocument();
+  });
+
   it('renders the explicit numbers from blank ordered list items', () => {
     const content = [
       '1.',

@@ -47,6 +47,7 @@ const addPreviewAnchor = (
   getPreviewScrollTop: () => number,
   line: number,
   contentTop: number,
+  parent: HTMLElement = preview,
 ) => {
   const anchor = document.createElement('div');
   anchor.dataset.sourceLine = String(line);
@@ -62,7 +63,7 @@ const addPreviewAnchor = (
       y: contentTop - getPreviewScrollTop(),
       toJSON: () => ({}),
     }) as DOMRect;
-  preview.append(anchor);
+  parent.append(anchor);
 };
 
 describe('connectScrollSync', () => {
@@ -153,6 +154,71 @@ describe('connectScrollSync', () => {
 
     expect(setEditorScrollTop).toHaveBeenCalledOnce();
     expect(setEditorScrollTop.mock.calls[0][0]).toBeCloseTo(3545.45, 1);
+
+    disconnect();
+  });
+
+  it('ignores footnote definitions relocated after the document body', () => {
+    const preview = document.createElement('div');
+    let previewScrollTop = 0;
+    Object.defineProperty(preview, 'scrollTop', {
+      configurable: true,
+      get: () => previewScrollTop,
+      set: (value: number) => {
+        previewScrollTop = value;
+      },
+    });
+    defineDimension(preview, 'clientHeight', 900);
+    defineDimension(preview, 'scrollHeight', 73561);
+    preview.getBoundingClientRect = () =>
+      ({
+        top: 0,
+        bottom: 900,
+        left: 0,
+        right: 500,
+        width: 500,
+        height: 900,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      }) as DOMRect;
+
+    addPreviewAnchor(preview, () => previewScrollTop, 835, 17605);
+    addPreviewAnchor(preview, () => previewScrollTop, 843, 17646);
+    addPreviewAnchor(preview, () => previewScrollTop, 858, 17873);
+    addPreviewAnchor(preview, () => previewScrollTop, 890, 18491);
+    addPreviewAnchor(preview, () => previewScrollTop, 978, 20246);
+
+    const footnotes = document.createElement('section');
+    footnotes.dataset.footnotes = '';
+    preview.append(footnotes);
+    addPreviewAnchor(preview, () => previewScrollTop, 837, 73427, footnotes);
+    addPreviewAnchor(preview, () => previewScrollTop, 839, 73465, footnotes);
+
+    const editorScrollTop = (858 - 1) * 20;
+    const disposable = { dispose: vi.fn() };
+    const editor = {
+      getModel: () => ({ getLineCount: () => 3161 }),
+      getScrollTop: () => editorScrollTop,
+      getScrollHeight: () => 63220,
+      getLayoutInfo: () => ({ height: 900 }),
+      getTopForLineNumber: (line: number) => (line - 1) * 20,
+      setScrollTop: vi.fn(),
+      onDidScrollChange: () => disposable,
+      onDidChangeModelContent: () => disposable,
+      onDidContentSizeChange: () => disposable,
+      onDidLayoutChange: () => disposable,
+      getDomNode: () => null,
+    } as unknown as MarkdownEditor;
+    const { scheduler, flush } = createFrameScheduler();
+
+    const disconnect = connectScrollSync(editor, preview, {
+      frameScheduler: scheduler,
+      viewportAnchorRatio: 0,
+    });
+    flush();
+
+    expect(previewScrollTop).toBeCloseTo(17873, 1);
 
     disconnect();
   });

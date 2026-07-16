@@ -270,6 +270,53 @@ const sourceLineComponents: Components = {
   div: ({ node, ...props }) => <div {...props} data-source-line={getSourceLine(node)} />,
 };
 
+const escapeUnclosedFencedCodeBlocks = (content: string): string => {
+  const lineEnding = content.includes('\r\n') ? '\r\n' : '\n';
+  const lines = content.split(/\r?\n/);
+
+  while (true) {
+    let openFence:
+      | { character: string; length: number; lineIndex: number; indentLength: number }
+      | undefined;
+
+    for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+      const match = lines[lineIndex].match(/^( {0,3})(`{3,}|~{3,})(.*)$/);
+      if (!match) continue;
+
+      const fence = match[2];
+      const character = fence[0];
+      const suffix = match[3];
+
+      if (!openFence) {
+        if (character === '`' && suffix.includes('`')) continue;
+        openFence = {
+          character,
+          length: fence.length,
+          lineIndex,
+          indentLength: match[1].length,
+        };
+        continue;
+      }
+
+      if (
+        character === openFence.character &&
+        fence.length >= openFence.length &&
+        suffix.trim().length === 0
+      ) {
+        openFence = undefined;
+      }
+    }
+
+    if (!openFence) return lines.join(lineEnding);
+
+    const openingLine = lines[openFence.lineIndex];
+    lines[openFence.lineIndex] =
+      openingLine.slice(0, openFence.indentLength) +
+      '\\' +
+      openingLine.slice(openFence.indentLength);
+  }
+};
+
 const processSpecialEmojis = (content: string): string => {
   return content
     .replace(/:fa-([\w-]+):/g, '<i class="fa fa-$1" aria-hidden="true"></i>')
@@ -337,7 +384,9 @@ const Preview = React.forwardRef<HTMLDivElement, PreviewProps>(
   ) => {
     const { t } = useI18n();
     const { preprocessMathChinese } = useMathPreprocess();
-    const processedContent = preprocessMathChinese(processSpecialEmojis(content));
+    const processedContent = preprocessMathChinese(
+      processSpecialEmojis(escapeUnclosedFencedCodeBlocks(content)),
+    );
     const sourceLines = processedContent.split(/\r?\n/);
 
     return (
