@@ -37,6 +37,25 @@ const previewSanitizeSchema = {
 
 const getSourceLine = (node: ExtraProps['node']) => node?.position?.start.line;
 
+const MarkdownSourceContext = React.createContext<readonly string[]>([]);
+
+const getOrderedListItemValue = (
+  node: ExtraProps['node'],
+  sourceLines: readonly string[],
+): number | undefined => {
+  const sourceLine = getSourceLine(node);
+  const sourceColumn = node?.position?.start.column;
+  if (sourceLine === undefined || sourceColumn === undefined) return undefined;
+
+  const marker = sourceLines[sourceLine - 1]
+    ?.slice(sourceColumn - 1)
+    .match(/^(\d+)[.)](?:[ \t]+|$)/);
+  if (!marker) return undefined;
+
+  const value = Number(marker[1]);
+  return Number.isSafeInteger(value) ? value : undefined;
+};
+
 interface TaskListItemContextValue {
   sourceLine: number | undefined;
   isTaskListItem: boolean;
@@ -140,12 +159,19 @@ const CodeBlock = ({ node, children, ...props }: CodeBlockProps) => {
 };
 
 const SourceLinkedListItem = ({ node, className, ...props }: ListItemProps) => {
+  const sourceLines = React.useContext(MarkdownSourceContext);
   const sourceLine = getSourceLine(node);
+  const value = getOrderedListItemValue(node, sourceLines);
   const isTaskListItem = className?.split(/\s+/).includes('task-list-item') ?? false;
 
   return (
     <TaskListItemContext.Provider value={{ sourceLine, isTaskListItem }}>
-      <li {...props} className={className} data-source-line={sourceLine} />
+      <li
+        {...props}
+        className={className}
+        value={value ?? props.value}
+        data-source-line={sourceLine}
+      />
     </TaskListItemContext.Provider>
   );
 };
@@ -274,6 +300,7 @@ const Preview = React.forwardRef<HTMLDivElement, PreviewProps>(
     const { t } = useI18n();
     const { preprocessMathChinese } = useMathPreprocess();
     const processedContent = preprocessMathChinese(processSpecialEmojis(content));
+    const sourceLines = processedContent.split(/\r?\n/);
 
     return (
       <div ref={ref} className="preview-container">
@@ -308,40 +335,42 @@ const Preview = React.forwardRef<HTMLDivElement, PreviewProps>(
           </button>
         )}
         <div className="preview-content" data-preview-content>
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm, remarkMath, remarkEmoji]}
-            rehypePlugins={[
-              rehypeRaw,
-              [rehypeSanitize, previewSanitizeSchema],
-              rehypeKatex,
-              rehypeHighlight,
-            ]}
-            components={{
-              ...sourceLineComponents,
-              pre: CodeBlock,
-              input: (componentProps) => {
-                const props = { ...componentProps };
-                delete props.node;
-                return <TaskListItemCheckbox {...props} onTaskToggle={onTaskToggle} />;
-              },
-              img: (componentProps) => {
-                const props = { ...componentProps };
-                const sourceLine = getSourceLine(props.node);
-                delete props.node;
-                return (
-                  <img
-                    {...props}
-                    data-source-line={sourceLine}
-                    src={resolveImageSrc(props.src, filePath)}
-                    style={{ maxWidth: '100%', height: 'auto' }}
-                    alt={props.alt || t('preview.imageAlt')}
-                  />
-                );
-              },
-            }}
-          >
-            {processedContent}
-          </ReactMarkdown>
+          <MarkdownSourceContext.Provider value={sourceLines}>
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm, remarkMath, remarkEmoji]}
+              rehypePlugins={[
+                rehypeRaw,
+                [rehypeSanitize, previewSanitizeSchema],
+                rehypeKatex,
+                rehypeHighlight,
+              ]}
+              components={{
+                ...sourceLineComponents,
+                pre: CodeBlock,
+                input: (componentProps) => {
+                  const props = { ...componentProps };
+                  delete props.node;
+                  return <TaskListItemCheckbox {...props} onTaskToggle={onTaskToggle} />;
+                },
+                img: (componentProps) => {
+                  const props = { ...componentProps };
+                  const sourceLine = getSourceLine(props.node);
+                  delete props.node;
+                  return (
+                    <img
+                      {...props}
+                      data-source-line={sourceLine}
+                      src={resolveImageSrc(props.src, filePath)}
+                      style={{ maxWidth: '100%', height: 'auto' }}
+                      alt={props.alt || t('preview.imageAlt')}
+                    />
+                  );
+                },
+              }}
+            >
+              {processedContent}
+            </ReactMarkdown>
+          </MarkdownSourceContext.Provider>
         </div>
         {onScrollSyncToggle && (
           <button

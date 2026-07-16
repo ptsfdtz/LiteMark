@@ -13,6 +13,19 @@ const renderPreview = (content: string) =>
     </I18nProvider>,
   );
 
+const getRenderedOrderedListNumbers = (container: HTMLElement): number[] =>
+  Array.from(container.querySelectorAll('ol')).flatMap((list) => {
+    let nextValue = list.start;
+
+    return Array.from(list.children).flatMap((child) => {
+      if (!(child instanceof HTMLLIElement)) return [];
+
+      const value = child.hasAttribute('value') ? child.value : nextValue;
+      nextValue = value + 1;
+      return value;
+    });
+  });
+
 describe('Preview', () => {
   it('removes executable HTML from untrusted Markdown', () => {
     const { container, getByRole, getByText } = renderPreview(`
@@ -86,6 +99,55 @@ const answer = true;
     expect(container.querySelector('h1')).toHaveAttribute('data-source-line', '1');
     expect(container.querySelector('p')).toHaveAttribute('data-source-line', '3');
     expect(container.querySelector('pre')).toHaveAttribute('data-source-line', '5');
+  });
+
+  it('renders the explicit numbers from blank ordered list items', () => {
+    const content = [
+      '1.',
+      '2.',
+      '3.',
+      '4.',
+      '5.',
+      '',
+      '1.',
+      '2.',
+      '3.',
+      '4.',
+      '5.',
+      '',
+      '1.',
+      '2.',
+      '3.',
+      '4.',
+      '5.',
+      '6.',
+      '',
+      '1.',
+      '2.',
+    ].join('\n');
+    const { container } = renderPreview(content);
+
+    expect(getRenderedOrderedListNumbers(container)).toEqual([
+      1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 6, 1, 2,
+    ]);
+  });
+
+  it('preserves explicit numbers in nested and quoted ordered lists', () => {
+    const { container } = renderPreview(
+      [
+        '4. Outer',
+        '',
+        '   9. Nested',
+        '   11. Nested',
+        '',
+        '6. Outer',
+        '',
+        '> 7. Quoted',
+        '> 9. Quoted',
+      ].join('\n'),
+    );
+
+    expect(getRenderedOrderedListNumbers(container)).toEqual([4, 6, 9, 11, 7, 9]);
   });
 
   it('updates a task item through its source line when its preview checkbox is clicked', async () => {
