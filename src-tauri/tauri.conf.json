@@ -47,7 +47,7 @@
         "style-src": "'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net",
         "worker-src": "'self'"
       },
-      "capabilities": ["dialog", "store", "window"],
+      "capabilities": ["dialog", "opener", "store", "window"],
       "assetProtocol": {
         "enable": true,
         "scope": ["$HOME/**"]

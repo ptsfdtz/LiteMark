@@ -10,6 +10,7 @@ import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import rehypeKatex from 'rehype-katex';
 import rehypeSlug from 'rehype-slug';
 import { slug } from 'github-slugger';
+import { openUrl } from '@tauri-apps/plugin-opener';
 import './Preview.css';
 import 'highlight.js/styles/github.css';
 import 'katex/dist/katex.min.css';
@@ -39,6 +40,7 @@ const previewSanitizeSchema = {
 
 const getSourceLine = (node: ExtraProps['node']) => node?.position?.start.line;
 const HEADING_ID_PREFIX = 'preview-heading-';
+const SYSTEM_URL_PATTERN = /^(?:https?:\/\/|mailto:|tel:)/i;
 
 const getHeadingTargetId = (href: string | undefined): string | undefined => {
   if (!href?.startsWith('#') || href.length === 1) return undefined;
@@ -196,12 +198,23 @@ const PreviewAnchor = ({ href, onClick, ...props }: PreviewAnchorProps) => {
     if (event.defaultPrevented) return;
 
     const targetId = getHeadingTargetId(href);
-    const preview = event.currentTarget.closest('.preview-container');
-    const target = targetId ? event.currentTarget.ownerDocument.getElementById(targetId) : null;
-    if (!preview || !target || !preview.contains(target)) return;
-
     event.preventDefault();
-    target.scrollIntoView({ behavior: 'auto', block: 'start' });
+
+    if (href?.startsWith('#')) {
+      const preview = event.currentTarget.closest('.preview-container');
+      const target = targetId ? event.currentTarget.ownerDocument.getElementById(targetId) : null;
+      if (preview && target && preview.contains(target)) {
+        target.scrollIntoView({ behavior: 'auto', block: 'start' });
+      }
+      return;
+    }
+
+    const externalUrl = href?.trim();
+    if (!externalUrl || !SYSTEM_URL_PATTERN.test(externalUrl)) return;
+
+    void openUrl(externalUrl).catch((error: unknown) => {
+      console.error('Failed to open external link:', error);
+    });
   };
 
   return <a {...props} href={href} onClick={handleClick} />;

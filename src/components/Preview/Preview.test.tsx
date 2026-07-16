@@ -1,10 +1,15 @@
-import { render } from '@testing-library/react';
+import { fireEvent, render } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import { openUrl } from '@tauri-apps/plugin-opener';
 
 import { I18nProvider } from '@/locales';
 
 import Preview from './Preview';
+
+vi.mock('@tauri-apps/plugin-opener', () => ({
+  openUrl: vi.fn().mockResolvedValue(undefined),
+}));
 
 const renderPreview = (content: string) =>
   render(
@@ -150,6 +155,14 @@ const answer = true;
     await user.click(getByRole('link', { name: '标题测试' }));
 
     expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'auto', block: 'start' });
+  });
+
+  it('opens external links outside the WebView', async () => {
+    const { getByRole } = renderPreview('[Tauri](https://tauri.app/)');
+    const link = getByRole('link', { name: 'Tauri' });
+
+    expect(fireEvent.click(link)).toBe(false);
+    expect(openUrl).toHaveBeenCalledWith('https://tauri.app/');
   });
 
   it('renders the explicit numbers from blank ordered list items', () => {
