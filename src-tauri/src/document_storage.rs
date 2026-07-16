@@ -566,7 +566,7 @@ mod tests {
             assert!(rename_noreplace_is_unsupported(unsupported_error));
         }
 
-        for operation_error in [Errno::EXIST, Errno::ACCES, Errno::NOENT] {
+        for operation_error in [Errno::EXIST, Errno::ACCESS, Errno::NOENT] {
             assert!(!rename_noreplace_is_unsupported(operation_error));
         }
     }
