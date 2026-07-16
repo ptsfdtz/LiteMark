@@ -132,6 +132,16 @@ const answer = true;
     ]);
   });
 
+  it('preserves consecutive blank lines between ordered list items', () => {
+    const { container } = renderPreview(['1.', '', '1.', '', '', '1.'].join('\n'));
+    const items = container.querySelectorAll('ol > li');
+
+    expect(items).toHaveLength(3);
+    expect(items[0]).not.toHaveStyle({ paddingBlockStart: '1lh' });
+    expect(items[1]).toHaveStyle({ paddingBlockStart: '1lh' });
+    expect(items[2]).toHaveStyle({ paddingBlockStart: '2lh' });
+  });
+
   it('preserves explicit numbers in nested and quoted ordered lists', () => {
     const { container } = renderPreview(
       [

@@ -38,6 +38,22 @@ const previewSanitizeSchema = {
 const getSourceLine = (node: ExtraProps['node']) => node?.position?.start.line;
 
 const MarkdownSourceContext = React.createContext<readonly string[]>([]);
+const OrderedListStartLineContext = React.createContext<number | undefined>(undefined);
+
+const isBlankMarkdownSourceLine = (line: string): boolean =>
+  line.replace(/^(?:[ \t]*>[ \t]?)+/, '').trim().length === 0;
+
+const getBlankLinesBefore = (sourceLine: number, sourceLines: readonly string[]): number => {
+  let lineIndex = sourceLine - 2;
+  let blankLineCount = 0;
+
+  while (lineIndex >= 0 && isBlankMarkdownSourceLine(sourceLines[lineIndex] ?? '')) {
+    blankLineCount++;
+    lineIndex--;
+  }
+
+  return blankLineCount;
+};
 
 const getOrderedListItemValue = (
   node: ExtraProps['node'],
@@ -103,6 +119,7 @@ const copyText = async (text: string): Promise<boolean> => {
 
 type CodeBlockProps = React.ComponentPropsWithoutRef<'pre'> & ExtraProps;
 type ListItemProps = React.ComponentPropsWithoutRef<'li'> & ExtraProps;
+type OrderedListProps = React.ComponentPropsWithoutRef<'ol'> & ExtraProps;
 type TaskListItemCheckboxProps = React.ComponentPropsWithoutRef<'input'> & {
   onTaskToggle?: (sourceLine: number, checked: boolean) => void;
 };
@@ -158,10 +175,30 @@ const CodeBlock = ({ node, children, ...props }: CodeBlockProps) => {
   );
 };
 
+const SourceLinkedOrderedList = ({ node, ...props }: OrderedListProps) => {
+  const sourceLine = getSourceLine(node);
+
+  return (
+    <OrderedListStartLineContext.Provider value={sourceLine}>
+      <ol {...props} data-source-line={sourceLine} />
+    </OrderedListStartLineContext.Provider>
+  );
+};
+
 const SourceLinkedListItem = ({ node, className, ...props }: ListItemProps) => {
   const sourceLines = React.useContext(MarkdownSourceContext);
+  const orderedListStartLine = React.useContext(OrderedListStartLineContext);
   const sourceLine = getSourceLine(node);
   const value = getOrderedListItemValue(node, sourceLines);
+  const blankLineCount =
+    value !== undefined &&
+    sourceLine !== undefined &&
+    orderedListStartLine !== undefined &&
+    sourceLine !== orderedListStartLine
+      ? getBlankLinesBefore(sourceLine, sourceLines)
+      : 0;
+  const style =
+    blankLineCount > 0 ? { ...props.style, paddingBlockStart: `${blankLineCount}lh` } : props.style;
   const isTaskListItem = className?.split(/\s+/).includes('task-list-item') ?? false;
 
   return (
@@ -169,6 +206,7 @@ const SourceLinkedListItem = ({ node, className, ...props }: ListItemProps) => {
       <li
         {...props}
         className={className}
+        style={style}
         value={value ?? props.value}
         data-source-line={sourceLine}
       />
@@ -221,7 +259,7 @@ const sourceLineComponents: Components = {
     <blockquote {...props} data-source-line={getSourceLine(node)} />
   ),
   ul: ({ node, ...props }) => <ul {...props} data-source-line={getSourceLine(node)} />,
-  ol: ({ node, ...props }) => <ol {...props} data-source-line={getSourceLine(node)} />,
+  ol: SourceLinkedOrderedList,
   li: SourceLinkedListItem,
   pre: ({ node, ...props }) => <pre {...props} data-source-line={getSourceLine(node)} />,
   table: ({ node, ...props }) => <table {...props} data-source-line={getSourceLine(node)} />,
