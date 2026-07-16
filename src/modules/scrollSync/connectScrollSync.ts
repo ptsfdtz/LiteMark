@@ -7,6 +7,7 @@ export interface ScrollSyncFrameScheduler {
 
 interface ScrollSyncOptions {
   frameScheduler?: ScrollSyncFrameScheduler;
+  syncIntervalMs?: number;
   viewportAnchorRatio?: number;
 }
 
@@ -18,6 +19,7 @@ interface SourceAnchor {
 type ScrollSource = 'editor' | 'preview';
 
 const SCROLL_EPSILON = 1.5;
+const DEFAULT_SYNC_INTERVAL_MS = 32;
 
 const defaultFrameScheduler: ScrollSyncFrameScheduler = {
   requestFrame: (callback) => window.requestAnimationFrame(callback),
@@ -149,11 +151,16 @@ export function connectScrollSync(
   options: ScrollSyncOptions = {},
 ) {
   const frameScheduler = options.frameScheduler ?? defaultFrameScheduler;
+  const requestedSyncInterval = options.syncIntervalMs ?? DEFAULT_SYNC_INTERVAL_MS;
+  const syncIntervalMs = Number.isFinite(requestedSyncInterval)
+    ? Math.max(requestedSyncInterval, 0)
+    : DEFAULT_SYNC_INTERVAL_MS;
   const viewportAnchorRatio = clamp(options.viewportAnchorRatio ?? 0, 0, 1);
   let cachedAnchors: SourceAnchor[] | null = null;
   let cachedLineCount = 0;
   let scheduledFrame: number | null = null;
   let scheduledSource: ScrollSource | null = null;
+  let lastSyncTimestamp = Number.NEGATIVE_INFINITY;
   let lastSource: ScrollSource = 'editor';
   let expectedEditorScrollTop: number | null = null;
   let expectedPreviewScrollTop: number | null = null;
@@ -229,19 +236,31 @@ export function connectScrollSync(
     editor.setScrollTop(targetScrollTop);
   };
 
+  const flushScheduledSync: FrameRequestCallback = (timestamp) => {
+    scheduledFrame = null;
+    if (disposed) return;
+
+    if (timestamp - lastSyncTimestamp < syncIntervalMs) {
+      scheduledFrame = frameScheduler.requestFrame(flushScheduledSync);
+      return;
+    }
+
+    const sourceToSync = scheduledSource;
+    scheduledSource = null;
+    if (!sourceToSync) return;
+
+    lastSyncTimestamp = timestamp;
+    if (sourceToSync === 'editor') syncEditorToPreview();
+    else syncPreviewToEditor();
+  };
+
   const scheduleSync = (source: ScrollSource, updateLastSource = true) => {
     if (disposed) return;
     if (updateLastSource) lastSource = source;
     scheduledSource = source;
     if (scheduledFrame !== null) return;
 
-    scheduledFrame = frameScheduler.requestFrame(() => {
-      scheduledFrame = null;
-      const sourceToSync = scheduledSource;
-      scheduledSource = null;
-      if (sourceToSync === 'editor') syncEditorToPreview();
-      else if (sourceToSync === 'preview') syncPreviewToEditor();
-    });
+    scheduledFrame = frameScheduler.requestFrame(flushScheduledSync);
   };
 
   const invalidatePreviewAnchors = () => {

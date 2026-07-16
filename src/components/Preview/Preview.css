@@ -245,6 +245,11 @@
   min-height: 100%;
 }
 
+.preview-content.is-long-document > * {
+  content-visibility: auto;
+  contain-intrinsic-block-size: auto 4.8em;
+}
+
 .preview-content > :first-child {
   margin-top: 0.5rem;
 }

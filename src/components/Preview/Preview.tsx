@@ -40,6 +40,7 @@ const previewSanitizeSchema = {
 
 const getSourceLine = (node: ExtraProps['node']) => node?.position?.start.line;
 const HEADING_ID_PREFIX = 'preview-heading-';
+const LONG_DOCUMENT_LINE_THRESHOLD = 500;
 const SYSTEM_URL_PATTERN = /^(?:https?:\/\/|mailto:|tel:)/i;
 
 const getHeadingTargetId = (href: string | undefined): string | undefined => {
@@ -433,6 +434,9 @@ const Preview = React.forwardRef<HTMLDivElement, PreviewProps>(
       processSpecialEmojis(escapeUnclosedFencedCodeBlocks(content)),
     );
     const sourceLines = processedContent.split(/\r?\n/);
+    const previewContentClassName = `preview-content${
+      sourceLines.length >= LONG_DOCUMENT_LINE_THRESHOLD ? ' is-long-document' : ''
+    }`;
 
     return (
       <div ref={ref} className="preview-container">
@@ -466,7 +470,7 @@ const Preview = React.forwardRef<HTMLDivElement, PreviewProps>(
             <FaTimes />
           </button>
         )}
-        <div className="preview-content" data-preview-content>
+        <div className={previewContentClassName} data-preview-content>
           <MarkdownSourceContext.Provider value={sourceLines}>
             <ReactMarkdown
               remarkPlugins={[remarkGfm, remarkMath, remarkEmoji]}

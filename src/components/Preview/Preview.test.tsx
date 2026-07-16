@@ -106,6 +106,13 @@ const answer = true;
     expect(container.querySelector('pre')).toHaveAttribute('data-source-line', '5');
   });
 
+  it('enables offscreen rendering containment for long documents', () => {
+    const content = Array.from({ length: 500 }, (_, index) => `# Heading ${index + 1}`).join('\n');
+    const { container } = renderPreview(content);
+
+    expect(container.querySelector('[data-preview-content]')).toHaveClass('is-long-document');
+  });
+
   it('keeps rendering after an unclosed fenced code marker', () => {
     const { getByRole, getByText } = renderPreview(
       ['## Before', '', '~~~~', '', '## After', '', 'Still visible'].join('\n'),

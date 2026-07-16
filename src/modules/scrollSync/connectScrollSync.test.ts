@@ -26,10 +26,10 @@ const createFrameScheduler = () => {
 
   return {
     scheduler,
-    flush() {
+    flush(timestamp = 0) {
       const pending = [...callbacks.values()];
       callbacks.clear();
-      pending.forEach((callback) => callback(0));
+      pending.forEach((callback) => callback(timestamp));
     },
   };
 };
@@ -67,7 +67,7 @@ const addPreviewAnchor = (
 };
 
 describe('connectScrollSync', () => {
-  it('interpolates source anchors, coalesces frames, and preserves immediate user handoff', () => {
+  it('interpolates source anchors, throttles frames, and preserves immediate user handoff', () => {
     const preview = document.createElement('div');
     let previewScrollTop = 0;
     const previewWrites: number[] = [];
@@ -134,14 +134,18 @@ describe('connectScrollSync', () => {
       frameScheduler: scheduler,
       viewportAnchorRatio: 0,
     });
-    flush();
+    flush(0);
     previewWrites.length = 0;
 
     for (const line of [76, 126, 176]) {
       editorScrollTop = (line - 1) * 20;
       editorEvents.scroll?.({ scrollTop: editorScrollTop, scrollTopChanged: true });
     }
-    flush();
+    flush(16);
+
+    expect(previewWrites).toEqual([]);
+
+    flush(32);
 
     expect(previewWrites).toEqual([3600]);
 
@@ -150,7 +154,11 @@ describe('connectScrollSync', () => {
 
     preview.scrollTop = 3700;
     preview.dispatchEvent(new Event('scroll'));
-    flush();
+    flush(48);
+
+    expect(setEditorScrollTop).not.toHaveBeenCalled();
+
+    flush(64);
 
     expect(setEditorScrollTop).toHaveBeenCalledOnce();
     expect(setEditorScrollTop.mock.calls[0][0]).toBeCloseTo(3545.45, 1);
