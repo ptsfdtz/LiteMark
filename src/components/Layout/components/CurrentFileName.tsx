@@ -78,7 +78,7 @@ const CurrentFileName: React.FC<CurrentFileNameProps> = ({
 
   return editing ? (
     <input
-      className={styles.currentFileName}
+      className={`${styles.currentFileName} ${styles.currentFileNameInput}`}
       ref={inputRef}
       value={value}
       autoFocus
@@ -91,7 +91,6 @@ const CurrentFileName: React.FC<CurrentFileNameProps> = ({
           setEditing(false);
         }
       }}
-      style={{ minWidth: 60, maxWidth: 300 }}
     />
   ) : (
     <div

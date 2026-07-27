@@ -430,7 +430,7 @@ const Layout: React.FC = () => {
 
   return (
     <div className={styles.container}>
-      <div style={{ position: 'relative' }} data-tauri-drag-region="true">
+      <div className={styles.titleBar} data-tauri-drag-region="true">
         <Toolbar
           onOpenFolder={handleOpenFolder}
           onSave={handleSave}
@@ -439,6 +439,17 @@ const Layout: React.FC = () => {
           disabled={!documentSessionReady}
           className="toolbar"
         />
+        <div className={styles.currentFileNameSlot}>
+          {currentFilePath && (
+            <CurrentFileName
+              filePath={currentFilePath}
+              onRename={documentSession.renameDocument}
+              isDirty={isDirty}
+              forceEdit={forceEditFileName}
+              setForceEdit={setForceEditFileName}
+            />
+          )}
+        </div>
         <div className={styles.topRightControls}>
           <SettingsButton
             className="settingsButton"
@@ -540,15 +551,6 @@ const Layout: React.FC = () => {
           </>
         )}
       </div>
-      {currentFilePath && (
-        <CurrentFileName
-          filePath={currentFilePath}
-          onRename={documentSession.renameDocument}
-          isDirty={isDirty}
-          forceEdit={forceEditFileName}
-          setForceEdit={setForceEditFileName}
-        />
-      )}
       {showSettings && (
         <Settings
           theme={theme}

@@ -8,43 +8,63 @@
   background-color: var(--background-color, #f6f6f6);
 }
 
+.titleBar {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  background-color: var(--toolbar-bg, #f3f3f3);
+}
+
+.currentFileNameSlot {
+  display: flex;
+  flex: 1;
+  justify-content: flex-end;
+  min-width: 0;
+  padding: 0 0.5rem;
+  overflow: hidden;
+}
+
 .currentFileName {
-  position: absolute;
-  top: 0.45rem;
-  right: 8.5rem;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
   color: var(--text-color);
   background: none;
   font-size: 1.2rem;
   font-weight: bold;
-  letter-spacing: 0.5px;
-  max-width: calc(100% - 100px);
+  letter-spacing: 0;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   cursor: pointer;
   z-index: 20;
+}
 
-  &:focus,
-  & input {
-    padding: 2px 8px;
-    color: var(--text-color);
-    background: var(--background-color, #fff);
-    border: 1px solid var(--editor-border, #ddd);
-    outline: 2px solid var(--primary-color, #409eff);
-    border-radius: 4px;
-    font-size: 1.2rem;
-    font-weight: bold;
-    max-width: 300px;
-    min-width: 60px;
-    box-sizing: border-box;
-    cursor: text;
-  }
+.currentFileNameInput {
+  width: 32rem;
+  height: 2rem;
+  padding: 0 0.5rem;
+  color: var(--text-color);
+  background-color: var(--sidebar-bg, #fff);
+  border: 1px solid var(--link-color, #06c);
+  outline: none;
+  border-radius: 4px;
+  box-sizing: border-box;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.5;
+  text-align: left;
+  text-overflow: clip;
+  cursor: text;
 }
 
 .topRightControls {
-  position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
   display: flex;
+  flex: none;
   align-items: center;
   gap: 0.4rem;
+  margin-left: auto;
+  margin-right: 0.5rem;
   z-index: 25;
 }
 
