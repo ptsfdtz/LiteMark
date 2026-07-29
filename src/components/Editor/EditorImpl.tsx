@@ -21,14 +21,30 @@ import {
   applyMarkdownTransform,
   type MarkdownTransform,
 } from '@/modules/markdownEditing/applyMarkdownTransform';
+import { registerAgentCompletionProvider } from '@/modules/agentCompletion/agentCompletion';
 
 const Editor = React.forwardRef<MarkdownEditor, EditorProps>(
-  ({ value, onChange, className, theme, onSave, onSaveAs, minimapEnabled, readOnly }, ref) => {
+  (
+    {
+      value,
+      onChange,
+      className,
+      theme,
+      onSave,
+      onSaveAs,
+      minimapEnabled,
+      agentSettings,
+      readOnly,
+    },
+    ref,
+  ) => {
     const { t } = useI18n();
     const [resolvedTheme, setResolvedTheme] = useState('light');
     const onSaveRef = useRef(onSave);
     const onSaveAsRef = useRef(onSaveAs);
     const tableTemplateRef = useRef(t('toolbar.tableTemplate'));
+    const agentSettingsRef = useRef(agentSettings);
+    const readOnlyRef = useRef(readOnly);
 
     useEffect(() => {
       onSaveRef.current = onSave;
@@ -41,6 +57,14 @@ const Editor = React.forwardRef<MarkdownEditor, EditorProps>(
     useEffect(() => {
       tableTemplateRef.current = t('toolbar.tableTemplate');
     }, [t]);
+
+    useEffect(() => {
+      agentSettingsRef.current = agentSettings;
+    }, [agentSettings]);
+
+    useEffect(() => {
+      readOnlyRef.current = readOnly;
+    }, [readOnly]);
 
     useEffect(() => {
       const updateTheme = () => {
@@ -75,6 +99,12 @@ const Editor = React.forwardRef<MarkdownEditor, EditorProps>(
         ref.current = editor;
       }
       editor.onDidDispose(clearEditorRef);
+      const agentCompletionProvider = registerAgentCompletionProvider(monaco, () =>
+        readOnlyRef.current
+          ? { ...agentSettingsRef.current, enabled: false }
+          : agentSettingsRef.current,
+      );
+      editor.onDidDispose(() => agentCompletionProvider.dispose());
 
       const applyEdit = (transform: MarkdownTransform) => {
         applyMarkdownTransform(editor, transform, 'keyboard');
@@ -184,6 +214,8 @@ const Editor = React.forwardRef<MarkdownEditor, EditorProps>(
             fontSize: 14,
             scrollBeyondLastLine: false,
             automaticLayout: true,
+            inlineSuggest: { enabled: true },
+            tabCompletion: 'on',
             fontFamily: "Consolas, 'Courier New', monospace",
           }}
         />

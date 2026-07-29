@@ -61,7 +61,7 @@
   right: 0;
   display: flex;
   flex-direction: column;
-  width: 300px;
+  width: 340px;
   height: 100%;
   box-shadow: -2px 0 10px rgb(0 0 0 / 10%);
   transition: transform 0.3s ease;
@@ -236,4 +236,79 @@
 .languageButtonActive {
   box-shadow: 0 0 0 2px var(--text-color, #0f0f0f);
   border-color: transparent;
+}
+
+.settingLabel {
+  font-weight: 500;
+}
+
+.agentGroup {
+  padding-top: 1rem;
+  color: var(--text-color);
+  border-top: 1px solid var(--editor-border, #ddd);
+}
+
+.agentFields {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.fieldLabel {
+  margin-top: 4px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.textInput {
+  width: 100%;
+  min-width: 0;
+  height: 32px;
+  padding: 6px 9px;
+  color: var(--text-color, #222);
+  background: var(--toolbar-bg, #f7f7f7);
+  border: 1px solid var(--editor-border, #ddd);
+  border-radius: 4px;
+  box-sizing: border-box;
+  font-size: 0.9rem;
+
+  &:focus {
+    outline: none;
+    border-color: var(--blockquote-text, #666);
+  }
+}
+
+.apiKeyRow {
+  display: flex;
+  gap: 6px;
+
+  .textInput {
+    flex: 1;
+  }
+}
+
+.revealButton {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  color: var(--text-color, #222);
+  background: var(--toolbar-bg, #f7f7f7);
+  border: 1px solid var(--editor-border, #ddd);
+  border-radius: 4px;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--background-color, #fafafa);
+  }
+}
+
+.securityNote {
+  margin: 2px 0 0;
+  color: var(--blockquote-text, #666);
+  font-size: 0.75rem;
+  line-height: 1.4;
 }

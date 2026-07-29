@@ -14,6 +14,8 @@ import { loadWorkDir, saveWorkDir } from '@/utils/workDirStore';
 import SaveSuccessToast from './components/SaveSuccessToast';
 import { useI18n } from '@/locales/useI18n';
 import { loadTheme, saveTheme } from '@/utils/themeStore';
+import { loadAgentSettings, saveAgentSettings } from '@/utils/agentSettingsStore';
+import { DEFAULT_AGENT_SETTINGS, type AgentSettings } from '@/types/agent';
 import useDocumentSession from '@/modules/documentSession/useDocumentSession';
 import {
   tauriDocumentStorage,
@@ -54,6 +56,8 @@ const Layout: React.FC = () => {
   const [workDir, setWorkDirState] = useState('');
   const [forceEditFileName, setForceEditFileName] = useState(false);
   const [showSaveToast, setShowSaveToast] = useState(false);
+  const [agentSettings, setAgentSettings] = useState<AgentSettings>(DEFAULT_AGENT_SETTINGS);
+  const [agentSettingsReady, setAgentSettingsReady] = useState(false);
 
   // 加载个人工作文件夹
   useEffect(() => {
@@ -100,6 +104,28 @@ const Layout: React.FC = () => {
     },
     [t],
   );
+
+  useEffect(() => {
+    let active = true;
+    void loadAgentSettings().then((settings) => {
+      if (!active) return;
+      setAgentSettings(settings);
+      setAgentSettingsReady(true);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!agentSettingsReady) return;
+    const timeout = window.setTimeout(() => {
+      void saveAgentSettings(agentSettings).catch((error) => {
+        void showDocumentError(error, 'dialog.settingsSaveFailed');
+      });
+    }, 300);
+    return () => window.clearTimeout(timeout);
+  }, [agentSettings, agentSettingsReady, showDocumentError]);
 
   const setWorkDir = (dir: string) => {
     setWorkDirState(dir);
@@ -497,6 +523,7 @@ const Layout: React.FC = () => {
               className={styles.editor}
               theme={theme}
               minimapEnabled={minimapEnabled}
+              agentSettings={agentSettings}
               onSave={handleSave}
               onSaveAs={handleSaveAs}
             />
@@ -522,6 +549,7 @@ const Layout: React.FC = () => {
                     className={styles.editor}
                     theme={theme}
                     minimapEnabled={minimapEnabled}
+                    agentSettings={agentSettings}
                     onSave={handleSave}
                     onSaveAs={handleSaveAs}
                   />
@@ -559,6 +587,8 @@ const Layout: React.FC = () => {
           setWorkDir={setWorkDir}
           minimapEnabled={minimapEnabled}
           setMinimapEnabled={setMinimapEnabled}
+          agentSettings={agentSettings}
+          setAgentSettings={setAgentSettings}
           isClosing={settingsClosing}
           onRequestClose={() => setSettingsClosing(true)}
           onCloseComplete={() => {

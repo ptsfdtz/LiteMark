@@ -3,7 +3,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import styles from './Settings.module.css';
 import { SettingsProps } from '@/types/settings';
 import { open } from '@tauri-apps/plugin-dialog';
-import { FiSun, FiMoon, FiRepeat, FiMoreHorizontal } from 'react-icons/fi';
+import { FiEye, FiEyeOff, FiSun, FiMoon, FiRepeat, FiMoreHorizontal } from 'react-icons/fi';
 import { FaCog, FaTimes } from 'react-icons/fa';
 import { useI18n } from '@/locales/useI18n';
 
@@ -14,6 +14,8 @@ const Settings: React.FC<SettingsProps> = ({
   setWorkDir,
   minimapEnabled,
   setMinimapEnabled,
+  agentSettings,
+  setAgentSettings,
   onClose,
   onCloseComplete,
   onRequestClose,
@@ -31,6 +33,14 @@ const Settings: React.FC<SettingsProps> = ({
   const [isClosing, setIsClosing] = useState<boolean>(false);
   const modalRef = useRef<HTMLDivElement | null>(null);
   const [isOpenLocal, setIsOpenLocal] = useState<boolean>(false);
+  const [showApiKey, setShowApiKey] = useState(false);
+
+  const updateAgentSettings = (
+    key: 'enabled' | 'endpoint' | 'model' | 'apiKey',
+    value: boolean | string,
+  ) => {
+    setAgentSettings({ ...agentSettings, [key]: value });
+  };
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -245,6 +255,74 @@ const Settings: React.FC<SettingsProps> = ({
               />
               <span className={styles.slider}></span>
             </label>
+          </div>
+        </div>
+        <div className={`${styles.settingGroup} ${styles.agentGroup}`}>
+          <div className={styles.editorRow}>
+            <label className={styles.settingLabel} htmlFor="agentToggle">
+              {t('settings.agentCompletion')}
+            </label>
+            <label className={styles.switch}>
+              <input
+                id="agentToggle"
+                type="checkbox"
+                checked={agentSettings.enabled}
+                onChange={(event) => updateAgentSettings('enabled', event.target.checked)}
+              />
+              <span className={styles.slider}></span>
+            </label>
+          </div>
+          <div className={styles.agentFields}>
+            <label className={styles.fieldLabel} htmlFor="agentEndpoint">
+              {t('settings.agentEndpoint')}
+            </label>
+            <input
+              id="agentEndpoint"
+              type="url"
+              inputMode="url"
+              value={agentSettings.endpoint}
+              onChange={(event) => updateAgentSettings('endpoint', event.target.value)}
+              className={styles.textInput}
+              placeholder="https://api.openai.com/v1/chat/completions"
+              spellCheck={false}
+            />
+            <label className={styles.fieldLabel} htmlFor="agentModel">
+              {t('settings.agentModel')}
+            </label>
+            <input
+              id="agentModel"
+              type="text"
+              value={agentSettings.model}
+              onChange={(event) => updateAgentSettings('model', event.target.value)}
+              className={styles.textInput}
+              placeholder="gpt-4o-mini"
+              spellCheck={false}
+            />
+            <label className={styles.fieldLabel} htmlFor="agentApiKey">
+              {t('settings.agentApiKey')}
+            </label>
+            <div className={styles.apiKeyRow}>
+              <input
+                id="agentApiKey"
+                type={showApiKey ? 'text' : 'password'}
+                value={agentSettings.apiKey}
+                onChange={(event) => updateAgentSettings('apiKey', event.target.value)}
+                className={styles.textInput}
+                placeholder="sk-..."
+                autoComplete="off"
+                spellCheck={false}
+              />
+              <button
+                type="button"
+                className={styles.revealButton}
+                onClick={() => setShowApiKey((visible) => !visible)}
+                title={t(showApiKey ? 'settings.hideApiKey' : 'settings.showApiKey')}
+                aria-label={t(showApiKey ? 'settings.hideApiKey' : 'settings.showApiKey')}
+              >
+                {showApiKey ? <FiEyeOff size={18} /> : <FiEye size={18} />}
+              </button>
+            </div>
+            <p className={styles.securityNote}>{t('settings.agentKeyStorage')}</p>
           </div>
         </div>
       </div>

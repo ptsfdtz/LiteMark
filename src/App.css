@@ -101,6 +101,68 @@ body {
   height: 100vh;
 }
 
+[data-tour='editor'] .monaco-editor .inlineSuggestionsHints.withBorder {
+  padding: 4px;
+  background-color: var(--toolbar-bg, #f3f3f3);
+  border: 1px solid var(--editor-border, #ddd);
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 12%);
+}
+
+[data-tour='editor'] .inlineSuggestionsHints .actions-container {
+  gap: 4px;
+}
+
+[data-tour='editor'] .inlineSuggestionsHints .action-label {
+  min-height: 16px;
+  padding: 0.3rem 0.6rem;
+  color: var(--text-color, #333) !important;
+  background-color: var(--sidebar-bg, #fff);
+  border: none;
+  border-radius: 4px;
+  box-sizing: content-box;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 16px;
+  text-decoration: none;
+  transition: background-color 0.15s ease;
+}
+
+[data-tour='editor'] .inlineSuggestionsHints .action-item.menu-entry.text-only .action-label {
+  border-radius: 4px;
+}
+
+[data-tour='editor'] .inlineSuggestionsHints .action-label:hover {
+  color: var(--text-color, #333) !important;
+  background-color: var(--toolbar-bg, #eee);
+  border-bottom-color: transparent;
+}
+
+[data-tour='editor'] .inlineSuggestionsHints .action-label:active {
+  filter: brightness(0.92);
+}
+
+[data-tour='editor'] .inlineSuggestionsHints .action-label:focus-visible {
+  outline: 1px solid var(--link-color, #06c);
+  outline-offset: 1px;
+}
+
+[data-tour='editor'] .inlineSuggestionsHints .availableSuggestionCount .action-label {
+  padding-right: 2px;
+  padding-left: 2px;
+  background: transparent;
+  font-weight: 600;
+}
+
+[data-tour='editor']
+  .inlineSuggestionsHints
+  .actions-container:has(> .action-item:first-child.disabled):has(
+    > .action-item:nth-child(3).disabled
+  )
+  > .action-item:nth-child(-n + 3) {
+  display: none;
+}
+
 .editormd-logo {
   display: inline-block;
   width: 1em;

@@ -3,6 +3,7 @@ use document_storage::{FileInfo, StorageResult};
 use std::env;
 use std::path::{Path, PathBuf};
 
+mod agent_completion;
 mod document_storage;
 
 /// Read a UTF-8 text file from an absolute path and return its contents.
@@ -61,7 +62,8 @@ pub fn run() {
             create_untitled_file,
             list_text_files,
             rename_document,
-            get_startup_file
+            get_startup_file,
+            agent_completion::request_agent_completion
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

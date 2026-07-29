@@ -1,3 +1,5 @@
+import type { AgentSettings } from './agent';
+
 export interface SettingsProps {
   theme: 'light' | 'dark' | 'system';
   setTheme: (theme: 'light' | 'dark' | 'system') => void;
@@ -5,6 +7,8 @@ export interface SettingsProps {
   setWorkDir: (dir: string) => void;
   minimapEnabled?: boolean;
   setMinimapEnabled?: (v: boolean) => void;
+  agentSettings: AgentSettings;
+  setAgentSettings: (settings: AgentSettings) => void;
   onClose?: () => void;
   onRequestClose?: () => void;
   onCloseComplete?: () => void;
