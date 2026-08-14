@@ -8,6 +8,21 @@
   background-color: var(--sidebar-bg, #fff);
   border-left: 1px solid var(--hairline-color, #ddd);
   overflow: hidden;
+  transition: width 0.22s ease;
+}
+
+.panel.resizing {
+  transition: none;
+}
+
+.panel.closing {
+  border-left-color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel {
+    transition: none;
+  }
 }
 
 .resizeHandle {

@@ -41,6 +41,10 @@ interface FileExplorerProps {
   ) => void;
   onDeleteFile: (path: string) => Promise<boolean>;
   onClose: () => void;
+  /** When true the panel plays its close animation before unmounting. */
+  closing?: boolean;
+  /** Fired once the close animation finished and the panel can unmount. */
+  onCloseComplete?: () => void;
 }
 
 interface FileActionTarget {
@@ -217,24 +221,29 @@ const TreeItem: React.FC<TreeItemProps> = ({
         </span>
         <span className={styles.itemName}>{node.name}</span>
       </button>
-      {node.is_directory && expanded && node.children.length > 0 && (
-        <ul role="group" className={styles.treeGroup}>
-          {node.children.map((child) => (
-            <TreeItem
-              key={child.path}
-              node={child}
-              depth={depth + 1}
-              currentPath={currentPath}
-              expandedPaths={expandedPaths}
-              selectedFilePath={selectedFilePath}
-              onToggle={onToggle}
-              onSelectFile={onSelectFile}
-              onShowContextMenu={onShowContextMenu}
-              onOpenFile={onOpenFile}
-              unsupportedLabel={unsupportedLabel}
-            />
-          ))}
-        </ul>
+      {node.is_directory && node.children.length > 0 && (
+        <div
+          className={`${styles.groupWrapper} ${expanded ? styles.groupOpen : ''}`}
+          aria-hidden={!expanded}
+        >
+          <ul role="group" className={styles.treeGroup}>
+            {node.children.map((child) => (
+              <TreeItem
+                key={child.path}
+                node={child}
+                depth={depth + 1}
+                currentPath={currentPath}
+                expandedPaths={expandedPaths}
+                selectedFilePath={selectedFilePath}
+                onToggle={onToggle}
+                onSelectFile={onSelectFile}
+                onShowContextMenu={onShowContextMenu}
+                onOpenFile={onOpenFile}
+                unsupportedLabel={unsupportedLabel}
+              />
+            ))}
+          </ul>
+        </div>
       )}
     </li>
   );
@@ -249,8 +258,14 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
   onReorderDirectory,
   onDeleteFile,
   onClose,
+  closing = false,
+  onCloseComplete,
 }) => {
   const { t } = useI18n();
+  const asideRef = useRef<HTMLElement | null>(null);
+  // Slide in from zero width on mount.
+  const [entered, setEntered] = useState(false);
+  const closeCompleteRef = useRef(false);
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(() => new Set());
   const [collapsedRoots, setCollapsedRoots] = useState<Set<string>>(() => new Set());
   const [confirmingRoot, setConfirmingRoot] = useState<string | null>(null);
@@ -271,6 +286,39 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
     maxViewportRatio: 0.4,
     edge: 'right',
   });
+
+  useEffect(() => {
+    let raf2 = 0;
+    const raf1 = window.requestAnimationFrame(() => {
+      raf2 = window.requestAnimationFrame(() => setEntered(true));
+    });
+    return () => {
+      window.cancelAnimationFrame(raf1);
+      if (raf2) window.cancelAnimationFrame(raf2);
+    };
+  }, []);
+
+  // Unmount after the close animation; the timeout covers reduced-motion
+  // environments where no transitionend event fires.
+  useEffect(() => {
+    if (!closing || !onCloseComplete) return;
+    const timeout = window.setTimeout(() => {
+      if (closeCompleteRef.current) return;
+      closeCompleteRef.current = true;
+      onCloseComplete();
+    }, 400);
+    return () => window.clearTimeout(timeout);
+  }, [closing, onCloseComplete]);
+
+  const handlePanelTransitionEnd = (event: React.TransitionEvent) => {
+    if (!closing || !onCloseComplete) return;
+    if (event.target !== asideRef.current || event.propertyName !== 'width') return;
+    if (closeCompleteRef.current) return;
+    closeCompleteRef.current = true;
+    onCloseComplete();
+  };
+
+  const panelWidth = closing || !entered ? 0 : width;
 
   const visibleExpandedPaths = useMemo(() => {
     if (!currentPath) return expandedPaths;
@@ -337,7 +385,13 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
   }, [contextMenu]);
 
   return (
-    <aside className={styles.explorer} aria-label={t('explorer.title')} style={{ width }}>
+    <aside
+      ref={asideRef}
+      className={`${styles.explorer} ${resizing ? styles.resizing : ''} ${closing ? styles.closing : ''}`}
+      aria-label={t('explorer.title')}
+      style={{ width: panelWidth }}
+      onTransitionEnd={handlePanelTransitionEnd}
+    >
       <div className={styles.header}>
         <span className={styles.headerTitle}>{t('explorer.title')}</span>
         <button
@@ -474,8 +528,11 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
                   </div>
                 </div>
               )}
-              {!collapsed &&
-                (root.nodes.length === 0 ? (
+              <div
+                className={`${styles.groupWrapper} ${!collapsed ? styles.groupOpen : ''}`}
+                aria-hidden={collapsed}
+              >
+                {root.nodes.length === 0 ? (
                   <div className={styles.empty}>{t('explorer.empty')}</div>
                 ) : (
                   <ul role="tree" className={styles.tree} aria-label={rootName}>
@@ -504,7 +561,8 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
                       />
                     ))}
                   </ul>
-                ))}
+                )}
+              </div>
             </section>
           );
         })}

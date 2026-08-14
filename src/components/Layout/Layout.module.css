@@ -104,6 +104,32 @@
   min-width: 0;
 }
 
+.showExplorerButton {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 30px;
+  height: 30px;
+  margin: 0 3px;
+  padding: 0;
+  color: var(--muted-text);
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.showExplorerButton:hover {
+  color: var(--heading-color);
+  background: var(--control-hover);
+}
+
+.showExplorerButton svg {
+  width: 16px;
+  height: 16px;
+  stroke-width: 1.8;
+}
+
 @media (width <= 1080px) {
   .currentFileNameSlot {
     display: none;

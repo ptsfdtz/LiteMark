@@ -19,6 +19,16 @@
   scrollbar-width: none;
 }
 
+.leadingControl {
+  display: flex;
+  flex: none;
+  align-items: center;
+  width: 36px;
+  height: 100%;
+  border-right: 1px solid var(--hairline-color);
+  box-sizing: border-box;
+}
+
 .tabScroller::-webkit-scrollbar {
   display: none;
 }
@@ -57,6 +67,34 @@
   background: transparent;
   border-right: 1px solid var(--hairline-color);
   box-sizing: border-box;
+  transition:
+    max-width 0.18s ease,
+    min-width 0.18s ease,
+    opacity 0.15s ease;
+  animation: tab-in 0.16s ease;
+}
+
+@keyframes tab-in {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+}
+
+.tab.closing {
+  min-width: 0;
+  max-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  border-right-color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tab {
+    transition: none;
+    animation: none;
+  }
 }
 
 .tab:hover {

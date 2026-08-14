@@ -8,6 +8,7 @@ interface OpenTabsProps {
   paths: string[];
   activePath: string | null;
   dirtyPath?: string | null;
+  leadingControl?: React.ReactNode;
   onActivate(path: string): void;
   onClose(path: string): void;
 }
@@ -20,12 +21,46 @@ const OpenTabs: React.FC<OpenTabsProps> = ({
   paths,
   activePath,
   dirtyPath,
+  leadingControl,
   onActivate,
   onClose,
 }) => {
   const { t } = useI18n();
   const tabScrollerRef = React.useRef<HTMLDivElement>(null);
   const dragRef = React.useRef<{ clientX: number; scrollLeft: number } | null>(null);
+  // Tabs that disappeared from `paths` stay rendered briefly to animate out.
+  const [closingPaths, setClosingPaths] = React.useState<string[]>([]);
+  const prevPathsRef = React.useRef(paths);
+
+  React.useEffect(() => {
+    const previous = prevPathsRef.current;
+    prevPathsRef.current = paths;
+    if (previous === paths) return;
+    const removed = previous.filter((path) => !paths.includes(path));
+    const added = paths.filter((path) => !previous.includes(path));
+    // Renames and "save as" swap one path for another; only animate real closes.
+    if (removed.length > 0 && added.length === 0) {
+      setClosingPaths((current) => [
+        ...current,
+        ...removed.filter((path) => !current.includes(path)),
+      ]);
+    }
+  }, [paths]);
+
+  React.useEffect(() => {
+    if (closingPaths.length === 0) return;
+    const timeout = window.setTimeout(() => setClosingPaths([]), 220);
+    return () => window.clearTimeout(timeout);
+  }, [closingPaths]);
+
+  const displayPaths = React.useMemo(() => {
+    if (closingPaths.length === 0) return paths;
+    const merged = [...paths];
+    for (const path of closingPaths) {
+      if (!merged.includes(path)) merged.push(path);
+    }
+    return merged;
+  }, [paths, closingPaths]);
 
   React.useEffect(() => {
     const scroller = tabScrollerRef.current;
@@ -53,26 +88,34 @@ const OpenTabs: React.FC<OpenTabsProps> = ({
       scroller.removeEventListener('scroll', updateThumb);
       resizeObserver?.disconnect();
     };
-  }, [paths]);
+  }, [displayPaths]);
 
-  if (paths.length === 0) return null;
+  if (displayPaths.length === 0 && !leadingControl) return null;
 
   return (
-    <div className={styles.tabBar} role="tablist" aria-label={t('tabs.openFiles')}>
-      <div className={styles.tabScroller} ref={tabScrollerRef}>
-        {paths.map((path) => {
+    <div className={styles.tabBar}>
+      {leadingControl && <div className={styles.leadingControl}>{leadingControl}</div>}
+      <div
+        className={styles.tabScroller}
+        ref={tabScrollerRef}
+        role="tablist"
+        aria-label={t('tabs.openFiles')}
+      >
+        {displayPaths.map((path) => {
           const active = path === activePath;
           const dirty = path === dirtyPath;
+          const closing = closingPaths.includes(path);
           const kind = getFileViewKind(path);
           const Icon = kind === 'image' ? LuImage : kind === 'code' ? LuCode : LuFileText;
           const name = fileName(path);
 
           return (
             <div
-              className={`${styles.tab} ${active ? styles.active : ''}`}
+              className={`${styles.tab} ${active ? styles.active : ''} ${closing ? styles.closing : ''}`}
               key={path}
               role="tab"
               aria-selected={active}
+              aria-hidden={closing || undefined}
             >
               <button
                 type="button"

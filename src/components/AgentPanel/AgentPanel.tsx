@@ -11,6 +11,10 @@ interface AgentPanelProps {
   isConfigured: boolean;
   modelName: string;
   onClose: () => void;
+  /** When true the panel plays its close animation before unmounting. */
+  closing?: boolean;
+  /** Fired once the close animation finished and the panel can unmount. */
+  onCloseComplete?: () => void;
 }
 
 const toolNameKeys: Record<string, TranslationKey> = {
@@ -21,10 +25,21 @@ const toolNameKeys: Record<string, TranslationKey> = {
   read_file: 'agent.tool.readFile',
 };
 
-const AgentPanel: React.FC<AgentPanelProps> = ({ session, isConfigured, modelName, onClose }) => {
+const AgentPanel: React.FC<AgentPanelProps> = ({
+  session,
+  isConfigured,
+  modelName,
+  onClose,
+  closing = false,
+  onCloseComplete,
+}) => {
   const { t } = useI18n();
   const [input, setInput] = useState('');
   const listRef = useRef<HTMLDivElement>(null);
+  const asideRef = useRef<HTMLElement | null>(null);
+  // Slide in from zero width on mount.
+  const [entered, setEntered] = useState(false);
+  const closeCompleteRef = useRef(false);
   const { width, resizing, onResizeStart, onResizeKeyDown } = useResizablePanel({
     storageKey: 'litemark.agentPanelWidth',
     initialWidth: 360,
@@ -33,6 +48,39 @@ const AgentPanel: React.FC<AgentPanelProps> = ({ session, isConfigured, modelNam
     maxViewportRatio: 0.45,
     edge: 'left',
   });
+
+  useEffect(() => {
+    let raf2 = 0;
+    const raf1 = window.requestAnimationFrame(() => {
+      raf2 = window.requestAnimationFrame(() => setEntered(true));
+    });
+    return () => {
+      window.cancelAnimationFrame(raf1);
+      if (raf2) window.cancelAnimationFrame(raf2);
+    };
+  }, []);
+
+  // Unmount after the close animation; the timeout covers reduced-motion
+  // environments where no transitionend event fires.
+  useEffect(() => {
+    if (!closing || !onCloseComplete) return;
+    const timeout = window.setTimeout(() => {
+      if (closeCompleteRef.current) return;
+      closeCompleteRef.current = true;
+      onCloseComplete();
+    }, 400);
+    return () => window.clearTimeout(timeout);
+  }, [closing, onCloseComplete]);
+
+  const handlePanelTransitionEnd = (event: React.TransitionEvent) => {
+    if (!closing || !onCloseComplete) return;
+    if (event.target !== asideRef.current || event.propertyName !== 'width') return;
+    if (closeCompleteRef.current) return;
+    closeCompleteRef.current = true;
+    onCloseComplete();
+  };
+
+  const panelWidth = closing || !entered ? 0 : width;
 
   const { items, status, error, send, stop, clear, applyEdit, respondPermission } = session;
   const running = status === 'running';
@@ -55,7 +103,13 @@ const AgentPanel: React.FC<AgentPanelProps> = ({ session, isConfigured, modelNam
   };
 
   return (
-    <aside className={styles.panel} data-tauri-drag-region="false" style={{ width }}>
+    <aside
+      ref={asideRef}
+      className={`${styles.panel} ${resizing ? styles.resizing : ''} ${closing ? styles.closing : ''}`}
+      data-tauri-drag-region="false"
+      style={{ width: panelWidth }}
+      onTransitionEnd={handlePanelTransitionEnd}
+    >
       <div
         className={`${styles.resizeHandle} ${resizing ? styles.resizing : ''}`}
         role="separator"

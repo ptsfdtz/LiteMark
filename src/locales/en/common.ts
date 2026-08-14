@@ -121,6 +121,7 @@ const common = {
   'explorer.confirmRemove': 'Remove',
   'explorer.cancelRemove': 'Cancel',
   'explorer.hide': 'Hide file explorer',
+  'explorer.show': 'Show file explorer',
   'explorer.unsupported': 'Recognized, but not supported in LiteMark yet',
   'explorer.empty': 'Folder is empty',
   'explorer.fileActions': 'Actions for {name}',

@@ -119,6 +119,7 @@ const common = {
   'explorer.confirmRemove': '移除',
   'explorer.cancelRemove': '取消',
   'explorer.hide': '隐藏文件目录',
+  'explorer.show': '显示文件目录',
   'explorer.unsupported': '已识别，暂不支持在 LiteMark 中打开',
   'explorer.empty': '文件夹为空',
   'explorer.fileActions': '{name} 的操作',

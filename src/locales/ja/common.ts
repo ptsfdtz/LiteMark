@@ -121,6 +121,7 @@ const common = {
   'explorer.confirmRemove': '外す',
   'explorer.cancelRemove': 'キャンセル',
   'explorer.hide': 'ファイルツリーを隠す',
+  'explorer.show': 'ファイルツリーを表示',
   'explorer.unsupported': '認識済みですが LiteMark ではまだ開けません',
   'explorer.empty': 'フォルダーは空です',
   'explorer.fileActions': '{name} の操作',

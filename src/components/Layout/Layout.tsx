@@ -36,6 +36,7 @@ import { deleteWorkspaceFile, listDirectoryTree } from '@/modules/directoryTree'
 import { getFileViewKind } from '@/types/fileTree';
 import { loadWorkspaceDirectories, saveWorkspaceDirectories } from '@/utils/workspaceStore';
 import OpenTabs from '@/components/OpenTabs/OpenTabs';
+import { LuPanelLeftOpen } from 'react-icons/lu';
 
 function normalizePath(path: string): string {
   return path
@@ -65,6 +66,9 @@ const Layout: React.FC = () => {
   const [workDir, setWorkDirState] = useState('');
   const [workspaceRoots, setWorkspaceRoots] = useState<FileExplorerRoot[]>([]);
   const [explorerVisible, setExplorerVisible] = useState(false);
+  // Keep panels mounted while their close animation plays out.
+  const [explorerRendered, setExplorerRendered] = useState(false);
+  const [agentPanelRendered, setAgentPanelRendered] = useState(false);
   const workspaceRestoredRef = useRef(false);
   const [forceEditFileName, setForceEditFileName] = useState(false);
   const [showSaveToast, setShowSaveToast] = useState(false);
@@ -83,6 +87,14 @@ const Layout: React.FC = () => {
       setWorkDirState(dir);
     })();
   }, []);
+
+  useEffect(() => {
+    if (explorerVisible) setExplorerRendered(true);
+  }, [explorerVisible]);
+
+  useEffect(() => {
+    if (agentSettings.panelVisible) setAgentPanelRendered(true);
+  }, [agentSettings.panelVisible]);
 
   useEffect(() => {
     if (!isTauri() || !windowStateReady || (!explorerVisible && !agentSettings.panelVisible)) {
@@ -839,7 +851,7 @@ const Layout: React.FC = () => {
         }}
       />
       <div className={styles.mainArea}>
-        {workspaceRoots.length > 0 && explorerVisible && (
+        {workspaceRoots.length > 0 && explorerRendered && (
           <FileExplorer
             roots={workspaceRoots}
             currentPath={activeFilePath}
@@ -849,6 +861,8 @@ const Layout: React.FC = () => {
             onReorderDirectory={reorderWorkspaceDirectory}
             onDeleteFile={handleDeleteWorkspaceFile}
             onClose={() => setExplorerVisible(false)}
+            closing={!explorerVisible}
+            onCloseComplete={() => setExplorerRendered(false)}
           />
         )}
         <div className={styles.documentArea} ref={documentAreaRef}>
@@ -856,6 +870,19 @@ const Layout: React.FC = () => {
             paths={openTabs}
             activePath={activeFilePath}
             dirtyPath={isDirty ? currentFilePath : null}
+            leadingControl={
+              workspaceRoots.length > 0 && !explorerVisible ? (
+                <button
+                  type="button"
+                  className={styles.showExplorerButton}
+                  onClick={() => setExplorerVisible(true)}
+                  title={t('explorer.show')}
+                  aria-label={t('explorer.show')}
+                >
+                  <LuPanelLeftOpen aria-hidden="true" />
+                </button>
+              ) : undefined
+            }
             onActivate={(path) => void handleActivateTab(path)}
             onClose={(path) => void handleCloseTab(path)}
           />
@@ -874,12 +901,14 @@ const Layout: React.FC = () => {
             <SaveSuccessToast show={showSaveToast} />
           </div>
         </div>
-        {agentSettings.panelVisible && (
+        {agentPanelRendered && (
           <AgentPanel
             session={agentSession}
             isConfigured={agentConfigured}
             modelName={agentSettings.model}
             onClose={() => setAgentSettings({ ...agentSettings, panelVisible: false })}
+            closing={!agentSettings.panelVisible}
+            onCloseComplete={() => setAgentPanelRendered(false)}
           />
         )}
       </div>

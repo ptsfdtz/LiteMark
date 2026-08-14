@@ -9,6 +9,21 @@
   background: var(--sidebar-bg);
   border-right: 1px solid var(--hairline-color);
   overflow: hidden;
+  transition: width 0.22s ease;
+}
+
+.explorer.resizing {
+  transition: none;
+}
+
+.explorer.closing {
+  border-right-color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .explorer {
+    transition: none;
+  }
 }
 
 .header {
@@ -139,6 +154,35 @@
   list-style: none;
 }
 
+.groupWrapper {
+  display: grid;
+  /* stylelint-disable-next-line unit-allowed-list -- fr is required for the grid-rows expand animation */
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  transition:
+    grid-template-rows 0.18s ease,
+    visibility 0s linear 0.18s;
+}
+
+.groupWrapper.groupOpen {
+  /* stylelint-disable-next-line unit-allowed-list -- fr is required for the grid-rows expand animation */
+  grid-template-rows: 1fr;
+  visibility: visible;
+  transition: grid-template-rows 0.18s ease;
+}
+
+.groupWrapper > * {
+  min-height: 0;
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .groupWrapper,
+  .groupWrapper.groupOpen {
+    transition: none;
+  }
+}
+
 .tree li,
 .treeGroup li {
   min-width: 0;
@@ -212,6 +256,14 @@
   border-top: 1px solid var(--hairline-color);
   border-bottom: 1px solid var(--hairline-color);
   font-size: 12px;
+  animation: confirm-in 0.16s ease;
+}
+
+@keyframes confirm-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
 }
 
 .confirmationText {
@@ -397,6 +449,15 @@
   border: 1px solid var(--hairline-color);
   border-radius: 5px;
   box-shadow: 0 8px 24px rgb(0 0 0 / 16%);
+  transform-origin: top left;
+  animation: menu-pop 0.12s ease;
+}
+
+@keyframes menu-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-3px);
+  }
 }
 
 .contextMenuItem {
@@ -462,6 +523,13 @@
   align-items: center;
   padding: 20px;
   background: rgb(0 0 0 / 20%);
+  animation: fade-in 0.15s ease;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
 }
 
 .deleteDialog {
@@ -472,6 +540,23 @@
   border: 1px solid var(--hairline-color);
   border-radius: 6px;
   box-shadow: 0 12px 30px rgb(0 0 0 / 18%);
+  animation: dialog-pop 0.16s ease;
+}
+
+@keyframes dialog-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .contextMenu,
+  .deleteDialogBackdrop,
+  .deleteDialog,
+  .removeConfirmation {
+    animation: none;
+  }
 }
 
 .deleteDialog h2 {
