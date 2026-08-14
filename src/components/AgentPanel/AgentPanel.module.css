@@ -56,8 +56,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  height: 46px;
-  padding: 0 14px;
+  height: 36px;
+  padding: 0 10px;
   border-bottom: 1px solid var(--hairline-color, #ddd);
   box-sizing: border-box;
 }
@@ -84,8 +84,8 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   padding: 0;
   color: var(--text-color);
   background: transparent;

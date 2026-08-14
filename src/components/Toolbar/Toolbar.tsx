@@ -8,6 +8,7 @@ import {
   LuChevronDown,
   LuCode,
   LuCopy,
+  LuFileText,
   LuFolderOpen,
   LuImage,
   LuItalic,
@@ -27,6 +28,11 @@ import { useI18n } from '@/locales/useI18n';
 
 const Toolbar: React.FC<ToolbarProps> = ({
   onOpenFolder,
+  onOpenDocument,
+  recentFolders = [],
+  recentFiles = [],
+  onOpenRecentFolder,
+  onOpenRecentDocument,
   onSave,
   onSaveAs,
   className,
@@ -37,16 +43,20 @@ const Toolbar: React.FC<ToolbarProps> = ({
   const [, refresh] = useReducer((count: number) => count + 1, 0);
   const [linkEditorOpen, setLinkEditorOpen] = useState(false);
   const [blockMenuOpen, setBlockMenuOpen] = useState(false);
+  const [openMenuOpen, setOpenMenuOpen] = useState(false);
   const [linkValue, setLinkValue] = useState('');
   const [editingLink, setEditingLink] = useState(false);
   const [linkPosition, setLinkPosition] = useState({ left: 8, top: 48 });
   const [blockMenuPosition, setBlockMenuPosition] = useState({ left: 8, top: 48 });
+  const [openMenuPosition, setOpenMenuPosition] = useState({ left: 8, top: 48 });
   const linkInputId = useId();
   const blockMenuId = useId();
   const linkButtonRef = useRef<HTMLButtonElement>(null);
   const blockButtonRef = useRef<HTMLButtonElement>(null);
+  const openButtonRef = useRef<HTMLButtonElement>(null);
   const linkPopoverRef = useRef<HTMLFormElement>(null);
   const blockMenuRef = useRef<HTMLDivElement>(null);
+  const openMenuRef = useRef<HTMLDivElement>(null);
   const linkInputRef = useRef<HTMLInputElement>(null);
   const noDrag = { 'data-tauri-drag-region': 'false' } as const;
 
@@ -154,6 +164,28 @@ const Toolbar: React.FC<ToolbarProps> = ({
     };
   }, [blockMenuOpen]);
 
+  useEffect(() => {
+    if (!openMenuOpen) return;
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (!openButtonRef.current?.contains(target) && !openMenuRef.current?.contains(target)) {
+        setOpenMenuOpen(false);
+      }
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setOpenMenuOpen(false);
+        openButtonRef.current?.focus();
+      }
+    };
+    document.addEventListener('pointerdown', closeOnOutsidePointer);
+    window.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsidePointer);
+      window.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [openMenuOpen]);
+
   const applyLink = () => {
     if (!editor) return;
     const href = linkValue.trim();
@@ -232,12 +264,21 @@ const Toolbar: React.FC<ToolbarProps> = ({
   return (
     <div className={`${styles.toolbar} ${className ?? ''}`} data-tauri-drag-region="true">
       <div className={styles.group}>
-        {onOpenFolder && (
+        {(onOpenFolder || onOpenDocument) && (
           <button
+            ref={openButtonRef}
             className="folderButton"
-            onClick={onOpenFolder}
-            title={t('toolbar.recentFiles')}
-            aria-label={t('toolbar.recentFiles')}
+            onClick={(event) => {
+              const rect = event.currentTarget.getBoundingClientRect();
+              setOpenMenuPosition({ left: Math.max(8, rect.left), top: rect.bottom + 6 });
+              setLinkEditorOpen(false);
+              setBlockMenuOpen(false);
+              setOpenMenuOpen((open) => !open);
+            }}
+            title={t('toolbar.open')}
+            aria-label={t('toolbar.open')}
+            aria-haspopup="menu"
+            aria-expanded={openMenuOpen}
             disabled={disabled}
             {...noDrag}
           >
@@ -536,6 +577,84 @@ const Toolbar: React.FC<ToolbarProps> = ({
                   {activeBlock === option.value && <LuCheck />}
                 </span>
                 <span>{option.label}</span>
+              </button>
+            ))}
+          </div>,
+          document.body,
+        )}
+      {openMenuOpen &&
+        createPortal(
+          <div
+            ref={openMenuRef}
+            className={styles.openMenu}
+            role="menu"
+            aria-label={t('toolbar.open')}
+            style={openMenuPosition}
+          >
+            {onOpenDocument && (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setOpenMenuOpen(false);
+                  onOpenDocument();
+                }}
+              >
+                <LuFileText aria-hidden="true" />
+                <span>{t('toolbar.openFile')}</span>
+                <kbd aria-hidden="true">Ctrl+O</kbd>
+              </button>
+            )}
+            {onOpenFolder && (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setOpenMenuOpen(false);
+                  onOpenFolder();
+                }}
+              >
+                <LuFolderOpen aria-hidden="true" />
+                <span>{t('toolbar.openFolder')}</span>
+                <kbd aria-hidden="true">Ctrl+Shift+O</kbd>
+              </button>
+            )}
+            {(recentFolders.length > 0 || recentFiles.length > 0) && (
+              <div className={styles.openMenuDivider} role="separator" />
+            )}
+            {recentFolders.map((folder) => (
+              <button
+                key={folder.path}
+                type="button"
+                className={styles.recentOpenItem}
+                role="menuitem"
+                title={folder.path}
+                onClick={() => {
+                  setOpenMenuOpen(false);
+                  onOpenRecentFolder?.(folder.path);
+                }}
+              >
+                <LuFolderOpen aria-hidden="true" />
+                <span>{folder.name}</span>
+              </button>
+            ))}
+            {recentFolders.length > 0 && recentFiles.length > 0 && (
+              <div className={styles.openMenuDivider} role="separator" />
+            )}
+            {recentFiles.map((file) => (
+              <button
+                key={file.path}
+                type="button"
+                className={styles.recentOpenItem}
+                role="menuitem"
+                title={file.path}
+                onClick={() => {
+                  setOpenMenuOpen(false);
+                  onOpenRecentDocument?.(file.path);
+                }}
+              >
+                <LuFileText aria-hidden="true" />
+                <span>{file.name}</span>
               </button>
             ))}
           </div>,

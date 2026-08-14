@@ -59,21 +59,20 @@ export function useMathPreprocess() {
       return `$$${g1}$$`;
     });
 
+    // remark-math only understands $...$ and $$...$$; rewrite the LaTeX-style
+    // \(...\) and \[...\] delimiters so they render as math as well.
     out = out.replace(/\\\[([\s\S]*?)\\\]/g, (_m, g1) => {
-      if (/[\u4e00-\u9fff]/.test(g1)) {
-        return `\\[${wrapChineseInMath(g1)}\\]`;
-      }
-      return `\\[${g1}\\]`;
+      const body = /[\u4e00-\u9fff]/.test(g1) ? wrapChineseInMath(g1) : g1;
+      // Multi-line $$ fences are required for display-mode math.
+      return `$$\n${body}\n$$`;
     });
 
     out = out.replace(/\\\(([\s\S]*?)\\\)/g, (_m, g1) => {
-      if (/[\u4e00-\u9fff]/.test(g1)) {
-        return `\\(${wrapChineseInMath(g1)}\\)`;
-      }
-      return `\\(${g1}\\)`;
+      const body = /[\u4e00-\u9fff]/.test(g1) ? wrapChineseInMath(g1) : g1;
+      return `$${body}$`;
     });
 
-    out = out.replace(/\$([^$\n][^$]*?)\$/g, (_m, g1) => {
+    out = out.replace(/(?<!\$)\$([^$\n][^$]*?)\$(?!\$)/g, (_m, g1) => {
       if (/[\u4e00-\u9fff]/.test(g1)) {
         return `$${wrapChineseInMath(g1)}$`;
       }

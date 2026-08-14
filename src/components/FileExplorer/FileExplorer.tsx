@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   LuBraces,
+  LuChevronsUp,
   LuChevronDown,
   LuChevronRight,
   LuCopy,
   LuFile,
   LuFileCode2,
+  LuFilePlus,
   LuFileJson,
   LuFileText,
   LuFolder,
@@ -13,6 +15,7 @@ import {
   LuImage,
   LuFolderPlus,
   LuPanelLeftClose,
+  LuRefreshCw,
   LuTrash2,
   LuX,
 } from 'react-icons/lu';
@@ -33,6 +36,7 @@ interface FileExplorerProps {
   currentPath: string | null;
   onOpenFile: (path: string) => boolean | void | Promise<boolean | void>;
   onChooseDirectory: () => void | Promise<void>;
+  onRefresh: () => void | Promise<void>;
   onRemoveDirectory: (path: string) => void;
   onReorderDirectory: (
     sourcePath: string,
@@ -40,6 +44,8 @@ interface FileExplorerProps {
     position: 'before' | 'after',
   ) => void;
   onDeleteFile: (path: string) => Promise<boolean>;
+  onCreateFile: (directory: string) => Promise<boolean>;
+  onDeleteDirectory: (path: string) => Promise<boolean>;
   onClose: () => void;
   /** When true the panel plays its close animation before unmounting. */
   closing?: boolean;
@@ -54,6 +60,17 @@ interface FileActionTarget {
 }
 
 interface FileContextMenu extends FileActionTarget {
+  x: number;
+  y: number;
+  relativePath: string;
+}
+
+interface FolderActionTarget {
+  path: string;
+  name: string;
+}
+
+interface FolderContextMenu extends FolderActionTarget {
   x: number;
   y: number;
   relativePath: string;
@@ -94,12 +111,12 @@ const getWorkspaceRelativePath = (path: string, roots: FileExplorerRoot[]): stri
         .replace(/[\\/]+$/, '')
         .replace(/\\/g, '/')
         .toLocaleLowerCase();
-      return normalizedPath.startsWith(`${normalizedRoot}/`);
+      return normalizedPath === normalizedRoot || normalizedPath.startsWith(`${normalizedRoot}/`);
     })
     .sort((left, right) => right.path.length - left.path.length)[0];
   if (!root) return path;
 
-  return path.slice(root.path.replace(/[\\/]+$/, '').length).replace(/^[\\/]+/, '') || path;
+  return path.slice(root.path.replace(/[\\/]+$/, '').length).replace(/^[\\/]+/, '') || '.';
 };
 
 const codeExtensions = new Set([
@@ -154,6 +171,7 @@ interface TreeItemProps {
   onToggle: (path: string) => void;
   onSelectFile: (file: FileActionTarget) => void;
   onShowContextMenu: (file: Omit<FileContextMenu, 'relativePath'>) => void;
+  onShowFolderContextMenu: (folder: Omit<FolderContextMenu, 'relativePath'>) => void;
   onOpenFile: (path: string) => boolean | void | Promise<boolean | void>;
   unsupportedLabel: string;
 }
@@ -167,6 +185,7 @@ const TreeItem: React.FC<TreeItemProps> = ({
   onToggle,
   onSelectFile,
   onShowContextMenu,
+  onShowFolderContextMenu,
   onOpenFile,
   unsupportedLabel,
 }) => {
@@ -195,8 +214,16 @@ const TreeItem: React.FC<TreeItemProps> = ({
           }
         }}
         onContextMenu={(event) => {
-          if (node.is_directory) return;
           event.preventDefault();
+          if (node.is_directory) {
+            onShowFolderContextMenu({
+              path: node.path,
+              name: node.name,
+              x: event.clientX,
+              y: event.clientY,
+            });
+            return;
+          }
           const file = { path: node.path, name: node.name, supported };
           onSelectFile(file);
           onShowContextMenu({ ...file, x: event.clientX, y: event.clientY });
@@ -238,6 +265,7 @@ const TreeItem: React.FC<TreeItemProps> = ({
                 onToggle={onToggle}
                 onSelectFile={onSelectFile}
                 onShowContextMenu={onShowContextMenu}
+                onShowFolderContextMenu={onShowFolderContextMenu}
                 onOpenFile={onOpenFile}
                 unsupportedLabel={unsupportedLabel}
               />
@@ -254,9 +282,12 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
   currentPath,
   onOpenFile,
   onChooseDirectory,
+  onRefresh,
   onRemoveDirectory,
   onReorderDirectory,
   onDeleteFile,
+  onCreateFile,
+  onDeleteDirectory,
   onClose,
   closing = false,
   onCloseComplete,
@@ -276,7 +307,9 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
   } | null>(null);
   const [selectedFile, setSelectedFile] = useState<FileActionTarget | null>(null);
   const [contextMenu, setContextMenu] = useState<FileContextMenu | null>(null);
+  const [folderContextMenu, setFolderContextMenu] = useState<FolderContextMenu | null>(null);
   const [confirmingFile, setConfirmingFile] = useState<FileActionTarget | null>(null);
+  const [confirmingFolder, setConfirmingFolder] = useState<FolderActionTarget | null>(null);
   const contextMenuRef = useRef<HTMLDivElement | null>(null);
   const { width, resizing, onResizeStart, onResizeKeyDown } = useResizablePanel({
     storageKey: 'litemark.explorerWidth',
@@ -365,15 +398,29 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
     setConfirmingFile(file);
   };
 
+  const requestFolderDeletion = (folder: FolderActionTarget) => {
+    setFolderContextMenu(null);
+    setConfirmingFolder(folder);
+  };
+
   useEffect(() => {
-    if (!contextMenu) return;
+    if (!contextMenu && !folderContextMenu) return;
     const closeContextMenu = (event: MouseEvent) => {
-      if (!contextMenuRef.current?.contains(event.target as Node)) setContextMenu(null);
+      if (!contextMenuRef.current?.contains(event.target as Node)) {
+        setContextMenu(null);
+        setFolderContextMenu(null);
+      }
     };
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setContextMenu(null);
+      if (event.key === 'Escape') {
+        setContextMenu(null);
+        setFolderContextMenu(null);
+      }
     };
-    const closeOnResize = () => setContextMenu(null);
+    const closeOnResize = () => {
+      setContextMenu(null);
+      setFolderContextMenu(null);
+    };
     document.addEventListener('mousedown', closeContextMenu);
     window.addEventListener('keydown', closeOnEscape);
     window.addEventListener('resize', closeOnResize, { once: true });
@@ -382,7 +429,7 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
       window.removeEventListener('keydown', closeOnEscape);
       window.removeEventListener('resize', closeOnResize);
     };
-  }, [contextMenu]);
+  }, [contextMenu, folderContextMenu]);
 
   return (
     <aside
@@ -402,6 +449,27 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
           aria-label={t('explorer.addFolder')}
         >
           <LuFolderPlus aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          className={styles.headerButton}
+          onClick={() => void onRefresh()}
+          title={t('explorer.refresh')}
+          aria-label={t('explorer.refresh')}
+        >
+          <LuRefreshCw aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          className={styles.headerButton}
+          onClick={() => {
+            setExpandedPaths(new Set());
+            setCollapsedRoots(new Set(roots.map((root) => root.path)));
+          }}
+          title={t('explorer.collapseAll')}
+          aria-label={t('explorer.collapseAll')}
+        >
+          <LuChevronsUp aria-hidden="true" />
         </button>
         <button
           type="button"
@@ -473,6 +541,19 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
                   }}
                   onDragEnd={clearRootDrag}
                   onClick={() => toggleRoot(root.path)}
+                  onContextMenu={(event) => {
+                    event.preventDefault();
+                    const x = Math.max(8, Math.min(event.clientX, window.innerWidth - 232));
+                    const y = Math.max(8, Math.min(event.clientY, window.innerHeight - 208));
+                    setContextMenu(null);
+                    setFolderContextMenu({
+                      path: root.path,
+                      name: rootName,
+                      x,
+                      y,
+                      relativePath: getWorkspaceRelativePath(root.path, roots),
+                    });
+                  }}
                   aria-expanded={!collapsed}
                   title={root.path}
                 >
@@ -549,11 +630,23 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
                         onShowContextMenu={(file) => {
                           const x = Math.max(8, Math.min(file.x, window.innerWidth - 232));
                           const y = Math.max(8, Math.min(file.y, window.innerHeight - 208));
+                          setFolderContextMenu(null);
                           setContextMenu({
                             ...file,
                             x,
                             y,
                             relativePath: getWorkspaceRelativePath(file.path, roots),
+                          });
+                        }}
+                        onShowFolderContextMenu={(folder) => {
+                          const x = Math.max(8, Math.min(folder.x, window.innerWidth - 232));
+                          const y = Math.max(8, Math.min(folder.y, window.innerHeight - 208));
+                          setContextMenu(null);
+                          setFolderContextMenu({
+                            ...folder,
+                            x,
+                            y,
+                            relativePath: getWorkspaceRelativePath(folder.path, roots),
                           });
                         }}
                         onOpenFile={onOpenFile}
@@ -640,6 +733,78 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
           </button>
         </div>
       )}
+      {folderContextMenu && (
+        <div
+          ref={contextMenuRef}
+          className={styles.contextMenu}
+          role="menu"
+          aria-label={t('explorer.folderActions', { name: folderContextMenu.name })}
+          style={{ left: folderContextMenu.x, top: folderContextMenu.y }}
+        >
+          <button
+            type="button"
+            className={styles.contextMenuItem}
+            role="menuitem"
+            onClick={() => {
+              const folder = folderContextMenu;
+              setFolderContextMenu(null);
+              void onCreateFile(folder.path);
+            }}
+          >
+            <LuFilePlus aria-hidden="true" />
+            <span>{t('explorer.newFile')}</span>
+          </button>
+          <button
+            type="button"
+            className={styles.contextMenuItem}
+            role="menuitem"
+            onClick={() => {
+              setFolderContextMenu(null);
+              void revealItemInDir(folderContextMenu.path).catch((error) => {
+                console.error('Failed to reveal folder:', error);
+              });
+            }}
+          >
+            <LuFolderOpen aria-hidden="true" />
+            <span>{t('explorer.revealInFileExplorer')}</span>
+          </button>
+          <div className={styles.contextMenuDivider} role="separator" />
+          <button
+            type="button"
+            className={styles.contextMenuItem}
+            role="menuitem"
+            onClick={() => {
+              setFolderContextMenu(null);
+              void copyText(folderContextMenu.path);
+            }}
+          >
+            <LuCopy aria-hidden="true" />
+            <span>{t('explorer.copyAbsolutePath')}</span>
+          </button>
+          <button
+            type="button"
+            className={styles.contextMenuItem}
+            role="menuitem"
+            onClick={() => {
+              setFolderContextMenu(null);
+              void copyText(folderContextMenu.relativePath);
+            }}
+          >
+            <LuCopy aria-hidden="true" />
+            <span>{t('explorer.copyRelativePath')}</span>
+          </button>
+          <div className={styles.contextMenuDivider} role="separator" />
+          <button
+            type="button"
+            className={`${styles.contextMenuItem} ${styles.deleteMenuItem}`}
+            role="menuitem"
+            onClick={() => requestFolderDeletion(folderContextMenu)}
+          >
+            <LuTrash2 aria-hidden="true" />
+            <span>{t('explorer.deleteFolder')}</span>
+          </button>
+        </div>
+      )}
       {confirmingFile && (
         <div className={styles.deleteDialogBackdrop} role="presentation">
           <div
@@ -664,6 +829,40 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
                   const file = confirmingFile;
                   setConfirmingFile(null);
                   void onDeleteFile(file.path).then((deleted) => {
+                    if (deleted) setSelectedFile(null);
+                  });
+                }}
+              >
+                {t('explorer.confirmDelete')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {confirmingFolder && (
+        <div className={styles.deleteDialogBackdrop} role="presentation">
+          <div
+            className={styles.deleteDialog}
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="deleteFolderTitle"
+            aria-describedby="deleteFolderDescription"
+          >
+            <h2 id="deleteFolderTitle">{t('explorer.confirmDeleteFolderTitle')}</h2>
+            <p id="deleteFolderDescription">
+              {t('explorer.confirmDeleteFolderDescription', { name: confirmingFolder.name })}
+            </p>
+            <div className={styles.deleteDialogActions}>
+              <button type="button" onClick={() => setConfirmingFolder(null)} autoFocus>
+                {t('explorer.cancelDelete')}
+              </button>
+              <button
+                type="button"
+                className={styles.deleteConfirmButton}
+                onClick={() => {
+                  const folder = confirmingFolder;
+                  setConfirmingFolder(null);
+                  void onDeleteDirectory(folder.path).then((deleted) => {
                     if (deleted) setSelectedFile(null);
                   });
                 }}

@@ -1,5 +1,6 @@
 import React from 'react';
-import { LuCode, LuFileText, LuImage, LuX } from 'react-icons/lu';
+import { revealItemInDir } from '@tauri-apps/plugin-opener';
+import { LuCode, LuCopy, LuFileText, LuFolderOpen, LuImage, LuTrash2, LuX } from 'react-icons/lu';
 import { useI18n } from '@/locales/useI18n';
 import { getFileViewKind } from '@/types/fileTree';
 import styles from './OpenTabs.module.css';
@@ -11,11 +12,27 @@ interface OpenTabsProps {
   leadingControl?: React.ReactNode;
   onActivate(path: string): void;
   onClose(path: string): void;
+  onDelete(path: string): Promise<boolean>;
 }
 
 function fileName(path: string): string {
   return path.split(/[/\\]/).pop() || path;
 }
+
+const copyText = async (text: string): Promise<void> => {
+  try {
+    await navigator.clipboard?.writeText(text);
+  } catch {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.append(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    textarea.remove();
+  }
+};
 
 const OpenTabs: React.FC<OpenTabsProps> = ({
   paths,
@@ -24,12 +41,20 @@ const OpenTabs: React.FC<OpenTabsProps> = ({
   leadingControl,
   onActivate,
   onClose,
+  onDelete,
 }) => {
   const { t } = useI18n();
   const tabScrollerRef = React.useRef<HTMLDivElement>(null);
   const dragRef = React.useRef<{ clientX: number; scrollLeft: number } | null>(null);
   // Tabs that disappeared from `paths` stay rendered briefly to animate out.
   const [closingPaths, setClosingPaths] = React.useState<string[]>([]);
+  const [contextMenu, setContextMenu] = React.useState<{
+    path: string;
+    x: number;
+    y: number;
+  } | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = React.useState<string | null>(null);
+  const contextMenuRef = React.useRef<HTMLDivElement>(null);
   const prevPathsRef = React.useRef(paths);
 
   React.useEffect(() => {
@@ -90,6 +115,22 @@ const OpenTabs: React.FC<OpenTabsProps> = ({
     };
   }, [displayPaths]);
 
+  React.useEffect(() => {
+    if (!contextMenu) return;
+    const dismiss = (event: MouseEvent) => {
+      if (!contextMenuRef.current?.contains(event.target as Node)) setContextMenu(null);
+    };
+    const dismissOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setContextMenu(null);
+    };
+    document.addEventListener('mousedown', dismiss);
+    window.addEventListener('keydown', dismissOnEscape);
+    return () => {
+      document.removeEventListener('mousedown', dismiss);
+      window.removeEventListener('keydown', dismissOnEscape);
+    };
+  }, [contextMenu]);
+
   if (displayPaths.length === 0 && !leadingControl) return null;
 
   return (
@@ -123,6 +164,14 @@ const OpenTabs: React.FC<OpenTabsProps> = ({
                 onClick={() => onActivate(path)}
                 title={path}
                 tabIndex={active ? 0 : -1}
+                onContextMenu={(event) => {
+                  event.preventDefault();
+                  setContextMenu({
+                    path,
+                    x: Math.max(8, Math.min(event.clientX, window.innerWidth - 232)),
+                    y: Math.max(8, Math.min(event.clientY, window.innerHeight - 244)),
+                  });
+                }}
               >
                 <Icon className={styles.fileIcon} aria-hidden="true" />
                 <span className={styles.name}>{name}</span>
@@ -171,6 +220,102 @@ const OpenTabs: React.FC<OpenTabsProps> = ({
           dragRef.current = null;
         }}
       />
+      {contextMenu && (
+        <div
+          ref={contextMenuRef}
+          className={styles.contextMenu}
+          role="menu"
+          aria-label={t('tabs.actions', { name: fileName(contextMenu.path) })}
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+        >
+          <button
+            type="button"
+            className={styles.contextMenuItem}
+            role="menuitem"
+            onClick={() => {
+              const { path } = contextMenu;
+              setContextMenu(null);
+              onClose(path);
+            }}
+          >
+            <LuX aria-hidden="true" />
+            <span>{t('tabs.closeTab')}</span>
+            <kbd aria-hidden="true">Ctrl+W</kbd>
+          </button>
+          <button
+            type="button"
+            className={styles.contextMenuItem}
+            role="menuitem"
+            onClick={() => {
+              setContextMenu(null);
+              void revealItemInDir(contextMenu.path).catch((error) => {
+                console.error('Failed to reveal file:', error);
+              });
+            }}
+          >
+            <LuFolderOpen aria-hidden="true" />
+            <span>{t('explorer.revealInFileExplorer')}</span>
+          </button>
+          <div className={styles.contextMenuDivider} role="separator" />
+          <button
+            type="button"
+            className={styles.contextMenuItem}
+            role="menuitem"
+            onClick={() => {
+              setContextMenu(null);
+              void copyText(contextMenu.path);
+            }}
+          >
+            <LuCopy aria-hidden="true" />
+            <span>{t('explorer.copyAbsolutePath')}</span>
+          </button>
+          <div className={styles.contextMenuDivider} role="separator" />
+          <button
+            type="button"
+            className={`${styles.contextMenuItem} ${styles.deleteMenuItem}`}
+            role="menuitem"
+            onClick={() => {
+              setConfirmingDelete(contextMenu.path);
+              setContextMenu(null);
+            }}
+          >
+            <LuTrash2 aria-hidden="true" />
+            <span>{t('explorer.deleteFile')}</span>
+          </button>
+        </div>
+      )}
+      {confirmingDelete && (
+        <div className={styles.deleteDialogBackdrop} role="presentation">
+          <div
+            className={styles.deleteDialog}
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="deleteTabFileTitle"
+            aria-describedby="deleteTabFileDescription"
+          >
+            <h2 id="deleteTabFileTitle">{t('explorer.confirmDeleteTitle')}</h2>
+            <p id="deleteTabFileDescription">
+              {t('explorer.confirmDeleteDescription', { name: fileName(confirmingDelete) })}
+            </p>
+            <div className={styles.deleteDialogActions}>
+              <button type="button" onClick={() => setConfirmingDelete(null)} autoFocus>
+                {t('explorer.cancelDelete')}
+              </button>
+              <button
+                type="button"
+                className={styles.deleteConfirmButton}
+                onClick={() => {
+                  const path = confirmingDelete;
+                  setConfirmingDelete(null);
+                  void onDelete(path);
+                }}
+              >
+                {t('explorer.confirmDelete')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

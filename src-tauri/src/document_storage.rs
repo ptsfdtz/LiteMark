@@ -77,6 +77,20 @@ pub fn delete_file(path: &Path) -> StorageResult<()> {
     Ok(())
 }
 
+/// Permanently remove a real directory and all of its contents. Symlinks are
+/// deliberately rejected so a workspace action cannot traverse a link target.
+pub fn delete_directory(path: &Path) -> StorageResult<()> {
+    let metadata = fs::symlink_metadata(path)?;
+    if !metadata.file_type().is_dir() {
+        return Err(StorageError::new(StorageErrorCategory::InvalidPath));
+    }
+
+    let parent = document_parent(path)?;
+    fs::remove_dir_all(path)?;
+    sync_directory(parent)?;
+    Ok(())
+}
+
 pub fn is_image_extension(path: &Path) -> bool {
     path.extension()
         .and_then(|extension| extension.to_str())
@@ -433,6 +447,7 @@ pub fn rename_document(current_path: &Path, new_name: &str) -> StorageResult<Pat
 mod tests {
     use super::atomic_write_text_file;
     use super::create_untitled_file;
+    use super::delete_directory;
     use super::delete_file;
     use super::document_parent;
     use super::is_image_extension;
@@ -494,6 +509,27 @@ mod tests {
             StorageErrorCategory::InvalidPath
         );
         assert!(child_directory.exists());
+    }
+
+    #[test]
+    fn deleting_a_directory_is_recursive_and_rejects_files() {
+        let directory = tempfile::tempdir().expect("temporary directory");
+        let target = directory.path().join("remove");
+        let nested = target.join("nested");
+        let file = directory.path().join("keep.md");
+        fs::create_dir_all(&nested).expect("create nested directory");
+        fs::write(nested.join("document.md"), "delete me").expect("seed nested document");
+        fs::write(&file, "keep me").expect("seed file");
+
+        delete_directory(&target).expect("delete directory");
+        assert!(!target.exists());
+        assert_eq!(
+            delete_directory(&file)
+                .expect_err("files must not be deleted as directories")
+                .category,
+            StorageErrorCategory::InvalidPath
+        );
+        assert!(file.exists());
     }
 
     #[test]

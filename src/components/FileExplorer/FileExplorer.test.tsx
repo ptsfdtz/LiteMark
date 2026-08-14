@@ -47,9 +47,12 @@ describe('FileExplorer', () => {
     const user = userEvent.setup();
     const onOpenFile = vi.fn();
     const onChooseDirectory = vi.fn();
+    const onRefresh = vi.fn();
     const onRemoveDirectory = vi.fn();
     const onReorderDirectory = vi.fn();
     const onDeleteFile = vi.fn().mockResolvedValue(true);
+    const onCreateFile = vi.fn().mockResolvedValue(true);
+    const onDeleteDirectory = vi.fn().mockResolvedValue(true);
 
     render(
       <I18nProvider>
@@ -61,9 +64,12 @@ describe('FileExplorer', () => {
           currentPath={null}
           onOpenFile={onOpenFile}
           onChooseDirectory={onChooseDirectory}
+          onRefresh={onRefresh}
           onRemoveDirectory={onRemoveDirectory}
           onReorderDirectory={onReorderDirectory}
           onDeleteFile={onDeleteFile}
+          onCreateFile={onCreateFile}
+          onDeleteDirectory={onDeleteDirectory}
           onClose={vi.fn()}
         />
       </I18nProvider>,
@@ -78,6 +84,9 @@ describe('FileExplorer', () => {
 
     await user.click(screen.getByRole('button', { name: 'Add folder' }));
     expect(onChooseDirectory).toHaveBeenCalledOnce();
+
+    await user.click(screen.getByRole('button', { name: 'Refresh explorer' }));
+    expect(onRefresh).toHaveBeenCalledOnce();
 
     await user.click(screen.getByRole('button', { name: 'notes' }));
     expect(screen.queryByRole('button', { name: 'readme.md' })).not.toBeInTheDocument();
@@ -120,6 +129,20 @@ describe('FileExplorer', () => {
     const deleteDialog = screen.getByRole('alertdialog', { name: 'Delete file?' });
     await user.click(within(deleteDialog).getByRole('button', { name: 'Delete' }));
     expect(onDeleteFile).toHaveBeenCalledWith('C:\\workspace\\logo.png');
+
+    fireEvent.contextMenu(screen.getByRole('button', { name: 'docs' }), {
+      clientX: 32,
+      clientY: 32,
+    });
+    const folderMenu = screen.getByRole('menu', { name: 'Actions for docs' });
+    expect(within(folderMenu).getByRole('menuitem', { name: 'New File' })).toBeInTheDocument();
+    expect(
+      within(folderMenu).getByRole('menuitem', { name: 'Copy Absolute Path' }),
+    ).toBeInTheDocument();
+    await user.click(within(folderMenu).getByRole('menuitem', { name: 'Delete Folder' }));
+    const deleteFolderDialog = screen.getByRole('alertdialog', { name: 'Delete folder?' });
+    await user.click(within(deleteFolderDialog).getByRole('button', { name: 'Delete' }));
+    expect(onDeleteDirectory).toHaveBeenCalledWith('C:\\workspace\\docs');
 
     await user.click(screen.getByRole('button', { name: 'Remove notes from explorer' }));
     expect(onRemoveDirectory).not.toHaveBeenCalled();

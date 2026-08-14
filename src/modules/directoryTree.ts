@@ -8,3 +8,7 @@ export async function listDirectoryTree(directory: string): Promise<FileTreeNode
 export async function deleteWorkspaceFile(path: string): Promise<void> {
   return invoke<void>('delete_file', { path });
 }
+
+export async function deleteWorkspaceDirectory(path: string): Promise<void> {
+  return invoke<void>('delete_directory', { path });
+}

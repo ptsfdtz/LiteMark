@@ -32,7 +32,11 @@ import {
   persistWindowState,
   restoreWindowState,
 } from '@/modules/windowState/windowState';
-import { deleteWorkspaceFile, listDirectoryTree } from '@/modules/directoryTree';
+import {
+  deleteWorkspaceDirectory,
+  deleteWorkspaceFile,
+  listDirectoryTree,
+} from '@/modules/directoryTree';
 import { getFileViewKind } from '@/types/fileTree';
 import { loadWorkspaceDirectories, saveWorkspaceDirectories } from '@/utils/workspaceStore';
 import OpenTabs from '@/components/OpenTabs/OpenTabs';
@@ -248,6 +252,21 @@ const Layout: React.FC = () => {
   const activeWorkspaceDirectory =
     workspaceRoots.find((root) => pathBelongsToDirectory(activeFilePath, root.path))?.path ??
     workspaceRoots[0]?.path;
+  const recentStandaloneFiles = recentDocuments
+    .filter(
+      (document) =>
+        !workspaceRoots.some((root) => pathBelongsToDirectory(document.path, root.path)),
+    )
+    .slice(0, 8)
+    .map(({ path, name }) => ({ path, name }));
+  const recentWorkspaceFolders = workspaceRoots.slice(0, 8).map((root) => ({
+    path: root.path,
+    name:
+      root.path
+        .replace(/[\\/]+$/, '')
+        .split(/[\\/]/)
+        .pop() || root.path,
+  }));
 
   const agentSession = useAgentSession({
     getSettings: () => agentSettings,
@@ -390,6 +409,10 @@ const Layout: React.FC = () => {
     [showDocumentError],
   );
 
+  const refreshAllWorkspaceTrees = async () => {
+    await Promise.all(workspaceRoots.map((root) => refreshWorkspaceTree(root.path)));
+  };
+
   const removeWorkspaceDirectory = (directory: string) => {
     setWorkspaceRoots((current) => {
       const next = current.filter((root) => normalizePath(root.path) !== normalizePath(directory));
@@ -481,17 +504,6 @@ const Layout: React.FC = () => {
     }
   };
 
-  const handleOpenFolder = () => {
-    if (!documentSessionReady) return;
-    if (workspaceRoots.length > 0) {
-      setExplorerVisible((visible) => !visible);
-      return;
-    }
-    documentSession.clearDirectoryDocuments();
-    setShowRecentFiles(true);
-    setRecentClosing(false);
-  };
-
   const editorRef = useRef<WysiwygEditor | null>(null);
   const [editorInstance, setEditorInstance] = useState<WysiwygEditor | null>(null);
   const markdownDocument = !activeFilePath || activeViewKind === 'markdown';
@@ -556,6 +568,60 @@ const Layout: React.FC = () => {
       return true;
     } catch (error) {
       await showDocumentError(error, 'dialog.deleteFailed');
+      return false;
+    }
+  };
+
+  const handleCreateWorkspaceFile = async (directory: string) => {
+    const created = await handleCreateDocument(directory);
+    if (!created) return false;
+    const root = workspaceRoots.find((candidate) =>
+      pathBelongsToDirectory(directory, candidate.path),
+    );
+    if (root) await refreshWorkspaceTree(root.path);
+    return true;
+  };
+
+  const handleDeleteWorkspaceDirectory = async (directory: string) => {
+    const deletingCurrentDocument = pathBelongsToDirectory(currentFilePath, directory);
+    if (deletingCurrentDocument && isDirty && !(await confirmDiscard())) return false;
+
+    try {
+      const closingIndex = activeFilePath
+        ? openTabs.findIndex((path) => pathBelongsToDirectory(path, directory))
+        : -1;
+      const nextTabs = openTabs.filter((path) => !pathBelongsToDirectory(path, directory));
+      await deleteWorkspaceDirectory(directory);
+
+      void Promise.all(
+        recentDocuments
+          .filter((document) => pathBelongsToDirectory(document.path, directory))
+          .map((document) => documentSession.removeRecentDocument(document.path)),
+      ).catch((error) => {
+        void showDocumentError(error, 'dialog.recentSaveFailed');
+      });
+      setOpenTabs(nextTabs);
+      if (deletingCurrentDocument) documentSession.closeDocument();
+
+      if (activeFilePath && pathBelongsToDirectory(activeFilePath, directory)) {
+        const nextPath = nextTabs[Math.max(0, closingIndex)] ?? null;
+        setActiveFilePath(null);
+        if (nextPath) await handleActivateTab(nextPath);
+      }
+
+      const isWorkspaceRoot = workspaceRoots.some(
+        (root) => normalizePath(root.path) === normalizePath(directory),
+      );
+      if (isWorkspaceRoot) removeWorkspaceDirectory(directory);
+      else {
+        const root = workspaceRoots.find((candidate) =>
+          pathBelongsToDirectory(directory, candidate.path),
+        );
+        if (root) await refreshWorkspaceTree(root.path);
+      }
+      return true;
+    } catch (error) {
+      await showDocumentError(error, 'dialog.deleteDirectoryFailed');
       return false;
     }
   };
@@ -782,7 +848,12 @@ const Layout: React.FC = () => {
     <div className={styles.container}>
       <div className={styles.titleBar} data-tauri-drag-region="true">
         <Toolbar
-          onOpenFolder={handleOpenFolder}
+          onOpenFolder={() => void chooseDirectory()}
+          onOpenDocument={() => void chooseDocument()}
+          recentFolders={recentWorkspaceFolders}
+          recentFiles={recentStandaloneFiles}
+          onOpenRecentFolder={(path) => void handleOpenDirectory(path)}
+          onOpenRecentDocument={(path) => void handleOpenDocument(path)}
           onSave={handleSave}
           onSaveAs={handleSaveAs}
           editor={markdownDocument ? editorInstance : null}
@@ -857,9 +928,12 @@ const Layout: React.FC = () => {
             currentPath={activeFilePath}
             onOpenFile={handleOpenDocument}
             onChooseDirectory={chooseDirectory}
+            onRefresh={refreshAllWorkspaceTrees}
             onRemoveDirectory={removeWorkspaceDirectory}
             onReorderDirectory={reorderWorkspaceDirectory}
             onDeleteFile={handleDeleteWorkspaceFile}
+            onCreateFile={handleCreateWorkspaceFile}
+            onDeleteDirectory={handleDeleteWorkspaceDirectory}
             onClose={() => setExplorerVisible(false)}
             closing={!explorerVisible}
             onCloseComplete={() => setExplorerRendered(false)}
@@ -885,6 +959,7 @@ const Layout: React.FC = () => {
             }
             onActivate={(path) => void handleActivateTab(path)}
             onClose={(path) => void handleCloseTab(path)}
+            onDelete={handleDeleteWorkspaceFile}
           />
           <div className={styles.editorCanvas}>
             <Editor
