@@ -1,0 +1,320 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  width: 340px;
+  height: 100%;
+  background-color: var(--sidebar-bg, #fff);
+  border-left: 1px solid var(--editor-border, #ddd);
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid var(--editor-border, #ddd);
+}
+
+.title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.headerButton {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  color: var(--text-color);
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.headerButton:hover:not(:disabled) {
+  background: var(--toolbar-bg-hover, rgb(0 0 0 / 8%));
+}
+
+.headerButton:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.messages {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.75rem;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.notice {
+  padding: 0.6rem;
+  color: var(--text-color);
+  background: var(--toolbar-bg, #f3f3f3);
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+
+.userRow {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.userBubble {
+  max-width: 85%;
+  padding: 0.5rem 0.75rem;
+  color: #fff;
+  background: var(--link-color, #06c);
+  border-radius: 12px;
+  border-bottom-right-radius: 4px;
+  font-size: 0.9rem;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.assistantRow {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.assistantBubble {
+  max-width: 85%;
+  padding: 0.5rem 0.75rem;
+  color: var(--text-color);
+  background: var(--toolbar-bg, #f3f3f3);
+  border-radius: 12px;
+  border-bottom-left-radius: 4px;
+  font-size: 0.9rem;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.typing {
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.toolRow {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.toolCard,
+.editCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  max-width: 90%;
+  padding: 0.5rem 0.75rem;
+  color: var(--text-color);
+  background: transparent;
+  border: 1px dashed var(--editor-border, #ccc);
+  border-radius: 8px;
+  font-size: 0.82rem;
+}
+
+.toolName {
+  font-weight: 600;
+}
+
+.toolResult {
+  opacity: 0.8;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.toolError {
+  color: var(--error-color, #d32f2f);
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.toolPending {
+  opacity: 0.5;
+}
+
+.permissionCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-width: 90%;
+  padding: 0.5rem 0.75rem;
+  color: var(--text-color);
+  background: transparent;
+  border: 1px solid var(--link-color, #06c);
+  border-radius: 8px;
+  font-size: 0.82rem;
+}
+
+.permissionTitle {
+  font-weight: 600;
+}
+
+.permissionActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.allowButton,
+.denyButton {
+  padding: 0.25rem 0.6rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.82rem;
+}
+
+.allowButton {
+  color: #fff;
+  background: var(--link-color, #06c);
+}
+
+.denyButton {
+  color: var(--text-color);
+  background: var(--toolbar-bg, #f3f3f3);
+  border: 1px solid var(--editor-border, #ddd);
+}
+
+.editCard {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.4rem;
+  border-style: solid;
+  border-color: var(--link-color, #06c);
+}
+
+.editHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.editSummary {
+  flex: 1;
+}
+
+.applyButton {
+  padding: 0.25rem 0.6rem;
+  color: #fff;
+  background: var(--link-color, #06c);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.82rem;
+}
+
+.diffSummary {
+  cursor: pointer;
+  color: var(--link-color, #06c);
+  font-size: 0.8rem;
+  user-select: none;
+}
+
+.diffBlock {
+  max-height: 200px;
+  margin: 0;
+  padding: 0.4rem 0.5rem;
+  overflow: auto;
+  background: var(--background-color, #f6f6f6);
+  border-radius: 4px;
+  font-family: Consolas, 'Courier New', monospace;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  white-space: pre;
+}
+
+.diff-add {
+  color: #1a7f37;
+  background: rgb(26 127 55 / 10%);
+}
+
+.diff-remove {
+  color: #cf222e;
+  background: rgb(207 34 46 / 10%);
+}
+
+.diff-context {
+  color: var(--blockquote-text, #666);
+}
+
+.error {
+  margin: 0 0.75rem 0.5rem;
+  padding: 0.5rem 0.75rem;
+  color: var(--error-color, #d32f2f);
+  background: rgb(211 47 47 / 8%);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.composer {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.4rem;
+  padding: 0.6rem 0.75rem;
+  border-top: 1px solid var(--editor-border, #ddd);
+}
+
+.input {
+  flex: 1;
+  padding: 0.5rem 0.6rem;
+  color: var(--text-color);
+  background: var(--background-color, #f6f6f6);
+  border: 1px solid var(--editor-border, #ddd);
+  border-radius: 6px;
+  resize: none;
+  font-family: inherit;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  outline: none;
+}
+
+.input:focus {
+  border-color: var(--link-color, #06c);
+}
+
+.sendButton,
+.stopButton {
+  display: flex;
+  flex: none;
+  justify-content: center;
+  align-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  color: #fff;
+  background: var(--link-color, #06c);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.sendButton:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.stopButton {
+  background: var(--error-color, #d32f2f);
+}

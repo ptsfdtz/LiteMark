@@ -36,8 +36,16 @@ const Settings: React.FC<SettingsProps> = ({
   const [showApiKey, setShowApiKey] = useState(false);
 
   const updateAgentSettings = (
-    key: 'enabled' | 'endpoint' | 'model' | 'apiKey',
-    value: boolean | string,
+    key:
+      | 'enabled'
+      | 'endpoint'
+      | 'model'
+      | 'apiKey'
+      | 'instructions'
+      | 'maxSteps'
+      | 'autoApply'
+      | 'confirmWrites',
+    value: boolean | string | number,
   ) => {
     setAgentSettings({ ...agentSettings, [key]: value });
   };
@@ -323,6 +331,58 @@ const Settings: React.FC<SettingsProps> = ({
               </button>
             </div>
             <p className={styles.securityNote}>{t('settings.agentKeyStorage')}</p>
+            <label className={styles.fieldLabel} htmlFor="agentInstructions">
+              {t('settings.agentInstructions')}
+            </label>
+            <textarea
+              id="agentInstructions"
+              value={agentSettings.instructions}
+              onChange={(event) => updateAgentSettings('instructions', event.target.value)}
+              className={styles.textareaInput}
+              placeholder={t('settings.agentInstructionsPlaceholder')}
+              spellCheck={false}
+              rows={2}
+            />
+            <label className={styles.fieldLabel} htmlFor="agentMaxSteps">
+              {t('settings.agentMaxSteps')}
+            </label>
+            <input
+              id="agentMaxSteps"
+              type="number"
+              min={1}
+              max={32}
+              value={agentSettings.maxSteps}
+              onChange={(event) => updateAgentSettings('maxSteps', Number(event.target.value))}
+              className={styles.textInput}
+            />
+            <div className={styles.editorRow}>
+              <label className={styles.settingLabel} htmlFor="agentAutoApply">
+                {t('settings.agentAutoApply')}
+              </label>
+              <label className={styles.switch}>
+                <input
+                  id="agentAutoApply"
+                  type="checkbox"
+                  checked={agentSettings.autoApply}
+                  onChange={(event) => updateAgentSettings('autoApply', event.target.checked)}
+                />
+                <span className={styles.slider}></span>
+              </label>
+            </div>
+            <div className={styles.editorRow}>
+              <label className={styles.settingLabel} htmlFor="agentConfirmWrites">
+                {t('settings.agentConfirmWrites')}
+              </label>
+              <label className={styles.switch}>
+                <input
+                  id="agentConfirmWrites"
+                  type="checkbox"
+                  checked={agentSettings.confirmWrites}
+                  onChange={(event) => updateAgentSettings('confirmWrites', event.target.checked)}
+                />
+                <span className={styles.slider}></span>
+              </label>
+            </div>
           </div>
         </div>
       </div>

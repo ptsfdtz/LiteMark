@@ -1,6 +1,6 @@
 // src/components/Layout/Layout.tsx
 import React, { useCallback, useState, useEffect, useRef } from 'react';
-import { FaTimes } from 'react-icons/fa';
+import { FaRobot, FaTimes } from 'react-icons/fa';
 import Editor from '@/components/Editor/Editor';
 import Preview from '@/components/Preview/Preview';
 import Toolbar from '@/components/Toolbar/Toolbar';
@@ -16,6 +16,8 @@ import { useI18n } from '@/locales/useI18n';
 import { loadTheme, saveTheme } from '@/utils/themeStore';
 import { loadAgentSettings, saveAgentSettings } from '@/utils/agentSettingsStore';
 import { DEFAULT_AGENT_SETTINGS, type AgentSettings } from '@/types/agent';
+import AgentPanel from '@/components/AgentPanel/AgentPanel';
+import { useAgentSession } from '@/modules/agent/useAgentSession';
 import useDocumentSession from '@/modules/documentSession/useDocumentSession';
 import {
   tauriDocumentStorage,
@@ -58,6 +60,7 @@ const Layout: React.FC = () => {
   const [showSaveToast, setShowSaveToast] = useState(false);
   const [agentSettings, setAgentSettings] = useState<AgentSettings>(DEFAULT_AGENT_SETTINGS);
   const [agentSettingsReady, setAgentSettingsReady] = useState(false);
+  const [showAgent, setShowAgent] = useState(false);
 
   // 加载个人工作文件夹
   useEffect(() => {
@@ -173,6 +176,21 @@ const Layout: React.FC = () => {
     recentDocuments,
     directoryDocuments,
   } = documentSession;
+
+  const agentConfigured = Boolean(
+    agentSettings.enabled &&
+    agentSettings.endpoint.trim() &&
+    agentSettings.model.trim() &&
+    agentSettings.apiKey.trim(),
+  );
+
+  const agentSession = useAgentSession({
+    getSettings: () => agentSettings,
+    getDocument: () => markdown,
+    applyDocument: setMarkdown,
+    getWorkDir: () => workDir,
+    documentPath: currentFilePath,
+  });
 
   const showSaveSuccess = () => {
     setShowSaveToast(true);
@@ -477,6 +495,15 @@ const Layout: React.FC = () => {
           )}
         </div>
         <div className={styles.topRightControls}>
+          <button
+            className={styles.agentButton}
+            onClick={() => setShowAgent((show) => !show)}
+            title={t('agent.title')}
+            aria-label={t('agent.title')}
+            data-tauri-drag-region="false"
+          >
+            <FaRobot size={20} />
+          </button>
           <SettingsButton
             className="settingsButton"
             onClick={() => {
@@ -508,75 +535,84 @@ const Layout: React.FC = () => {
           }
         }}
       />
-      <div
-        ref={containerRef}
-        className={styles.editorPreview}
-        style={{ cursor: isResizing ? 'col-resize' : 'default' }}
-      >
-        {editorOnly ? (
-          <div className={styles.editorPanel} style={{ width: `100%`, position: 'relative' }}>
-            <Editor
-              ref={attachEditor}
-              value={markdown}
-              onChange={setMarkdown}
-              readOnly={!documentSessionReady}
-              className={styles.editor}
-              theme={theme}
-              minimapEnabled={minimapEnabled}
-              agentSettings={agentSettings}
-              onSave={handleSave}
-              onSaveAs={handleSaveAs}
-            />
-            <button
-              aria-label={t('layout.exitEditMode')}
-              title={t('layout.exitEditMode')}
-              onClick={exitEditorOnly}
-              className={styles.editorOnlyExit}
-            >
-              <FaTimes />
-            </button>
-          </div>
-        ) : (
-          <>
-            {!previewMode && (
-              <>
-                <div className={styles.editorPanel} style={{ width: `${editorWidth}%` }}>
-                  <Editor
-                    ref={attachEditor}
-                    value={markdown}
-                    onChange={setMarkdown}
-                    readOnly={!documentSessionReady}
-                    className={styles.editor}
-                    theme={theme}
-                    minimapEnabled={minimapEnabled}
-                    agentSettings={agentSettings}
-                    onSave={handleSave}
-                    onSaveAs={handleSaveAs}
-                  />
-                </div>
-                <div className={styles.resizer} onMouseDown={startResizing} />
-              </>
-            )}
-            <div
-              className={styles.previewPanel}
-              style={{
-                width: previewMode ? '100%' : `calc(${100 - editorWidth}% - 5px)`,
-              }}
-            >
-              <Preview
-                ref={attachPreview}
-                content={markdown}
-                filePath={currentFilePath}
-                scrollSyncEnabled={scrollSyncEnabled}
-                onScrollSyncToggle={toggleScrollSync}
-                onTaskToggle={documentSessionReady ? handlePreviewTaskToggle : undefined}
-                onExitPreviewMode={exitPreviewMode}
-                onEnterPreviewMode={enterPreviewMode}
-                onEnterEditorMode={enterEditorOnly}
-                isPreviewOnly={previewMode}
+      <div className={styles.mainArea}>
+        <div
+          ref={containerRef}
+          className={styles.editorPreview}
+          style={{ cursor: isResizing ? 'col-resize' : 'default' }}
+        >
+          {editorOnly ? (
+            <div className={styles.editorPanel} style={{ width: `100%`, position: 'relative' }}>
+              <Editor
+                ref={attachEditor}
+                value={markdown}
+                onChange={setMarkdown}
+                readOnly={!documentSessionReady}
+                className={styles.editor}
+                theme={theme}
+                minimapEnabled={minimapEnabled}
+                agentSettings={agentSettings}
+                onSave={handleSave}
+                onSaveAs={handleSaveAs}
               />
+              <button
+                aria-label={t('layout.exitEditMode')}
+                title={t('layout.exitEditMode')}
+                onClick={exitEditorOnly}
+                className={styles.editorOnlyExit}
+              >
+                <FaTimes />
+              </button>
             </div>
-          </>
+          ) : (
+            <>
+              {!previewMode && (
+                <>
+                  <div className={styles.editorPanel} style={{ width: `${editorWidth}%` }}>
+                    <Editor
+                      ref={attachEditor}
+                      value={markdown}
+                      onChange={setMarkdown}
+                      readOnly={!documentSessionReady}
+                      className={styles.editor}
+                      theme={theme}
+                      minimapEnabled={minimapEnabled}
+                      agentSettings={agentSettings}
+                      onSave={handleSave}
+                      onSaveAs={handleSaveAs}
+                    />
+                  </div>
+                  <div className={styles.resizer} onMouseDown={startResizing} />
+                </>
+              )}
+              <div
+                className={styles.previewPanel}
+                style={{
+                  width: previewMode ? '100%' : `calc(${100 - editorWidth}% - 5px)`,
+                }}
+              >
+                <Preview
+                  ref={attachPreview}
+                  content={markdown}
+                  filePath={currentFilePath}
+                  scrollSyncEnabled={scrollSyncEnabled}
+                  onScrollSyncToggle={toggleScrollSync}
+                  onTaskToggle={documentSessionReady ? handlePreviewTaskToggle : undefined}
+                  onExitPreviewMode={exitPreviewMode}
+                  onEnterPreviewMode={enterPreviewMode}
+                  onEnterEditorMode={enterEditorOnly}
+                  isPreviewOnly={previewMode}
+                />
+              </div>
+            </>
+          )}
+        </div>
+        {showAgent && (
+          <AgentPanel
+            session={agentSession}
+            isConfigured={agentConfigured}
+            onClose={() => setShowAgent(false)}
+          />
         )}
       </div>
       {showSettings && (

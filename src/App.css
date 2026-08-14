@@ -101,65 +101,86 @@ body {
   height: 100vh;
 }
 
-[data-tour='editor'] .monaco-editor .inlineSuggestionsHints.withBorder {
-  padding: 4px;
-  background-color: var(--toolbar-bg, #f3f3f3);
-  border: 1px solid var(--editor-border, #ddd);
+[data-tour='editor'] .monaco-editor .inlineSuggestionsHints {
+  padding: 2px;
+}
+
+[data-tour='editor'] .monaco-editor .inlineSuggestionsHints.monaco-hover,
+[data-tour='editor'] .monaco-editor .monaco-resizable-hover:has(.inlineSuggestionsHints) {
+  color: var(--text-color);
+  background-color: var(--toolbar-bg);
+  border: 1px solid var(--editor-border);
   border-radius: 4px;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 12%);
-}
-
-[data-tour='editor'] .inlineSuggestionsHints .actions-container {
-  gap: 4px;
-}
-
-[data-tour='editor'] .inlineSuggestionsHints .action-label {
-  min-height: 16px;
-  padding: 0.3rem 0.6rem;
-  color: var(--text-color, #333) !important;
-  background-color: var(--sidebar-bg, #fff);
-  border: none;
-  border-radius: 4px;
-  box-sizing: content-box;
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 16px;
-  text-decoration: none;
-  transition: background-color 0.15s ease;
-}
-
-[data-tour='editor'] .inlineSuggestionsHints .action-item.menu-entry.text-only .action-label {
-  border-radius: 4px;
-}
-
-[data-tour='editor'] .inlineSuggestionsHints .action-label:hover {
-  color: var(--text-color, #333) !important;
-  background-color: var(--toolbar-bg, #eee);
-  border-bottom-color: transparent;
-}
-
-[data-tour='editor'] .inlineSuggestionsHints .action-label:active {
-  filter: brightness(0.92);
-}
-
-[data-tour='editor'] .inlineSuggestionsHints .action-label:focus-visible {
-  outline: 1px solid var(--link-color, #06c);
-  outline-offset: 1px;
-}
-
-[data-tour='editor'] .inlineSuggestionsHints .availableSuggestionCount .action-label {
-  padding-right: 2px;
-  padding-left: 2px;
-  background: transparent;
-  font-weight: 600;
+  box-shadow: none;
 }
 
 [data-tour='editor']
+  .monaco-editor
+  .monaco-resizable-hover:has(.inlineSuggestionsHints)
+  > .monaco-hover {
+  background-color: var(--toolbar-bg);
+}
+
+[data-tour='editor'] .inlineSuggestionsHints .actions-container {
+  align-items: center;
+  gap: 0;
+}
+
+[data-tour='editor'] .inlineSuggestionsHints .action-label {
+  padding: 3px 6px;
+  color: var(--text-color) !important;
+  background: transparent;
+  border: 0;
+  border-radius: 2px;
+  font-size: 11px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background-color 0.12s ease;
+}
+
+[data-tour='editor'] .inlineSuggestionsHints .action-label:hover {
+  color: var(--text-color) !important;
+  background-color: var(--sidebar-bg);
+  border-bottom-color: transparent;
+}
+
+[data-tour='editor'] .inlineSuggestionsHints .action-item.active > .action-label,
+[data-tour='editor'] .inlineSuggestionsHints .action-label:active {
+  background-color: var(--background-color);
+}
+
+[data-tour='editor'] .inlineSuggestionsHints .action-label:focus-visible {
+  outline: 1px solid var(--blockquote-text);
+  outline-offset: -1px;
+}
+
+[data-tour='editor'] .inlineSuggestionsHints .keybinding {
+  margin-left: 5px;
+  opacity: 0.5;
+}
+
+[data-tour='editor'] .inlineSuggestionsHints .keybinding .monaco-keybinding-key {
+  padding: 0;
+  color: inherit;
+  background: none;
+  border: 0;
+  box-shadow: none;
+  font-size: 10px;
+}
+
+[data-tour='editor'] .inlineSuggestionsHints .availableSuggestionCount .action-label {
+  padding: 0 2px;
+  color: var(--blockquote-text) !important;
+  background: transparent;
+  font-weight: 400;
+}
+
+[data-tour='editor'] .inlineSuggestionsHints .actions-container > .action-item:not(.menu-entry),
+[data-tour='editor']
   .inlineSuggestionsHints
-  .actions-container:has(> .action-item:first-child.disabled):has(
-    > .action-item:nth-child(3).disabled
-  )
-  > .action-item:nth-child(-n + 3) {
+  .actions-container
+  > .action-item.menu-entry
+  ~ .action-item {
   display: none;
 }
 

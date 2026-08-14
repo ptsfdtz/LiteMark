@@ -1985,6 +1985,7 @@ checksum = "241eaef5fd12c88705a01fc1066c48c4b36e0dd4377dcdc7ec3942cea7a69956"
 name = "litemark"
 version = "2.0.0"
 dependencies = [
+ "futures-util",
  "reqwest",
  "rustix",
  "serde",
@@ -1995,6 +1996,7 @@ dependencies = [
  "tauri-plugin-opener",
  "tauri-plugin-store",
  "tempfile",
+ "tokio",
  "windows-sys 0.61.1",
 ]
 

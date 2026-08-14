@@ -5,7 +5,11 @@ use std::{sync::OnceLock, time::Duration};
 const SYSTEM_PROMPT: &str = "You are an inline completion engine for a Markdown editor. Continue at the cursor in the document's existing language, tone, and formatting. Return only the exact text to insert. Do not use code fences, quotes, labels, or explanations. Do not repeat text already before or after the cursor. Keep the completion concise: usually one sentence, list item, or short paragraph.";
 static CLIENT: OnceLock<Client> = OnceLock::new();
 
-fn validate_endpoint(endpoint: &str) -> Result<Url, String> {
+pub(crate) fn http_client() -> &'static Client {
+    CLIENT.get_or_init(Client::new)
+}
+
+pub(crate) fn validate_endpoint(endpoint: &str) -> Result<Url, String> {
     let mut url =
         Url::parse(endpoint.trim()).map_err(|_| "The request URL is invalid.".to_string())?;
     if !matches!(url.scheme(), "http" | "https") || url.host_str().is_none() {
@@ -63,7 +67,7 @@ fn parse_completion(response: &Value) -> Option<String> {
         .filter(|text| !text.is_empty())
 }
 
-fn error_message(body: &str) -> String {
+pub(crate) fn error_message(body: &str) -> String {
     let parsed = serde_json::from_str::<Value>(body)
         .ok()
         .and_then(|value| {
@@ -97,7 +101,7 @@ pub async fn request_agent_completion(
         return Err("The model is required.".to_string());
     }
 
-    let client = CLIENT.get_or_init(Client::new);
+    let client = http_client();
     let body = json!({
         "model": model.trim(),
         "messages": [

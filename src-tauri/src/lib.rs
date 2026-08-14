@@ -3,6 +3,7 @@ use document_storage::{FileInfo, StorageResult};
 use std::env;
 use std::path::{Path, PathBuf};
 
+mod agent;
 mod agent_completion;
 mod document_storage;
 
@@ -63,7 +64,10 @@ pub fn run() {
             list_text_files,
             rename_document,
             get_startup_file,
-            agent_completion::request_agent_completion
+            agent_completion::request_agent_completion,
+            agent::run_agent_turn,
+            agent::cancel_agent_turn,
+            agent::resolve_agent_permission
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

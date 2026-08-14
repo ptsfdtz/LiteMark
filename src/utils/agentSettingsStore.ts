@@ -11,6 +11,10 @@ function asString(value: unknown, fallback: string): string {
   return typeof value === 'string' ? value : fallback;
 }
 
+function asNumber(value: unknown, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
 export async function loadAgentSettings(): Promise<AgentSettings> {
   try {
     const store = await getStore();
@@ -22,6 +26,10 @@ export async function loadAgentSettings(): Promise<AgentSettings> {
       endpoint: asString(value.endpoint, DEFAULT_AGENT_SETTINGS.endpoint),
       model: asString(value.model, DEFAULT_AGENT_SETTINGS.model),
       apiKey: asString(value.apiKey, ''),
+      instructions: asString(value.instructions, ''),
+      maxSteps: asNumber(value.maxSteps, DEFAULT_AGENT_SETTINGS.maxSteps),
+      autoApply: value.autoApply === undefined ? true : value.autoApply === true,
+      confirmWrites: value.confirmWrites === undefined ? true : value.confirmWrites === true,
     };
   } catch {
     return DEFAULT_AGENT_SETTINGS;

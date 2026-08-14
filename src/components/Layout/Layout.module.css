@@ -68,6 +68,31 @@
   z-index: 25;
 }
 
+.agentButton {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  color: var(--text-color);
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.agentButton:hover {
+  background: var(--toolbar-bg-hover, rgb(0 0 0 / 8%));
+}
+
+.mainArea {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
 .editorPreview {
   position: relative;
   display: flex;

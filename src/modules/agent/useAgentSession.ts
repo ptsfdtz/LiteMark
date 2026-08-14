@@ -1,0 +1,313 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { AgentSettings } from '@/types/agent';
+import { cancelAgentTurn, resolveAgentPermission, runAgentTurn } from './agentClient';
+import { loadAgentSession, saveAgentSession } from './agentSessionStore';
+import { diffLines, summarizeDiff } from './diff';
+import type { AgentEvent, AgentItem, AgentStatus, ChatMessage } from './types';
+
+export interface AgentSessionOptions {
+  getSettings: () => AgentSettings;
+  getDocument: () => string;
+  applyDocument: (content: string) => void;
+  getWorkDir: () => string;
+  documentPath: string | null;
+}
+
+export interface AgentSession {
+  items: AgentItem[];
+  status: AgentStatus;
+  error: string | null;
+  send: (text: string) => Promise<void>;
+  stop: () => void;
+  clear: () => void;
+  applyEdit: (id: string) => void;
+  respondPermission: (requestId: number, allow: boolean, remember?: boolean) => void;
+}
+
+function nextId(prefix: string): string {
+  const suffix =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return `${prefix}-${suffix}`;
+}
+
+function isCancellation(reason: unknown): boolean {
+  const message = typeof reason === 'string' ? reason : String(reason);
+  return message.toLowerCase().includes('cancelled') || message.toLowerCase().includes('canceled');
+}
+
+function rebuildPendingEdits(items: AgentItem[]): Map<string, string> {
+  const pending = new Map<string, string>();
+  for (const item of items) {
+    if (item.role === 'edit' && !item.applied) pending.set(item.id, item.content);
+  }
+  return pending;
+}
+
+export function useAgentSession({
+  getSettings,
+  getDocument,
+  applyDocument,
+  getWorkDir,
+  documentPath,
+}: AgentSessionOptions): AgentSession {
+  const [items, setItems] = useState<AgentItem[]>([]);
+  const [status, setStatus] = useState<AgentStatus>('idle');
+  const [error, setError] = useState<string | null>(null);
+
+  const getSettingsRef = useRef(getSettings);
+  const getDocumentRef = useRef(getDocument);
+  const applyDocumentRef = useRef(applyDocument);
+  const getWorkDirRef = useRef(getWorkDir);
+  getSettingsRef.current = getSettings;
+  getDocumentRef.current = getDocument;
+  applyDocumentRef.current = applyDocument;
+  getWorkDirRef.current = getWorkDir;
+
+  const historyRef = useRef<ChatMessage[]>([]);
+  const runningRef = useRef(false);
+  const pendingEditsRef = useRef(new Map<string, string>());
+  const alwaysAllowRef = useRef(new Set<string>());
+  const pendingPermissionsRef = useRef(new Map<number, string>());
+  const itemsRef = useRef<AgentItem[]>([]);
+  itemsRef.current = items;
+  const pathRef = useRef(documentPath);
+  const loadedRef = useRef(false);
+  const editRevisionRef = useRef(0);
+
+  // Restore the conversation for the current document, persisting the one we leave.
+  useEffect(() => {
+    const previousPath = pathRef.current;
+    pathRef.current = documentPath;
+
+    if (previousPath !== documentPath) {
+      void saveAgentSession(previousPath, {
+        items: itemsRef.current,
+        history: [...historyRef.current],
+      });
+    }
+
+    const revision = editRevisionRef.current;
+    let active = true;
+    void loadAgentSession(documentPath).then((restored) => {
+      if (!active) return;
+      loadedRef.current = true;
+      // A turn started while loading; keep the user's fresh message instead of clobbering it.
+      if (editRevisionRef.current !== revision) return;
+      const session = restored ?? { items: [], history: [] };
+      historyRef.current = session.history;
+      pendingEditsRef.current = rebuildPendingEdits(session.items);
+      setItems(session.items);
+      setError(null);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [documentPath]);
+
+  // Persist the conversation whenever it changes (debounced).
+  useEffect(() => {
+    if (!loadedRef.current) return;
+    const timeout = window.setTimeout(() => {
+      void saveAgentSession(pathRef.current, {
+        items,
+        history: [...historyRef.current],
+      });
+    }, 300);
+    return () => window.clearTimeout(timeout);
+  }, [items]);
+
+  const send = useCallback(async (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed || runningRef.current) return;
+    runningRef.current = true;
+    editRevisionRef.current += 1;
+    setError(null);
+    setStatus('running');
+
+    historyRef.current.push({ role: 'user', content: trimmed });
+    const userItem: AgentItem = { id: nextId('user'), role: 'user', content: trimmed };
+    const assistantId = nextId('assistant');
+    const assistantItem: AgentItem = { id: assistantId, role: 'assistant', content: '' };
+    setItems((current) => [...current, userItem, assistantItem]);
+
+    const toolItemIdByCallId = new Map<string, string>();
+
+    const onEvent = (event: AgentEvent) => {
+      switch (event.type) {
+        case 'text_delta':
+          setItems((current) =>
+            current.map((item) =>
+              item.id === assistantId && item.role === 'assistant'
+                ? { ...item, content: item.content + event.text }
+                : item,
+            ),
+          );
+          break;
+        case 'assistant_message':
+          historyRef.current.push({
+            role: 'assistant',
+            content: event.content,
+            tool_calls: event.tool_calls.length ? event.tool_calls : undefined,
+          });
+          break;
+        case 'tool_call_start': {
+          const callId = event.id || nextId('call');
+          const toolId = nextId('tool');
+          toolItemIdByCallId.set(callId, toolId);
+          setItems((current) => [...current, { id: toolId, role: 'tool', name: event.name }]);
+          break;
+        }
+        case 'tool_call_end': {
+          const toolId = toolItemIdByCallId.get(event.id);
+          historyRef.current.push({
+            role: 'tool',
+            tool_call_id: event.id,
+            content: event.result,
+          });
+          setItems((current) =>
+            current.map((item) =>
+              item.id === toolId && item.role === 'tool' ? { ...item, result: event.result } : item,
+            ),
+          );
+          break;
+        }
+        case 'tool_call_error': {
+          const toolId = toolItemIdByCallId.get(event.id);
+          historyRef.current.push({
+            role: 'tool',
+            tool_call_id: event.id,
+            content: `Error: ${event.error}`,
+          });
+          setItems((current) =>
+            current.map((item) =>
+              item.id === toolId && item.role === 'tool' ? { ...item, error: event.error } : item,
+            ),
+          );
+          break;
+        }
+        case 'permission_request': {
+          const permissionId = nextId('permission');
+          if (alwaysAllowRef.current.has(event.name)) {
+            void resolveAgentPermission(event.id, true);
+            setItems((current) => [
+              ...current,
+              {
+                id: permissionId,
+                role: 'permission',
+                requestId: event.id,
+                name: event.name,
+                pending: false,
+                decision: 'allow',
+              },
+            ]);
+          } else {
+            pendingPermissionsRef.current.set(event.id, event.name);
+            setItems((current) => [
+              ...current,
+              {
+                id: permissionId,
+                role: 'permission',
+                requestId: event.id,
+                name: event.name,
+                pending: true,
+              },
+            ]);
+          }
+          break;
+        }
+        case 'edit': {
+          const before = getDocumentRef.current();
+          const summary = summarizeDiff(before, event.content);
+          const autoApply = getSettingsRef.current().autoApply !== false;
+          if (autoApply) applyDocumentRef.current(event.content);
+          const editId = nextId('edit');
+          pendingEditsRef.current.set(editId, event.content);
+          setItems((current) => [
+            ...current,
+            {
+              id: editId,
+              role: 'edit',
+              summary,
+              diff: diffLines(before, event.content),
+              content: event.content,
+              applied: autoApply,
+            },
+          ]);
+          break;
+        }
+        case 'done':
+          break;
+      }
+    };
+
+    try {
+      await runAgentTurn({
+        settings: getSettingsRef.current(),
+        document: getDocumentRef.current(),
+        messages: [...historyRef.current],
+        workDir: getWorkDirRef.current(),
+        confirmWrites: getSettingsRef.current().confirmWrites !== false,
+        onEvent,
+      });
+    } catch (reason) {
+      const message = reason instanceof Error ? reason.message : String(reason);
+      if (!isCancellation(message)) {
+        setError(message);
+      }
+    } finally {
+      runningRef.current = false;
+      setStatus('idle');
+    }
+  }, []);
+
+  const stop = useCallback(() => {
+    if (!runningRef.current) return;
+    for (const requestId of pendingPermissionsRef.current.keys()) {
+      void resolveAgentPermission(requestId, false);
+    }
+    pendingPermissionsRef.current.clear();
+    void cancelAgentTurn();
+  }, []);
+
+  const clear = useCallback(() => {
+    if (runningRef.current) return;
+    historyRef.current = [];
+    pendingEditsRef.current.clear();
+    setItems([]);
+    setError(null);
+  }, []);
+
+  const applyEdit = useCallback((id: string) => {
+    const content = pendingEditsRef.current.get(id);
+    if (content === undefined) return;
+    applyDocumentRef.current(content);
+    pendingEditsRef.current.delete(id);
+    setItems((current) =>
+      current.map((item) =>
+        item.id === id && item.role === 'edit' ? { ...item, applied: true } : item,
+      ),
+    );
+  }, []);
+
+  const respondPermission = useCallback((requestId: number, allow: boolean, remember = false) => {
+    const name = pendingPermissionsRef.current.get(requestId);
+    if (name === undefined) return;
+    pendingPermissionsRef.current.delete(requestId);
+    if (remember && allow) {
+      alwaysAllowRef.current.add(name);
+    }
+    void resolveAgentPermission(requestId, allow);
+    setItems((current) =>
+      current.map((item) =>
+        item.role === 'permission' && item.requestId === requestId
+          ? { ...item, pending: false, decision: allow ? 'allow' : 'deny' }
+          : item,
+      ),
+    );
+  }, []);
+
+  return { items, status, error, send, stop, clear, applyEdit, respondPermission };
+}

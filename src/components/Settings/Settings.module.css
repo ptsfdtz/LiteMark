@@ -279,6 +279,27 @@
   }
 }
 
+.textareaInput {
+  width: 100%;
+  min-width: 0;
+  min-height: 56px;
+  padding: 6px 9px;
+  color: var(--text-color, #222);
+  background: var(--toolbar-bg, #f7f7f7);
+  border: 1px solid var(--editor-border, #ddd);
+  border-radius: 4px;
+  box-sizing: border-box;
+  font-family: inherit;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  resize: vertical;
+
+  &:focus {
+    outline: none;
+    border-color: var(--blockquote-text, #666);
+  }
+}
+
 .apiKeyRow {
   display: flex;
   gap: 6px;

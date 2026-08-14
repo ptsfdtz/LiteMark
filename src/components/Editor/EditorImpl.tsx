@@ -22,6 +22,7 @@ import {
   type MarkdownTransform,
 } from '@/modules/markdownEditing/applyMarkdownTransform';
 import { registerAgentCompletionProvider } from '@/modules/agentCompletion/agentCompletion';
+import { connectInlineSuggestionHintLocalization } from '@/modules/agentCompletion/inlineSuggestionHintLocalization';
 
 const Editor = React.forwardRef<MarkdownEditor, EditorProps>(
   (
@@ -39,7 +40,9 @@ const Editor = React.forwardRef<MarkdownEditor, EditorProps>(
     ref,
   ) => {
     const { t } = useI18n();
+    const acceptSuggestionLabel = t('editor.acceptSuggestion');
     const [resolvedTheme, setResolvedTheme] = useState('light');
+    const editorContainerRef = useRef<HTMLDivElement>(null);
     const onSaveRef = useRef(onSave);
     const onSaveAsRef = useRef(onSaveAs);
     const tableTemplateRef = useRef(t('toolbar.tableTemplate'));
@@ -65,6 +68,17 @@ const Editor = React.forwardRef<MarkdownEditor, EditorProps>(
     useEffect(() => {
       readOnlyRef.current = readOnly;
     }, [readOnly]);
+
+    useEffect(() => {
+      const editorContainer = editorContainerRef.current;
+      if (!editorContainer) return;
+
+      const localization = connectInlineSuggestionHintLocalization(
+        editorContainer,
+        acceptSuggestionLabel,
+      );
+      return () => localization.dispose();
+    }, [acceptSuggestionLabel]);
 
     useEffect(() => {
       const updateTheme = () => {
@@ -199,7 +213,7 @@ const Editor = React.forwardRef<MarkdownEditor, EditorProps>(
     };
 
     return (
-      <div className={`${styles.editor} ${className}`} data-tour="editor">
+      <div ref={editorContainerRef} className={`${styles.editor} ${className}`} data-tour="editor">
         <MonacoEditor
           height="100%"
           language="markdown"
