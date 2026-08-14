@@ -72,6 +72,7 @@ const Layout: React.FC = () => {
   const [agentSettingsReady, setAgentSettingsReady] = useState(false);
   const [openTabs, setOpenTabs] = useState<string[]>([]);
   const [activeFilePath, setActiveFilePath] = useState<string | null>(null);
+  const [windowStateReady, setWindowStateReady] = useState(false);
   const pendingSessionActivationRef = useRef(false);
   const documentAreaRef = useRef<HTMLDivElement | null>(null);
 
@@ -84,7 +85,9 @@ const Layout: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (!isTauri() || (!explorerVisible && !agentSettings.panelVisible)) return;
+    if (!isTauri() || !windowStateReady || (!explorerVisible && !agentSettings.panelVisible)) {
+      return;
+    }
     const frame = window.requestAnimationFrame(() => {
       const documentWidth = documentAreaRef.current?.getBoundingClientRect().width;
       if (documentWidth === undefined) return;
@@ -93,7 +96,7 @@ const Layout: React.FC = () => {
       );
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [agentSettings.panelVisible, explorerVisible]);
+  }, [agentSettings.panelVisible, explorerVisible, windowStateReady]);
 
   // 启动时加载主题设置
   useEffect(() => {
@@ -703,6 +706,8 @@ const Layout: React.FC = () => {
         else unlisten.push(...listeners);
       } catch (error) {
         console.error('Failed to restore window state:', error);
+      } finally {
+        if (!disposed) setWindowStateReady(true);
       }
     })();
 
