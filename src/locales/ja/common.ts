@@ -49,6 +49,7 @@ const common = {
   'agent.tool.replaceDocument': 'テキストを置換',
   'agent.tool.listDocuments': 'ドキュメント一覧',
   'agent.tool.readFile': 'ファイルを読む',
+  'agent.tool.writeFile': 'ファイルを書き込む',
   'agent.editApplied': '適用済み（+{added} / -{removed} 行）',
   'agent.editPending': '保留中（+{added} / -{removed} 行）',
   'agent.diffDetails': '変更内容を表示',

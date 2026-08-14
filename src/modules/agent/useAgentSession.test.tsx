@@ -37,6 +37,8 @@ interface RunAgentTurnArgs {
   document: string;
   messages: unknown[];
   workDir: string;
+  currentFilePath: string | null;
+  fileTree: string | null;
   confirmWrites: boolean;
   onEvent: (event: AgentEvent) => void;
 }
@@ -46,16 +48,22 @@ function setup(settings: AgentSettings = configuredSettings()) {
   const getDocument = vi.fn(() => '# Hello\n\nWorld');
   const applyDocument = vi.fn();
   const getWorkDir = vi.fn(() => 'C:\\notes');
+  const getCurrentFilePath = vi.fn(() => 'C:\\notes\\doc.md');
+  const getFileTree = vi.fn(() => 'doc.md\nassets/\n  logo.png');
+  const onFileWritten = vi.fn();
   const { result } = renderHook(() =>
     useAgentSession({
       getSettings,
       getDocument,
       applyDocument,
       getWorkDir,
-      documentPath: 'C:\\notes\\doc.md',
+      sessionKey: 'C:\\notes',
+      getCurrentFilePath,
+      getFileTree,
+      onFileWritten,
     }),
   );
-  return { result, getSettings, getDocument, applyDocument, getWorkDir };
+  return { result, getSettings, getDocument, applyDocument, getWorkDir, onFileWritten };
 }
 
 function emit(mock: ReturnType<typeof vi.fn>, events: AgentEvent[]) {
@@ -86,6 +94,8 @@ describe('Agent Session', () => {
     const args = mocks.runAgentTurn.mock.calls[0][0] as RunAgentTurnArgs;
     expect(args.document).toBe('# Hello\n\nWorld');
     expect(args.workDir).toBe('C:\\notes');
+    expect(args.currentFilePath).toBe('C:\\notes\\doc.md');
+    expect(args.fileTree).toBe('doc.md\nassets/\n  logo.png');
     expect(args.confirmWrites).toBe(true);
     expect(args.messages).toEqual([{ role: 'user', content: 'summarize' }]);
     expect(getDocument).toHaveBeenCalled();
@@ -347,34 +357,52 @@ describe('Agent Session', () => {
     await waitFor(() => expect(mocks.saveAgentSession).toHaveBeenCalled());
     const lastCall =
       mocks.saveAgentSession.mock.calls[mocks.saveAgentSession.mock.calls.length - 1];
-    expect(lastCall[0]).toBe('C:\\notes\\doc.md');
+    expect(lastCall[0]).toBe('C:\\notes');
     expect(lastCall[1].items).toEqual(
       expect.arrayContaining([expect.objectContaining({ role: 'user', content: 'save me' })]),
     );
   });
 
-  it('reloads and persists when the document changes', async () => {
+  it('reloads and persists when the project scope changes', async () => {
     const { result, rerender } = renderHook(
-      ({ path }) =>
+      ({ scope }) =>
         useAgentSession({
           getSettings: () => configuredSettings(),
           getDocument: () => '# Hello\n\nWorld',
           applyDocument: vi.fn(),
-          getWorkDir: () => 'C:\\notes',
-          documentPath: path,
+          getWorkDir: () => scope ?? '',
+          sessionKey: scope,
+          getCurrentFilePath: () => null,
+          getFileTree: () => null,
         }),
-      { initialProps: { path: 'C:\\notes\\a.md' as string | null } },
+      { initialProps: { scope: 'C:\\notes' as string | null } },
     );
 
-    await waitFor(() => expect(mocks.loadAgentSession).toHaveBeenCalledWith('C:\\notes\\a.md'));
+    await waitFor(() => expect(mocks.loadAgentSession).toHaveBeenCalledWith('C:\\notes'));
 
-    rerender({ path: 'C:\\notes\\b.md' });
+    rerender({ scope: 'C:\\other-project' });
 
-    await waitFor(() => expect(mocks.loadAgentSession).toHaveBeenCalledWith('C:\\notes\\b.md'));
-    expect(mocks.saveAgentSession).toHaveBeenCalledWith('C:\\notes\\a.md', {
+    await waitFor(() => expect(mocks.loadAgentSession).toHaveBeenCalledWith('C:\\other-project'));
+    expect(mocks.saveAgentSession).toHaveBeenCalledWith('C:\\notes', {
       items: [],
       history: [],
     });
     expect(result.current.items).toEqual([]);
+  });
+
+  it('notifies when the agent writes a project file', async () => {
+    const { result, onFileWritten } = setup();
+    emit(mocks.runAgentTurn, [
+      { type: 'tool_call_start', id: '1', name: 'write_file' },
+      { type: 'tool_call_end', id: '1', name: 'write_file', result: 'File written.' },
+      { type: 'file_written', path: 'C:\\notes\\summary.md' },
+      { type: 'done' },
+    ]);
+
+    await act(async () => {
+      await result.current.send('create a summary');
+    });
+
+    expect(onFileWritten).toHaveBeenCalledWith('C:\\notes\\summary.md');
   });
 });

@@ -48,6 +48,7 @@ const common = {
   'agent.tool.replaceDocument': '替换内容',
   'agent.tool.listDocuments': '列出文档',
   'agent.tool.readFile': '读取文件',
+  'agent.tool.writeFile': '写入文件',
   'agent.editApplied': '已应用（+{added} / -{removed} 行）',
   'agent.editPending': '待应用（+{added} / -{removed} 行）',
   'agent.diffDetails': '查看变更详情',

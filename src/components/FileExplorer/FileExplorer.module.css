@@ -78,6 +78,7 @@
 .rootButton span {
   overflow: hidden;
   text-overflow: ellipsis;
+  user-select: none;
   white-space: nowrap;
 }
 
@@ -135,13 +136,21 @@
   background: transparent;
 }
 
-.treeScroll:hover,
-.treeScroll:focus-within {
+.treeScroll::-webkit-scrollbar-thumb {
+  transition: background-color 0.16s ease;
+}
+
+.treeScroll::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.treeScroll:hover {
   scrollbar-color: var(--scrollbar-thumb) transparent;
 }
 
-.treeScroll:hover::-webkit-scrollbar-thumb,
-.treeScroll:focus-within::-webkit-scrollbar-thumb {
+.treeScroll:hover::-webkit-scrollbar-thumb {
   background: var(--scrollbar-thumb);
 }
 
@@ -199,8 +208,6 @@
 }
 
 .standaloneSection {
-  margin-top: 8px;
-  padding-top: 8px;
   border-top: 1px solid var(--hairline-color);
 }
 

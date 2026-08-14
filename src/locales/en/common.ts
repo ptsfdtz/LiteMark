@@ -49,6 +49,7 @@ const common = {
   'agent.tool.replaceDocument': 'Replace text',
   'agent.tool.listDocuments': 'List documents',
   'agent.tool.readFile': 'Read file',
+  'agent.tool.writeFile': 'Write file',
   'agent.editApplied': 'Applied (+{added} / -{removed} lines)',
   'agent.editPending': 'Pending (+{added} / -{removed} lines)',
   'agent.diffDetails': 'View changes',

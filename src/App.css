@@ -110,6 +110,12 @@ input[type='range']:not(:disabled) {
   touch-action: manipulation;
 }
 
+button,
+[role='tab'],
+[role='treeitem'] {
+  user-select: none;
+}
+
 button:disabled,
 select:disabled,
 input:disabled,

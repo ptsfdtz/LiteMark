@@ -60,7 +60,9 @@ const Toolbar: React.FC<ToolbarProps> = ({
     if (!editor) return;
     const update = () => refresh();
     editor.on('transaction', update);
-    return () => editor.off('transaction', update);
+    return () => {
+      editor.off('transaction', update);
+    };
   }, [editor]);
 
   const run = (command: () => boolean) => {

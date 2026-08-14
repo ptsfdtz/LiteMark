@@ -70,6 +70,7 @@
   font-weight: 650;
   letter-spacing: 0;
   text-overflow: ellipsis;
+  user-select: none;
   white-space: nowrap;
 }
 
@@ -347,16 +348,27 @@
 
 .input {
   flex: 1;
+  min-width: 0;
+  min-height: 36px;
+  max-height: 144px;
+  height: 36px;
   padding: 0.5rem 0.6rem;
   color: var(--text-color);
   background: var(--paper-bg, #fff);
   border: 1px solid var(--hairline-color, #ddd);
   border-radius: 5px;
+  box-sizing: border-box;
   resize: none;
   font-family: inherit;
   font-size: 0.9rem;
   line-height: 1.4;
   outline: none;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.input::-webkit-scrollbar {
+  display: none;
 }
 
 .input:focus {

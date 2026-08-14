@@ -16,6 +16,10 @@ import styles from './Editor.module.css';
 import 'highlight.js/styles/github.css';
 import type { EditorProps, WysiwygEditor } from '@/types/editor';
 import { useI18n } from '@/locales/useI18n';
+import {
+  applyTypedMarkdownPrefix,
+  default as MarkdownInputRules,
+} from '@/modules/markdownEditing/markdownInputRules';
 
 const lowlight = createLowlight(common);
 
@@ -36,6 +40,7 @@ const EditorImpl = React.forwardRef<WysiwygEditor, EditorProps>(
         TableRow,
         TableHeader,
         TableCell,
+        MarkdownInputRules,
         InlineMath.configure({
           katexOptions: { throwOnError: false, strict: 'ignore' },
         }),
@@ -53,7 +58,10 @@ const EditorImpl = React.forwardRef<WysiwygEditor, EditorProps>(
           'aria-label': t('editor.ariaLabel'),
         },
       },
-      onUpdate: ({ editor: currentEditor }) => onChange(currentEditor.getMarkdown()),
+      onUpdate: ({ editor: currentEditor }) => {
+        if (applyTypedMarkdownPrefix(currentEditor)) return;
+        onChange(currentEditor.getMarkdown());
+      },
     });
 
     useImperativeHandle(ref, () => editor as WysiwygEditor, [editor]);

@@ -37,7 +37,7 @@ import {
   deleteWorkspaceFile,
   listDirectoryTree,
 } from '@/modules/directoryTree';
-import { getFileViewKind } from '@/types/fileTree';
+import { getFileViewKind, type FileTreeNode } from '@/types/fileTree';
 import { loadWorkspaceDirectories, saveWorkspaceDirectories } from '@/utils/workspaceStore';
 import OpenTabs from '@/components/OpenTabs/OpenTabs';
 import { LuPanelLeftOpen } from 'react-icons/lu';
@@ -56,6 +56,22 @@ function pathBelongsToDirectory(path: string | null, directory: string): boolean
   return (
     normalizedPath === normalizedDirectory || normalizedPath.startsWith(`${normalizedDirectory}/`)
   );
+}
+
+const AGENT_FILE_TREE_LINE_LIMIT = 200;
+
+function serializeFileTree(nodes: FileTreeNode[]): string {
+  const lines: string[] = [];
+  const walk = (items: FileTreeNode[], depth: number) => {
+    for (const item of items) {
+      if (lines.length >= AGENT_FILE_TREE_LINE_LIMIT) return;
+      lines.push(`${'  '.repeat(depth)}${item.name}${item.is_directory ? '/' : ''}`);
+      if (item.is_directory) walk(item.children, depth + 1);
+    }
+  };
+  walk(nodes, 0);
+  if (lines.length >= AGENT_FILE_TREE_LINE_LIMIT) lines.push('…');
+  return lines.join('\n');
 }
 
 const Layout: React.FC = () => {
@@ -260,6 +276,7 @@ const Layout: React.FC = () => {
     .map(({ path, name }) => ({ path, name }));
   const explorerHasItems = workspaceRoots.length > 0 || recentStandaloneFiles.length > 0;
 
+  const agentFileWrittenRef = useRef<(path: string) => void>(() => {});
   const agentSession = useAgentSession({
     getSettings: () => agentSettings,
     getDocument: () => (activeTextDocument ? markdown : ''),
@@ -267,7 +284,17 @@ const Layout: React.FC = () => {
       if (activeTextDocument) setMarkdown(content);
     },
     getWorkDir: () => activeWorkspaceDirectory || workDir,
-    documentPath: activeTextDocument ? currentFilePath : null,
+    // The conversation belongs to the project, not to a single document.
+    sessionKey: activeWorkspaceDirectory || workDir || null,
+    getCurrentFilePath: () => (activeTextDocument ? currentFilePath : null),
+    getFileTree: () => {
+      if (!activeWorkspaceDirectory) return null;
+      const root = workspaceRoots.find(
+        (candidate) => normalizePath(candidate.path) === normalizePath(activeWorkspaceDirectory),
+      );
+      return root ? serializeFileTree(root.nodes) : null;
+    },
+    onFileWritten: (path) => agentFileWrittenRef.current(path),
   });
 
   const showSaveSuccess = () => {
@@ -406,6 +433,20 @@ const Layout: React.FC = () => {
 
   const refreshAllWorkspaceTrees = async () => {
     await Promise.all(workspaceRoots.map((root) => refreshWorkspaceTree(root.path)));
+  };
+
+  // The agent wrote a project file to disk: surface it to the user.
+  agentFileWrittenRef.current = (path: string) => {
+    void (async () => {
+      const root = workspaceRoots.find((candidate) => pathBelongsToDirectory(path, candidate.path));
+      if (root) await refreshWorkspaceTree(root.path);
+      if (path === currentFilePath) {
+        // Reload the buffer so the editor reflects the agent's write.
+        if (!isDirty) await documentSession.openDocument(path);
+        return;
+      }
+      await handleOpenDocument(path);
+    })();
   };
 
   const removeWorkspaceDirectory = (directory: string) => {
@@ -561,7 +602,7 @@ const Layout: React.FC = () => {
       if (root) await refreshWorkspaceTree(root.path);
       return true;
     } catch (error) {
-      await showDocumentError(error, 'dialog.deleteFailed');
+      await showDocumentError(error, 'dialog.fileMissing');
       return false;
     }
   };

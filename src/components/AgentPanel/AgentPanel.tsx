@@ -23,6 +23,7 @@ const toolNameKeys: Record<string, TranslationKey> = {
   replace_in_document: 'agent.tool.replaceDocument',
   list_documents: 'agent.tool.listDocuments',
   read_file: 'agent.tool.readFile',
+  write_file: 'agent.tool.writeFile',
 };
 
 const AgentPanel: React.FC<AgentPanelProps> = ({
@@ -35,6 +36,7 @@ const AgentPanel: React.FC<AgentPanelProps> = ({
 }) => {
   const { t } = useI18n();
   const [input, setInput] = useState('');
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const asideRef = useRef<HTMLElement | null>(null);
   // Slide in from zero width on mount.
@@ -90,6 +92,17 @@ const AgentPanel: React.FC<AgentPanelProps> = ({
     const list = listRef.current;
     if (list) list.scrollTop = list.scrollHeight;
   }, [items, running]);
+
+  useEffect(() => {
+    const textarea = inputRef.current;
+    if (!textarea) return;
+    if (!input) {
+      textarea.style.height = '36px';
+      return;
+    }
+    textarea.style.height = '0px';
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 144)}px`;
+  }, [input]);
 
   const handleSend = () => {
     if (!input.trim() || running || !isConfigured) return;
@@ -258,6 +271,7 @@ const AgentPanel: React.FC<AgentPanelProps> = ({
 
       <div className={styles.composer}>
         <textarea
+          ref={inputRef}
           className={styles.input}
           value={input}
           onChange={(event) => setInput(event.target.value)}
@@ -268,7 +282,7 @@ const AgentPanel: React.FC<AgentPanelProps> = ({
             }
           }}
           placeholder={t('agent.placeholder')}
-          rows={2}
+          rows={1}
           disabled={running || !isConfigured}
         />
         {running ? (

@@ -14,25 +14,28 @@ use tokio::sync::oneshot;
 use crate::agent_completion::{error_message, http_client, validate_endpoint};
 
 const AGENT_SYSTEM_PROMPT: &str = "\
-You are an editing agent inside LiteMark, a Markdown editor. You help the user by reading and \
-editing the current document.
+You are an editing agent inside LiteMark, a Markdown editor. You help the user work with the \
+documents in their project directory.
 
 You have the following tools:
-- read_document: return the current full text of the document.
-- rewrite_document: replace the entire document with new content.
-- replace_in_document: replace one exact substring of the document with another.
-- list_documents: list the Markdown/text documents in the working directory.
-- read_file: read a Markdown/text file from the working directory.
+- read_document: return the current full text of the document the user is editing.
+- rewrite_document: replace the entire current document with new content.
+- replace_in_document: replace one exact substring of the current document with another.
+- list_documents: list the Markdown/text documents in the project directory.
+- read_file: read a Markdown/text file from the project directory.
+- write_file: create or overwrite a Markdown/text file in the project directory.
 
 Guidelines:
 - Reply in the same language the user writes in.
-- Read the document before editing if you are not already certain of its current content.
+- The current document is the file the user is editing right now; treat it as the primary \
+reference for the conversation.
+- Read the current document before editing it if you are not already certain of its content.
 - Prefer replace_in_document for small, targeted edits; use rewrite_document for large rewrites.
+- Use write_file only for files other than the current document; edits to the current document \
+must go through rewrite_document or replace_in_document so the user can review them.
 - When replace_in_document fails because the target appears multiple times or is not found, \
 read the document and retry with more surrounding context.
-- You may read other documents in the working directory for context, but only the current \
-document is edited.
-- After editing, briefly summarize what you changed. Do not output the full document unless asked.";
+- After editing, briefly summarize what you changed. Do not output full documents unless asked.";
 
 static CANCEL_FLAG: OnceLock<Arc<AtomicBool>> = OnceLock::new();
 const MAX_READ_CHARS: usize = 50_000;
@@ -140,6 +143,9 @@ pub enum AgentEvent {
     Edit {
         content: String,
     },
+    FileWritten {
+        path: String,
+    },
     Done,
 }
 
@@ -157,6 +163,12 @@ struct ReplaceArgs {
 #[derive(Deserialize)]
 struct ReadFileArgs {
     path: String,
+}
+
+#[derive(Deserialize)]
+struct WriteFileArgs {
+    path: String,
+    content: String,
 }
 
 fn tool_definitions() -> Value {
@@ -204,7 +216,7 @@ fn tool_definitions() -> Value {
             "type": "function",
             "function": {
                 "name": "list_documents",
-                "description": "List the Markdown/text documents in the working directory.",
+                "description": "List the Markdown/text documents in the project directory.",
                 "parameters": { "type": "object", "properties": {}, "additionalProperties": false }
             }
         },
@@ -212,13 +224,29 @@ fn tool_definitions() -> Value {
             "type": "function",
             "function": {
                 "name": "read_file",
-                "description": "Read a Markdown/text file from the working directory.",
+                "description": "Read a Markdown/text file from the project directory.",
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "path": { "type": "string", "description": "The file name or relative path within the working directory." }
+                        "path": { "type": "string", "description": "The file name or relative path within the project directory." }
                     },
                     "required": ["path"],
+                    "additionalProperties": false
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "write_file",
+                "description": "Create or overwrite a Markdown/text file in the project directory. Not for the current document.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "path": { "type": "string", "description": "The file name or relative path within the project directory." },
+                        "content": { "type": "string", "description": "The complete file content to write." }
+                    },
+                    "required": ["path", "content"],
                     "additionalProperties": false
                 }
             }
@@ -249,6 +277,43 @@ fn resolve_work_path(work_dir: &Path, requested: &str) -> Result<PathBuf, String
         return Err("only text files (.md, .markdown, .txt) can be read.".to_string());
     }
     Ok(canonical_candidate)
+}
+
+fn resolve_work_path_for_write(work_dir: &Path, requested: &str) -> Result<PathBuf, String> {
+    if requested.trim().is_empty() {
+        return Err("path must not be empty.".to_string());
+    }
+    let requested_path = Path::new(requested);
+    let candidate = if requested_path.is_absolute() {
+        requested_path.to_path_buf()
+    } else {
+        work_dir.join(requested_path)
+    };
+    let canonical_work = work_dir
+        .canonicalize()
+        .map_err(|error| format!("cannot resolve the working directory: {error}"))?;
+    let parent = candidate
+        .parent()
+        .ok_or_else(|| "invalid file path.".to_string())?;
+    std::fs::create_dir_all(parent)
+        .map_err(|error| format!("cannot create the target directory: {error}"))?;
+    let canonical_parent = parent
+        .canonicalize()
+        .map_err(|error| format!("cannot resolve the target directory: {error}"))?;
+    if !canonical_parent.starts_with(&canonical_work) {
+        return Err("path is outside the working directory.".to_string());
+    }
+    let file_name = candidate
+        .file_name()
+        .ok_or_else(|| "invalid file name.".to_string())?;
+    let resolved = canonical_parent.join(file_name);
+    if resolved.is_dir() {
+        return Err("path is a directory.".to_string());
+    }
+    if !crate::document_storage::is_text_extension(&resolved) {
+        return Err("only text files (.md, .markdown, .txt) can be written.".to_string());
+    }
+    Ok(resolved)
 }
 
 fn execute_tool(
@@ -313,6 +378,19 @@ fn execute_tool(
             let directory = work_dir.ok_or("no working directory is set.".to_string())?;
             let path = resolve_work_path(directory, &args.path)?;
             crate::document_storage::read_text_file(&path).map_err(|error| error.to_string())
+        }
+        "write_file" => {
+            let args: WriteFileArgs = serde_json::from_str(arguments)
+                .map_err(|error| format!("invalid arguments: {error}"))?;
+            let directory = work_dir.ok_or("no working directory is set.".to_string())?;
+            let path = resolve_work_path_for_write(directory, &args.path)?;
+            crate::document_storage::atomic_write_text_file(&path, &args.content)
+                .map_err(|error| error.to_string())?;
+            Ok(format!(
+                "File written: {} ({} characters).",
+                path.to_string_lossy(),
+                args.content.chars().count()
+            ))
         }
         _ => Err(format!("unknown tool: {name}")),
     }
@@ -469,6 +547,8 @@ pub async fn run_agent_turn(
     instructions: Option<String>,
     max_steps: Option<u32>,
     work_dir: Option<String>,
+    current_file_path: Option<String>,
+    file_tree: Option<String>,
     confirm_writes: bool,
     on_event: Channel<AgentEvent>,
 ) -> Result<(), String> {
@@ -484,10 +564,45 @@ pub async fn run_agent_turn(
     flag.store(false, Ordering::SeqCst);
 
     let max_steps = max_steps.unwrap_or(8).clamp(1, 32);
-    let system_prompt = instructions
+    let mut system_prompt = instructions
         .map(|value| value.trim().to_string())
         .filter(|value| !value.is_empty())
         .unwrap_or_else(|| AGENT_SYSTEM_PROMPT.to_string());
+
+    let work_dir_path = work_dir
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(PathBuf::from);
+
+    // Project context: the current file is the user's primary reference, the
+    // file tree lets the agent navigate without extra tool calls.
+    let mut context_lines: Vec<String> = Vec::new();
+    if let Some(directory) = &work_dir_path {
+        context_lines.push(format!(
+            "Project directory: {}",
+            directory.to_string_lossy()
+        ));
+    }
+    let current_file = current_file_path
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty());
+    context_lines.push(match current_file {
+        Some(path) => format!("Current file the user is editing: {path}"),
+        None => "Current file the user is editing: none".to_string(),
+    });
+    if let Some(tree) = file_tree
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    {
+        context_lines.push(format!("Project files:\n{tree}"));
+    }
+    if !context_lines.is_empty() {
+        system_prompt.push_str("\n\nContext:\n");
+        system_prompt.push_str(&context_lines.join("\n"));
+    }
 
     let mut thread: Vec<Value> = vec![json!({ "role": "system", "content": system_prompt })];
     for message in &messages {
@@ -497,11 +612,6 @@ pub async fn run_agent_turn(
 
     let original_document = document;
     let mut document = original_document.clone();
-    let work_dir_path = work_dir
-        .as_deref()
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-        .map(PathBuf::from);
 
     for _ in 0..max_steps {
         if cancellation_requested() {
@@ -531,7 +641,7 @@ pub async fn run_agent_turn(
             let requires_approval = confirm_writes
                 && matches!(
                     call.function.name.as_str(),
-                    "rewrite_document" | "replace_in_document"
+                    "rewrite_document" | "replace_in_document" | "write_file"
                 );
             if requires_approval {
                 let (request_id, receiver) = register_permission_request();
@@ -591,6 +701,21 @@ pub async fn run_agent_turn(
                             result: result.clone(),
                         })
                         .map_err(|error| error.to_string())?;
+                    if call.function.name == "write_file" {
+                        if let (Ok(args), Some(directory)) = (
+                            serde_json::from_str::<WriteFileArgs>(&call.function.arguments),
+                            work_dir_path.as_deref(),
+                        ) {
+                            if let Ok(resolved) = resolve_work_path_for_write(directory, &args.path)
+                            {
+                                on_event
+                                    .send(AgentEvent::FileWritten {
+                                        path: resolved.to_string_lossy().to_string(),
+                                    })
+                                    .map_err(|error| error.to_string())?;
+                            }
+                        }
+                    }
                     thread.push(json!({
                         "role": "tool",
                         "tool_call_id": call.id,
@@ -784,6 +909,67 @@ mod tests {
         let mut document = String::new();
         assert!(execute_tool("list_documents", "{}", &mut document, None).is_err());
         assert!(execute_tool("read_file", r#"{"path":"a.md"}"#, &mut document, None).is_err());
+        assert!(execute_tool(
+            "write_file",
+            r#"{"path":"a.md","content":"x"}"#,
+            &mut document,
+            None
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn writes_a_file_within_the_working_directory() {
+        let directory = tempfile::tempdir().expect("temporary directory");
+
+        let mut document = String::new();
+        let result = execute_tool(
+            "write_file",
+            r##"{"path":"notes/summary.md","content":"# summary"}"##,
+            &mut document,
+            Some(directory.path()),
+        );
+
+        assert!(result.is_ok());
+        let written = fs::read_to_string(directory.path().join("notes/summary.md"))
+            .expect("read written file");
+        assert_eq!(written, "# summary");
+        assert!(
+            document.is_empty(),
+            "write_file must not touch the current document"
+        );
+    }
+
+    #[test]
+    fn rejects_write_paths_outside_the_working_directory() {
+        let directory = tempfile::tempdir().expect("temporary directory");
+        let outside = tempfile::tempdir().expect("outside directory");
+
+        let mut document = String::new();
+        let result = execute_tool(
+            "write_file",
+            &json!({ "path": outside.path().join("evil.md").to_string_lossy(), "content": "x" })
+                .to_string(),
+            &mut document,
+            Some(directory.path()),
+        );
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn rejects_writing_non_text_files() {
+        let directory = tempfile::tempdir().expect("temporary directory");
+
+        let mut document = String::new();
+        let result = execute_tool(
+            "write_file",
+            r#"{"path":"script.exe","content":"x"}"#,
+            &mut document,
+            Some(directory.path()),
+        );
+
+        assert!(result.is_err());
     }
 
     #[test]
