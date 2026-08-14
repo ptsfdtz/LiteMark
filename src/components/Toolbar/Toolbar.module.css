@@ -56,7 +56,7 @@
 
 .toolbar button:disabled {
   opacity: 0.34;
-  cursor: default;
+  cursor: not-allowed;
 }
 
 .divider {

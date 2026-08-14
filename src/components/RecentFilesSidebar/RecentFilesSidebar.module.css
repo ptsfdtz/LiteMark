@@ -88,7 +88,6 @@
       opacity 0.4s,
       transform 0.4s;
     border-bottom: 1px solid var(--editor-border, #eee);
-    cursor: pointer;
     overflow-wrap: break-word;
 
     &.deleting {
@@ -103,7 +102,15 @@
 
     .fileContent {
       /* content area - leave space for absolute-positioned trash button */
-      padding-right: 2.4rem;
+      display: block;
+      width: 100%;
+      padding: 0 2.4rem 0 0;
+      font: inherit;
+      color: inherit;
+      background: transparent;
+      border: 0;
+      text-align: left;
+      cursor: pointer;
     }
 
     .trashButton {

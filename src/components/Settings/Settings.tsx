@@ -4,9 +4,9 @@ import styles from './Settings.module.css';
 import { SettingsProps } from '@/types/settings';
 import { open } from '@tauri-apps/plugin-dialog';
 import {
-  LuEllipsis,
   LuEye,
   LuEyeOff,
+  LuFolderOpen,
   LuMoon,
   LuSettings,
   LuSun,
@@ -212,7 +212,7 @@ const Settings: React.FC<SettingsProps> = ({
               title={t('settings.chooseWorkDir')}
               aria-label={t('settings.chooseWorkDir')}
             >
-              <LuEllipsis />
+              <LuFolderOpen />
             </button>
           </div>
         </div>

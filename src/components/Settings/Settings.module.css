@@ -26,32 +26,28 @@
   }
 }
 
-.workDirBtnRow {
+.workDirBtn {
   display: flex;
+  flex: 0 0 30px;
   justify-content: center;
-  margin-top: 4px;
+  align-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  color: var(--text-color, #222);
+  background: var(--toolbar-bg, #f7f7f7);
+  border: 1px solid var(--editor-border, #bbb);
+  border-radius: 4px;
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease,
+    border-color 0.15s ease;
 
-  .workDirBtn {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    width: 30px;
-    height: 30px;
-    padding: 6px 24px;
-    padding: 0;
-    color: var(--text-color, #222);
-    background: var(--background-color, #fafafa);
-    border: 1px solid var(--editor-border, #bbb);
-    transition:
-      background 0.2s,
-      border 0.2s;
-    border-radius: 50%;
-    font-size: 1rem;
-    cursor: pointer;
-
-    &:hover {
-      background: var(--toolbar-bg, #f3f3f3);
-    }
+  &:hover {
+    color: var(--heading-color, #111);
+    background: var(--control-hover, #ececec);
+    border-color: var(--hairline-color, #999);
   }
 }
 
@@ -247,6 +243,12 @@
 .languageButtonActive {
   box-shadow: 0 0 0 2px var(--text-color, #0f0f0f);
   border-color: transparent;
+}
+
+.languageButton:hover {
+  color: var(--heading-color);
+  background: var(--control-hover);
+  border-color: var(--hairline-color);
 }
 
 .settingLabel {

@@ -133,7 +133,8 @@ const RecentFilesSidebar: React.FC<RecentFilesSidebarProps> = ({
                 key={file.path}
                 className={`${styles.fileItem} ${deletingId === file.path ? styles.deleting : ''}`}
               >
-                <div
+                <button
+                  type="button"
                   className={styles.fileContent}
                   onClick={() => {
                     void Promise.resolve(onOpenDocument(file.path)).then((opened) => {
@@ -148,7 +149,7 @@ const RecentFilesSidebar: React.FC<RecentFilesSidebarProps> = ({
                       locale === 'en' ? 'en-US' : locale === 'ja' ? 'ja-JP' : 'zh-CN',
                     )}
                   </div>
-                </div>
+                </button>
                 {canRemoveDocuments &&
                   (confirmingId === file.path ? (
                     <span className={styles.confirmBtns}>

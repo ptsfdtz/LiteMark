@@ -30,16 +30,20 @@
 .currentFileName {
   min-width: 0;
   max-width: 100%;
+  padding: 0;
   overflow: hidden;
   color: var(--muted-text);
   background: none;
+  border: 0;
+  font-family: inherit;
   font-size: 12px;
   font-weight: 560;
   letter-spacing: 0;
   text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
-  cursor: text;
+  cursor: pointer;
+  user-select: text;
 }
 
 .currentFileNameInput {
@@ -52,6 +56,7 @@
   border-radius: 4px;
   box-sizing: border-box;
   font-size: 12px;
+  cursor: text;
   outline: none;
 }
 

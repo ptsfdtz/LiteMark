@@ -89,7 +89,7 @@
 
 .headerButton:disabled {
   opacity: 0.4;
-  cursor: default;
+  cursor: not-allowed;
 }
 
 .messages {
@@ -230,10 +230,19 @@
   background: var(--link-color, #06c);
 }
 
+.allowButton:hover,
+.applyButton:hover {
+  filter: brightness(0.94);
+}
+
 .denyButton {
   color: var(--text-color);
   background: var(--toolbar-bg, #f3f3f3);
   border: 1px solid var(--editor-border, #ddd);
+}
+
+.denyButton:hover {
+  background: var(--control-hover, rgb(0 0 0 / 8%));
 }
 
 .editCard {
@@ -353,7 +362,7 @@
 
 .sendButton:disabled {
   opacity: 0.5;
-  cursor: default;
+  cursor: not-allowed;
 }
 
 .stopButton {

@@ -92,12 +92,47 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--scrollbar-thumb);
-  cursor: auto;
 }
 
 ::-webkit-scrollbar-track:hover {
   background: var(--scrollbar-track);
-  cursor: auto;
+}
+
+button:not(:disabled),
+a[href],
+summary,
+select:not(:disabled),
+label[for],
+input[type='checkbox']:not(:disabled),
+input[type='radio']:not(:disabled),
+input[type='range']:not(:disabled) {
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+button:disabled,
+select:disabled,
+input:disabled,
+textarea:disabled {
+  cursor: not-allowed;
+}
+
+input:not([type='checkbox'], [type='radio'], [type='range'], [type='button'], [type='submit']),
+textarea,
+[contenteditable='true'] {
+  cursor: text;
+}
+
+:where(
+  button,
+  a[href],
+  summary,
+  select,
+  input[type='checkbox'],
+  input[type='radio']
+):focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
 }
 
 body {
