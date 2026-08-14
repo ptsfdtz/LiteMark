@@ -1,243 +1,79 @@
-// src/components/Editor/EditorImpl.tsx
-import React, { useEffect, useState, useRef } from 'react';
-import MonacoEditor, { OnMount } from '@monaco-editor/react';
+import React, { useEffect, useImperativeHandle } from 'react';
+import { EditorContent, useEditor } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import { Markdown } from '@tiptap/markdown';
+import Link from '@tiptap/extension-link';
+import Placeholder from '@tiptap/extension-placeholder';
+import TaskList from '@tiptap/extension-task-list';
+import TaskItem from '@tiptap/extension-task-item';
+import Image from '@tiptap/extension-image';
+import { Table, TableCell, TableHeader, TableRow } from '@tiptap/extension-table';
 import styles from './Editor.module.css';
-import { EditorProps, type MarkdownEditor } from '@/types/editor';
+import type { EditorProps, WysiwygEditor } from '@/types/editor';
 import { useI18n } from '@/locales/useI18n';
-import {
-  applyBold,
-  applyItalic,
-  applyStrikethrough,
-  applyCode,
-  applyLink,
-  applyHeading,
-  applyQuote,
-  applyUnorderedList,
-  applyOrderedList,
-  applyTable,
-  applyImage,
-} from '@/modules/markdownEditing/markdownTransforms';
-import {
-  applyMarkdownTransform,
-  type MarkdownTransform,
-} from '@/modules/markdownEditing/applyMarkdownTransform';
-import { registerAgentCompletionProvider } from '@/modules/agentCompletion/agentCompletion';
-import { connectInlineSuggestionHintLocalization } from '@/modules/agentCompletion/inlineSuggestionHintLocalization';
 
-const Editor = React.forwardRef<MarkdownEditor, EditorProps>(
-  (
-    {
-      value,
-      onChange,
-      className,
-      theme,
-      onSave,
-      onSaveAs,
-      minimapEnabled,
-      agentSettings,
-      readOnly,
-    },
-    ref,
-  ) => {
+const EditorImpl = React.forwardRef<WysiwygEditor, EditorProps>(
+  ({ value, onChange, className, readOnly = false, onSave, onSaveAs }, ref) => {
     const { t } = useI18n();
-    const acceptSuggestionLabel = t('editor.acceptSuggestion');
-    const [resolvedTheme, setResolvedTheme] = useState('light');
-    const editorContainerRef = useRef<HTMLDivElement>(null);
-    const onSaveRef = useRef(onSave);
-    const onSaveAsRef = useRef(onSaveAs);
-    const tableTemplateRef = useRef(t('toolbar.tableTemplate'));
-    const agentSettingsRef = useRef(agentSettings);
-    const readOnlyRef = useRef(readOnly);
+    const editor = useEditor({
+      extensions: [
+        StarterKit.configure({ link: false }),
+        Markdown.configure({ markedOptions: { gfm: true } }),
+        Link.configure({ openOnClick: false, autolink: true }),
+        Placeholder.configure({ placeholder: t('editor.placeholder') }),
+        TaskList,
+        TaskItem.configure({ nested: true }),
+        Image.configure({ inline: false, allowBase64: true }),
+        Table.configure({ resizable: true }),
+        TableRow,
+        TableHeader,
+        TableCell,
+      ],
+      content: value,
+      contentType: 'markdown',
+      editable: !readOnly,
+      editorProps: {
+        attributes: {
+          class: styles.prose,
+          spellcheck: 'true',
+          'aria-label': t('editor.ariaLabel'),
+        },
+      },
+      onUpdate: ({ editor: currentEditor }) => onChange(currentEditor.getMarkdown()),
+    });
+
+    useImperativeHandle(ref, () => editor as WysiwygEditor, [editor]);
 
     useEffect(() => {
-      onSaveRef.current = onSave;
-    }, [onSave]);
+      editor?.setEditable(!readOnly);
+    }, [editor, readOnly]);
 
     useEffect(() => {
-      onSaveAsRef.current = onSaveAs;
-    }, [onSaveAs]);
+      if (!editor || editor.getMarkdown() === value) return;
+      editor.commands.setContent(value, { contentType: 'markdown', emitUpdate: false });
+    }, [editor, value]);
 
-    useEffect(() => {
-      tableTemplateRef.current = t('toolbar.tableTemplate');
-    }, [t]);
-
-    useEffect(() => {
-      agentSettingsRef.current = agentSettings;
-    }, [agentSettings]);
-
-    useEffect(() => {
-      readOnlyRef.current = readOnly;
-    }, [readOnly]);
-
-    useEffect(() => {
-      const editorContainer = editorContainerRef.current;
-      if (!editorContainer) return;
-
-      const localization = connectInlineSuggestionHintLocalization(
-        editorContainer,
-        acceptSuggestionLabel,
-      );
-      return () => localization.dispose();
-    }, [acceptSuggestionLabel]);
-
-    useEffect(() => {
-      const updateTheme = () => {
-        if (theme === 'system') {
-          const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-          setResolvedTheme(isDark ? 'vs-dark' : 'light');
-        } else {
-          setResolvedTheme(theme === 'dark' ? 'vs-dark' : 'light');
-        }
-      };
-
-      updateTheme();
-
-      if (theme === 'system') {
-        const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-        const handler = (e: MediaQueryListEvent) => {
-          setResolvedTheme(e.matches ? 'vs-dark' : 'light');
-        };
-        mediaQuery.addEventListener('change', handler);
-        return () => mediaQuery.removeEventListener('change', handler);
-      }
-    }, [theme]);
-
-    const handleEditorDidMount: OnMount = (editor, monaco) => {
-      const clearEditorRef = () => {
-        if (typeof ref === 'function') ref(null);
-        else if (ref?.current === editor) ref.current = null;
-      };
-      if (typeof ref === 'function') {
-        ref(editor);
-      } else if (ref) {
-        ref.current = editor;
-      }
-      editor.onDidDispose(clearEditorRef);
-      const agentCompletionProvider = registerAgentCompletionProvider(monaco, () =>
-        readOnlyRef.current
-          ? { ...agentSettingsRef.current, enabled: false }
-          : agentSettingsRef.current,
-      );
-      editor.onDidDispose(() => agentCompletionProvider.dispose());
-
-      const applyEdit = (transform: MarkdownTransform) => {
-        applyMarkdownTransform(editor, transform, 'keyboard');
-      };
-
-      // Shortcuts
-      editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyB, () => applyEdit(applyBold));
-      editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyI, () => applyEdit(applyItalic));
-      editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyX, () =>
-        applyEdit(applyStrikethrough),
-      );
-      editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyK, () => applyEdit(applyCode));
-      editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyL, () => applyEdit(applyLink));
-      editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyH, () => applyEdit(applyHeading));
-      editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyQ, () => applyEdit(applyQuote));
-      editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyU, () =>
-        applyEdit(applyUnorderedList),
-      );
-      editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyO, () =>
-        applyEdit(applyOrderedList),
-      );
-      editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyT, () =>
-        applyEdit((text, start) => applyTable(text, start, tableTemplateRef.current)),
-      );
-      editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyI, () =>
-        applyEdit(applyImage),
-      );
-
-      editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
-        if (onSaveRef.current) {
-          onSaveRef.current();
-        }
-      });
-      editor.addCommand(monaco.KeyCode.Enter, () => {
-        const model = editor.getModel();
-        const pos = editor.getPosition();
-        if (!model || !pos) return;
-
-        const lineNumber = pos.lineNumber;
-        const lineText = model.getLineContent(lineNumber);
-
-        const unordered = lineText.match(/^(\s*)-\s+/);
-        const ordered = lineText.match(/^(\s*)(\d+)\.\s+/);
-
-        if (unordered) {
-          const indent = unordered[1] || '';
-          const insert = '\n' + indent + '- ';
-          editor.executeEdits('list-enter', [
-            {
-              range: new monaco.Range(lineNumber, pos.column, lineNumber, pos.column),
-              text: insert,
-              forceMoveMarkers: true,
-            },
-          ]);
-          // place cursor after the new list marker
-          const nextPos = new monaco.Position(lineNumber + 1, indent.length + 3);
-          editor.setPosition(nextPos);
-          editor.revealPositionInCenterIfOutsideViewport(nextPos);
-          return;
-        }
-
-        if (ordered) {
-          const indent = ordered[1] || '';
-          const current = parseInt(ordered[2], 10);
-          const next = current + 1;
-          const insert = '\n' + indent + next + '. ';
-          editor.executeEdits('list-enter', [
-            {
-              range: new monaco.Range(lineNumber, pos.column, lineNumber, pos.column),
-              text: insert,
-              forceMoveMarkers: true,
-            },
-          ]);
-          const nextPos = new monaco.Position(
-            lineNumber + 1,
-            indent.length + String(next).length + 3,
-          );
-          editor.setPosition(nextPos);
-          editor.revealPositionInCenterIfOutsideViewport(nextPos);
-          return;
-        }
-
-        // Fallback: insert a normal newline
-        editor.trigger('keyboard', 'type', { text: '\n' });
-      });
-
-      editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyS, () => {
-        if (onSaveAsRef.current) {
-          onSaveAsRef.current();
-        }
-      });
+    const handleKeyDown = (event: React.KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 's') return;
+      event.preventDefault();
+      if (event.shiftKey) onSaveAs?.();
+      else onSave?.();
     };
 
     return (
-      <div ref={editorContainerRef} className={`${styles.editor} ${className}`} data-tour="editor">
-        <MonacoEditor
-          height="100%"
-          language="markdown"
-          theme={resolvedTheme}
-          value={value}
-          onChange={(value) => onChange(value || '')}
-          onMount={handleEditorDidMount}
-          options={{
-            minimap: { enabled: !!minimapEnabled },
-            readOnly: !!readOnly,
-            wordWrap: 'on',
-            fontSize: 14,
-            scrollBeyondLastLine: false,
-            automaticLayout: true,
-            inlineSuggest: { enabled: true },
-            tabCompletion: 'on',
-            fontFamily: "Consolas, 'Courier New', monospace",
-          }}
-        />
+      <div
+        className={`${styles.editor} ${className ?? ''}`}
+        data-tour="editor"
+        onKeyDownCapture={handleKeyDown}
+      >
+        <div className={styles.paper}>
+          <EditorContent editor={editor} />
+        </div>
       </div>
     );
   },
 );
 
-Editor.displayName = 'Editor';
+EditorImpl.displayName = 'EditorImpl';
 
-export default Editor;
+export default EditorImpl;

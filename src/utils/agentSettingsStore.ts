@@ -22,6 +22,7 @@ export async function loadAgentSettings(): Promise<AgentSettings> {
     if (!value) return DEFAULT_AGENT_SETTINGS;
 
     return {
+      panelVisible: value.panelVisible === undefined ? true : value.panelVisible === true,
       enabled: value.enabled === true,
       endpoint: asString(value.endpoint, DEFAULT_AGENT_SETTINGS.endpoint),
       model: asString(value.model, DEFAULT_AGENT_SETTINGS.model),

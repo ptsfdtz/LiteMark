@@ -72,6 +72,104 @@ pub struct FileInfo {
     pub modified_ms: i64,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct FileTreeNode {
+    pub path: String,
+    pub name: String,
+    pub is_directory: bool,
+    pub extension: Option<String>,
+    pub children: Vec<FileTreeNode>,
+}
+
+const IGNORED_DIRECTORY_NAMES: &[&str] = &[
+    ".git",
+    ".cache",
+    ".next",
+    "build",
+    "coverage",
+    "dist",
+    "node_modules",
+    "target",
+];
+
+const MAX_TREE_DEPTH: usize = 32;
+const MAX_TREE_ENTRIES: usize = 10_000;
+
+fn should_ignore_directory(path: &Path) -> bool {
+    path.file_name()
+        .and_then(|name| name.to_str())
+        .is_some_and(|name| IGNORED_DIRECTORY_NAMES.contains(&name))
+}
+
+fn scan_tree_level(
+    directory: &Path,
+    depth: usize,
+    entry_count: &mut usize,
+) -> StorageResult<Vec<FileTreeNode>> {
+    if depth > MAX_TREE_DEPTH || *entry_count >= MAX_TREE_ENTRIES {
+        return Ok(Vec::new());
+    }
+
+    let mut nodes = Vec::new();
+    for entry in fs::read_dir(directory)? {
+        if *entry_count >= MAX_TREE_ENTRIES {
+            break;
+        }
+
+        let entry = match entry {
+            Ok(entry) => entry,
+            Err(_) => continue,
+        };
+        let path = entry.path();
+        let file_type = match entry.file_type() {
+            Ok(file_type) => file_type,
+            Err(_) => continue,
+        };
+        if file_type.is_symlink() {
+            continue;
+        }
+
+        let is_directory = file_type.is_dir();
+        if is_directory && should_ignore_directory(&path) {
+            continue;
+        }
+
+        *entry_count += 1;
+        let children = if is_directory {
+            scan_tree_level(&path, depth + 1, entry_count).unwrap_or_default()
+        } else {
+            Vec::new()
+        };
+        nodes.push(FileTreeNode {
+            path: path.to_string_lossy().into_owned(),
+            name: path
+                .file_name()
+                .and_then(|name| name.to_str())
+                .unwrap_or_default()
+                .to_owned(),
+            is_directory,
+            extension: path
+                .extension()
+                .and_then(|extension| extension.to_str())
+                .map(|extension| extension.to_ascii_lowercase()),
+            children,
+        });
+    }
+
+    nodes.sort_by(|left, right| {
+        right
+            .is_directory
+            .cmp(&left.is_directory)
+            .then_with(|| left.name.to_lowercase().cmp(&right.name.to_lowercase()))
+    });
+    Ok(nodes)
+}
+
+pub fn list_directory_tree(directory: &Path) -> StorageResult<Vec<FileTreeNode>> {
+    let mut entry_count = 0;
+    scan_tree_level(directory, 0, &mut entry_count)
+}
+
 pub fn is_text_extension(path: &Path) -> bool {
     path.extension()
         .and_then(|extension| extension.to_str())
@@ -313,6 +411,7 @@ mod tests {
     use super::atomic_write_text_file;
     use super::create_untitled_file;
     use super::document_parent;
+    use super::list_directory_tree;
     use super::read_text_file;
     use super::rename_document;
     use super::StorageErrorCategory;
@@ -342,6 +441,30 @@ mod tests {
             fs::read_to_string(created_path).expect("read new document"),
             "# New document\n"
         );
+    }
+
+    #[test]
+    fn directory_tree_is_recursive_sorted_and_skips_dependency_directories() {
+        let directory = tempfile::tempdir().expect("temporary directory");
+        fs::create_dir(directory.path().join("docs")).expect("create docs");
+        fs::create_dir(directory.path().join("node_modules")).expect("create dependencies");
+        fs::write(directory.path().join("readme.md"), "# Readme").expect("write markdown");
+        fs::write(directory.path().join("docs").join("guide.txt"), "Guide")
+            .expect("write nested document");
+        fs::write(
+            directory.path().join("node_modules").join("hidden.js"),
+            "hidden",
+        )
+        .expect("write ignored file");
+
+        let tree = list_directory_tree(directory.path()).expect("scan directory tree");
+
+        assert_eq!(tree.len(), 2);
+        assert_eq!(tree[0].name, "docs");
+        assert!(tree[0].is_directory);
+        assert_eq!(tree[0].children[0].name, "guide.txt");
+        assert_eq!(tree[1].name, "readme.md");
+        assert_eq!(tree[1].extension.as_deref(), Some("md"));
     }
 
     #[test]

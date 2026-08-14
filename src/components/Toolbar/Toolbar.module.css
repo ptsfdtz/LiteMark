@@ -1,38 +1,90 @@
-/* src/components/Toolbar/Toolbar.module.css */
 .toolbar {
   display: flex;
-  gap: 0.5rem;
-  padding: 0.5rem;
-  background-color: var(--toolbar-bg, #f3f3f3);
+  flex: 1;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  height: 46px;
+  padding: 0 10px;
+  overflow: hidden;
 }
 
-button {
+.group {
   display: flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+}
+
+.toolbar button {
+  display: inline-flex;
   justify-content: center;
   align-items: center;
-  padding: 0.3rem 0.6rem;
-  color: var(--text-color, #333);
-  border: none;
-  font-weight: bold;
-  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  color: var(--muted-text);
+  background: transparent;
+  border: 0;
   border-radius: 4px;
-  background-color: var(--sidebar-bg, white);
+  cursor: pointer;
+  font-size: 16px;
+}
 
-  &:hover {
-    background-color: var(--toolbar-bg, #eee);
-  }
+.toolbar button:hover:not(:disabled),
+.toolbar button.active {
+  color: var(--heading-color);
+  background: var(--control-hover);
+}
 
-  &:disabled {
-    cursor: not-allowed;
-    opacity: 0.45;
-  }
+.toolbar button.active {
+  color: var(--accent-color);
+  background: color-mix(in srgb, var(--accent-color) 12%, transparent);
+}
 
-  &:disabled:hover {
-    background-color: var(--sidebar-bg, white);
-  }
+.toolbar button svg {
+  width: 16px;
+  height: 16px;
+  stroke-width: 1.8;
+}
 
-  & svg {
-    width: 1rem;
-    height: 1rem;
+.toolbar button:focus-visible,
+.blockSelect:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: -2px;
+}
+
+.toolbar button:disabled {
+  opacity: 0.34;
+  cursor: default;
+}
+
+.divider {
+  flex: none;
+  width: 1px;
+  height: 18px;
+  background: var(--hairline-color);
+}
+
+.blockSelect {
+  width: 82px;
+  height: 32px;
+  padding: 0 22px 0 8px;
+  color: var(--muted-text);
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.blockSelect:hover {
+  background: var(--control-hover);
+}
+
+@media (width <= 980px) {
+  .toolbar {
+    overflow-x: auto;
   }
 }

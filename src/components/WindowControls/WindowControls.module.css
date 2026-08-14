@@ -1,27 +1,41 @@
 .controls {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 2px;
+  padding-right: 6px;
 }
 
 .button {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 0.3rem;
-  color: var(--text-color);
-  background: none;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  color: var(--muted-text);
+  background: transparent;
   border: none;
-  font-size: 1.2rem;
-  cursor: pointer;
   border-radius: 4px;
+  cursor: pointer;
+}
+
+.button svg {
+  width: 16px;
+  height: 16px;
+  stroke-width: 1.8;
 }
 
 .button:hover {
-  background-color: var(--background-color);
+  color: var(--heading-color);
+  background: var(--control-hover);
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: -2px;
 }
 
 .close:hover {
-  background-color: #e81123;
   color: #fff;
+  background: #c83b46;
 }

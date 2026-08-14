@@ -1,21 +1,23 @@
-import React, { Suspense } from 'react';
-import styles from './Editor.module.css';
-import type { EditorProps, MarkdownEditor } from '@/types/editor';
+import React from 'react';
+import EditorImpl from './EditorImpl';
+import type { EditorProps, WysiwygEditor } from '@/types/editor';
+import { getFileViewKind } from '@/types/fileTree';
 
-const LazyEditor = React.lazy(async () => {
-  const [{ configureMonaco }, editorModule] = await Promise.all([
-    import('@/modules/markdownEditing/configureMonaco'),
-    import('./EditorImpl'),
-  ]);
-  configureMonaco();
-  return { default: editorModule.default };
+const LazyCodeEditor = React.lazy(() => import('./CodeEditor'));
+
+const Editor = React.forwardRef<WysiwygEditor, EditorProps>((props, ref) => {
+  const viewKind = props.filePath ? getFileViewKind(props.filePath) : 'markdown';
+
+  if (viewKind === 'code') {
+    return (
+      <React.Suspense fallback={<div className={props.className} data-tour="editor" />}>
+        <LazyCodeEditor {...props} />
+      </React.Suspense>
+    );
+  }
+
+  return <EditorImpl {...props} ref={ref} />;
 });
-
-const Editor = React.forwardRef<MarkdownEditor, EditorProps>((props, ref) => (
-  <Suspense fallback={<div className={`${styles.editor} ${props.className}`} data-tour="editor" />}>
-    <LazyEditor {...props} ref={ref} />
-  </Suspense>
-));
 
 Editor.displayName = 'Editor';
 

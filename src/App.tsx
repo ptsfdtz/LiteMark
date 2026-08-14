@@ -38,11 +38,6 @@ function App() {
         placement: 'right',
       },
       {
-        target: '.preview-container', // 预览区
-        content: t('tour.preview'),
-        placement: 'left',
-      },
-      {
         target: '.settingsButton', // 设置按钮
         content: t('tour.settings'),
         placement: 'right-start',

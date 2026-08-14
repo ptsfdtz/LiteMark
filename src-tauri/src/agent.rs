@@ -491,7 +491,8 @@ pub async fn run_agent_turn(
 
     let mut thread: Vec<Value> = vec![json!({ "role": "system", "content": system_prompt })];
     for message in &messages {
-        thread.push(serde_json::to_value(message).map_err(|error| format!("bad message: {error}"))?);
+        thread
+            .push(serde_json::to_value(message).map_err(|error| format!("bad message: {error}"))?);
     }
 
     let original_document = document;
@@ -506,8 +507,8 @@ pub async fn run_agent_turn(
         if cancellation_requested() {
             return Err("cancelled".to_string());
         }
-        let completion = stream_completion(&endpoint, api_key.trim(), model.trim(), &thread, &on_event)
-            .await?;
+        let completion =
+            stream_completion(&endpoint, api_key.trim(), model.trim(), &thread, &on_event).await?;
 
         on_event
             .send(AgentEvent::AssistantMessage {
@@ -619,9 +620,7 @@ pub async fn run_agent_turn(
         .map_err(|error| error.to_string())?;
     if document != original_document {
         on_event
-            .send(AgentEvent::Edit {
-                content: document,
-            })
+            .send(AgentEvent::Edit { content: document })
             .map_err(|error| error.to_string())?;
     }
     Ok(())
@@ -658,7 +657,12 @@ mod tests {
     #[test]
     fn rewrites_the_document() {
         let mut document = String::from("old");
-        let result = execute_tool("rewrite_document", r#"{"content":"new"}"#, &mut document, None);
+        let result = execute_tool(
+            "rewrite_document",
+            r#"{"content":"new"}"#,
+            &mut document,
+            None,
+        );
         assert_eq!(result.as_deref(), Ok("Document rewritten (3 characters)."));
         assert_eq!(document, "new");
     }
@@ -711,9 +715,13 @@ mod tests {
     #[test]
     fn caps_read_document_output() {
         let mut document = "x".repeat(MAX_READ_CHARS + 100);
-        let result = execute_tool("read_document", "{}", &mut document, None).expect("read document");
+        let result =
+            execute_tool("read_document", "{}", &mut document, None).expect("read document");
         assert!(result.ends_with("[document truncated]"));
-        assert_eq!(result.chars().count(), MAX_READ_CHARS + "\n\n[document truncated]".len());
+        assert_eq!(
+            result.chars().count(),
+            MAX_READ_CHARS + "\n\n[document truncated]".len()
+        );
     }
 
     #[test]
@@ -724,7 +732,12 @@ mod tests {
         fs::write(directory.path().join("ignore.bin"), "binary").expect("seed ignore.bin");
 
         let mut document = String::new();
-        let result = execute_tool("list_documents", "{}", &mut document, Some(directory.path()));
+        let result = execute_tool(
+            "list_documents",
+            "{}",
+            &mut document,
+            Some(directory.path()),
+        );
 
         let listing = result.expect("list documents");
         assert!(listing.contains("a.md"));

@@ -5,8 +5,6 @@ export interface SettingsProps {
   setTheme: (theme: 'light' | 'dark' | 'system') => void;
   workDir: string;
   setWorkDir: (dir: string) => void;
-  minimapEnabled?: boolean;
-  setMinimapEnabled?: (v: boolean) => void;
   agentSettings: AgentSettings;
   setAgentSettings: (settings: AgentSettings) => void;
   onClose?: () => void;

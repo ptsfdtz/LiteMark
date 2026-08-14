@@ -75,7 +75,9 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 1rem;
+    height: 46px;
+    padding: 0 14px;
+    box-sizing: border-box;
     color: var(--text-color);
     border-bottom: 1px solid var(--editor-border, #ddd);
 
@@ -83,15 +85,15 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      width: 30px;
-      height: 30px;
+      width: 32px;
+      height: 32px;
       padding: 0;
       color: var(--text-color, #0f0f0f);
       background: none;
       border: none;
-      font-size: 1.5rem;
+      font-size: 16px;
       cursor: pointer;
-      border-radius: 50%;
+      border-radius: 4px;
 
       &:hover {
         background-color: var(--toolbar-bg, #f3f3f3);
@@ -209,6 +211,15 @@
   gap: 1rem;
 }
 
+.header svg,
+.switchButton svg,
+.workDirBtn svg,
+.revealButton svg {
+  width: 16px;
+  height: 16px;
+  stroke-width: 1.8;
+}
+
 .languageTitle {
   margin-bottom: 8px;
   font-weight: 500;
@@ -246,6 +257,10 @@
   padding-top: 1rem;
   color: var(--text-color);
   border-top: 1px solid var(--editor-border, #ddd);
+}
+
+.agentGroup > .editorRow + .editorRow {
+  margin-top: 12px;
 }
 
 .agentFields {

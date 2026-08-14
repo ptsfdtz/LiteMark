@@ -1,15 +1,18 @@
 // src/components/WindowControls/WindowControls.tsx
 import React, { useEffect, useState } from 'react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { FaMinus, FaRegSquare, FaRegWindowRestore, FaTimes } from 'react-icons/fa';
+import { isTauri } from '@tauri-apps/api/core';
+import { LuCopy, LuMinus, LuSquare, LuX } from 'react-icons/lu';
 import styles from './WindowControls.module.css';
 import { useI18n } from '@/locales/useI18n';
 
 const WindowControls: React.FC = () => {
   const { t } = useI18n();
   const [isMaximized, setIsMaximized] = useState(false);
+  const nativeWindow = isTauri() || import.meta.env.MODE === 'test';
 
   useEffect(() => {
+    if (!nativeWindow) return;
     const appWindow = getCurrentWindow();
     let disposed = false;
     let unlisten: (() => void) | undefined;
@@ -33,23 +36,28 @@ const WindowControls: React.FC = () => {
       disposed = true;
       unlisten?.();
     };
-  }, []);
+  }, [nativeWindow]);
 
   const handleMinimize = () => {
+    if (!nativeWindow) return;
     const appWindow = getCurrentWindow();
     void appWindow.minimize();
   };
 
   const handleToggleMaximize = async () => {
+    if (!nativeWindow) return;
     const appWindow = getCurrentWindow();
     await appWindow.toggleMaximize();
     setIsMaximized(await appWindow.isMaximized());
   };
 
   const handleClose = () => {
+    if (!nativeWindow) return;
     const appWindow = getCurrentWindow();
     void appWindow.close();
   };
+
+  if (!nativeWindow) return null;
 
   return (
     <div className={styles.controls}>
@@ -61,7 +69,7 @@ const WindowControls: React.FC = () => {
         onClick={handleMinimize}
         data-tauri-drag-region="false"
       >
-        <FaMinus />
+        <LuMinus />
       </button>
       <button
         type="button"
@@ -71,7 +79,7 @@ const WindowControls: React.FC = () => {
         onClick={() => void handleToggleMaximize()}
         data-tauri-drag-region="false"
       >
-        {isMaximized ? <FaRegWindowRestore /> : <FaRegSquare />}
+        {isMaximized ? <LuCopy /> : <LuSquare />}
       </button>
       <button
         type="button"
@@ -81,7 +89,7 @@ const WindowControls: React.FC = () => {
         onClick={handleClose}
         data-tauri-drag-region="false"
       >
-        <FaTimes />
+        <LuX />
       </button>
     </div>
   );

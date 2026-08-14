@@ -1,15 +1,198 @@
 .editor {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   height: 100%;
-  color: var(--editor-text, #000);
-  border: none;
-  resize: none;
-  outline: none;
-  font-family: var(--monospace-font);
-  font-size: 14px;
-  line-height: 1.6;
-  background-color: var(--editor-bg, #fff);
-  box-sizing: border-box;
+  overflow-y: auto;
+  background: var(--canvas-bg);
+}
 
-  /* border-right: var(--blockquote-text) 1px solid; */
+.codeEditor {
+  padding: 0 18px;
+  background: var(--paper-bg);
+  box-sizing: border-box;
+}
+
+.paper {
+  width: min(100%, 860px);
+  min-height: 100%;
+  margin: 0 auto;
+  padding: 64px 72px 140px;
+  box-sizing: border-box;
+  background: var(--paper-bg);
+}
+
+.prose {
+  min-height: calc(100vh - 220px);
+  color: var(--editor-text);
+  caret-color: var(--accent-color);
+  font-family: 'Source Han Serif SC', 'Noto Serif CJK SC', 'Songti SC', Georgia, serif;
+  font-size: 17px;
+  line-height: 1.85;
+  outline: none;
+}
+
+.prose > :first-child {
+  margin-top: 0;
+}
+
+.prose p {
+  margin: 0.75em 0;
+}
+
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4 {
+  margin: 1.6em 0 0.55em;
+  color: var(--heading-color);
+  font-family: Inter, 'Segoe UI', sans-serif;
+  letter-spacing: 0;
+  line-height: 1.25;
+}
+
+.prose h1 {
+  margin-top: 0.4em;
+  font-size: 2.15rem;
+  font-weight: 720;
+}
+
+.prose h2 {
+  padding-bottom: 0.28em;
+  border-bottom: 1px solid var(--hairline-color);
+  font-size: 1.55rem;
+  font-weight: 680;
+}
+
+.prose h3 {
+  font-size: 1.22rem;
+  font-weight: 680;
+}
+
+.prose ul,
+.prose ol {
+  margin: 0.75em 0;
+  padding-left: 1.55em;
+}
+
+.prose li {
+  margin: 0.25em 0;
+}
+
+.prose blockquote {
+  margin: 1.4em 0;
+  padding: 0.25em 0 0.25em 1.15em;
+  color: var(--muted-text);
+  border-left: 3px solid var(--accent-color);
+}
+
+.prose blockquote p {
+  margin: 0.25em 0;
+}
+
+.prose code {
+  padding: 0.16em 0.34em;
+  background: var(--code-block-bg);
+  border-radius: 3px;
+  font-family: var(--monospace-font);
+  font-size: 0.88em;
+}
+
+.prose pre {
+  margin: 1.35em 0;
+  padding: 1.1em 1.25em;
+  overflow-x: auto;
+  color: var(--code-text);
+  background: var(--code-block-bg);
+  border: 1px solid var(--hairline-color);
+  border-radius: 6px;
+  line-height: 1.6;
+}
+
+.prose pre code {
+  padding: 0;
+  background: transparent;
+}
+
+.prose a {
+  color: var(--accent-color);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--accent-color) 45%, transparent);
+  text-underline-offset: 3px;
+}
+
+.prose img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 1.5em auto;
+}
+
+.prose hr {
+  margin: 2.5em 0;
+  border: 0;
+  border-top: 1px solid var(--hairline-color);
+}
+
+.prose table {
+  width: 100%;
+  margin: 1.4em 0;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.prose th,
+.prose td {
+  position: relative;
+  padding: 0.55em 0.7em;
+  border: 1px solid var(--table-border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.prose th {
+  background: var(--table-header-bg);
+  font-family: Inter, 'Segoe UI', sans-serif;
+  font-weight: 650;
+}
+
+.prose ul[data-type='taskList'] {
+  padding: 0;
+  list-style: none;
+}
+
+.prose ul[data-type='taskList'] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55em;
+}
+
+.prose ul[data-type='taskList'] li > label {
+  margin-top: 0.32em;
+}
+
+.prose ul[data-type='taskList'] li > div {
+  flex: 1;
+}
+
+.prose [class~='is-editor-empty']:first-child::before {
+  float: left;
+  height: 0;
+  color: var(--muted-text);
+  content: attr(data-placeholder);
+  pointer-events: none;
+}
+
+.prose [class~='ProseMirror-selectednode'] {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 3px;
+}
+
+@media (width <= 760px) {
+  .paper {
+    padding: 36px 24px 100px;
+  }
+
+  .prose {
+    font-size: 16px;
+  }
 }

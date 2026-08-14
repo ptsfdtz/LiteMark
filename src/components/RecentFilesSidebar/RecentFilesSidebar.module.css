@@ -27,7 +27,9 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem;
+  height: 46px;
+  padding: 0 10px;
+  box-sizing: border-box;
   border-bottom: 1px solid var(--editor-border, #ddd);
 
   & h3 {
@@ -45,16 +47,26 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   padding: 0;
   color: var(--text-color, #0f0f0f);
   background: none;
   border: none;
-  font-size: 1.5rem;
+  font-size: 16px;
   cursor: pointer;
-  border-radius: 50%;
+  border-radius: 4px;
   flex-shrink: 0;
+}
+
+.closeButton svg,
+.openButton svg,
+.trashButton svg,
+.confirmButton svg,
+.cancelButton svg {
+  width: 16px;
+  height: 16px;
+  stroke-width: 1.8;
 }
 
 .closeButton:hover {
@@ -101,11 +113,15 @@
       display: flex;
       justify-content: center;
       align-items: center;
+      width: 32px;
+      height: 32px;
+      padding: 0;
       color: var(--text-color, #0f0f0f);
       background: none;
       border: none;
       cursor: pointer;
       z-index: 2;
+      border-radius: 4px;
 
       &:hover {
         color: var(--error-color, #ff4d4f);

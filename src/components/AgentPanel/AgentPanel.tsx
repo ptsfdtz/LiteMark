@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { FaTimes, FaPaperPlane, FaStop, FaTrash } from 'react-icons/fa';
+import { LuSend, LuSquare, LuTrash2, LuX } from 'react-icons/lu';
 import styles from './AgentPanel.module.css';
 import type { AgentSession } from '@/modules/agent/useAgentSession';
 import { useI18n } from '@/locales/useI18n';
 import type { TranslationKey } from '@/locales/config';
+import { useResizablePanel } from '@/hooks/useResizablePanel';
 
 interface AgentPanelProps {
   session: AgentSession;
@@ -23,6 +24,14 @@ const AgentPanel: React.FC<AgentPanelProps> = ({ session, isConfigured, onClose 
   const { t } = useI18n();
   const [input, setInput] = useState('');
   const listRef = useRef<HTMLDivElement>(null);
+  const { width, resizing, onResizeStart, onResizeKeyDown } = useResizablePanel({
+    storageKey: 'litemark.agentPanelWidth',
+    initialWidth: 360,
+    minWidth: 260,
+    maxWidth: 560,
+    maxViewportRatio: 0.45,
+    edge: 'left',
+  });
 
   const { items, status, error, send, stop, clear, applyEdit, respondPermission } = session;
   const running = status === 'running';
@@ -44,7 +53,19 @@ const AgentPanel: React.FC<AgentPanelProps> = ({ session, isConfigured, onClose 
   };
 
   return (
-    <div className={styles.panel} data-tauri-drag-region="false">
+    <aside className={styles.panel} data-tauri-drag-region="false" style={{ width }}>
+      <div
+        className={`${styles.resizeHandle} ${resizing ? styles.resizing : ''}`}
+        role="separator"
+        aria-label={t('agent.resize')}
+        aria-orientation="vertical"
+        aria-valuemin={260}
+        aria-valuemax={560}
+        aria-valuenow={width}
+        tabIndex={0}
+        onPointerDown={onResizeStart}
+        onKeyDown={onResizeKeyDown}
+      />
       <div className={styles.header}>
         <span className={styles.title}>{t('agent.title')}</span>
         <div className={styles.headerActions}>
@@ -55,7 +76,7 @@ const AgentPanel: React.FC<AgentPanelProps> = ({ session, isConfigured, onClose 
             aria-label={t('agent.clear')}
             disabled={running || items.length === 0}
           >
-            <FaTrash size={14} />
+            <LuTrash2 />
           </button>
           <button
             className={styles.headerButton}
@@ -63,7 +84,7 @@ const AgentPanel: React.FC<AgentPanelProps> = ({ session, isConfigured, onClose 
             title={t('agent.close')}
             aria-label={t('agent.close')}
           >
-            <FaTimes size={16} />
+            <LuX />
           </button>
         </div>
       </div>
@@ -199,7 +220,7 @@ const AgentPanel: React.FC<AgentPanelProps> = ({ session, isConfigured, onClose 
             title={t('agent.stop')}
             aria-label={t('agent.stop')}
           >
-            <FaStop size={14} />
+            <LuSquare />
           </button>
         ) : (
           <button
@@ -209,11 +230,11 @@ const AgentPanel: React.FC<AgentPanelProps> = ({ session, isConfigured, onClose 
             title={t('agent.send')}
             aria-label={t('agent.send')}
           >
-            <FaPaperPlane size={14} />
+            <LuSend />
           </button>
         )}
       </div>
-    </div>
+    </aside>
   );
 };
 

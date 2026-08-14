@@ -1,8 +1,6 @@
 // src/components/Layout/Layout.tsx
 import React, { useCallback, useState, useEffect, useRef } from 'react';
-import { FaRobot, FaTimes } from 'react-icons/fa';
 import Editor from '@/components/Editor/Editor';
-import Preview from '@/components/Preview/Preview';
 import Toolbar from '@/components/Toolbar/Toolbar';
 import Settings from '@/components/Settings/Settings';
 import SettingsButton from '@/components/SettingsButton/SettingsButton';
@@ -17,6 +15,7 @@ import { loadTheme, saveTheme } from '@/utils/themeStore';
 import { loadAgentSettings, saveAgentSettings } from '@/utils/agentSettingsStore';
 import { DEFAULT_AGENT_SETTINGS, type AgentSettings } from '@/types/agent';
 import AgentPanel from '@/components/AgentPanel/AgentPanel';
+import FileExplorer, { type FileExplorerRoot } from '@/components/FileExplorer/FileExplorer';
 import { useAgentSession } from '@/modules/agent/useAgentSession';
 import useDocumentSession from '@/modules/documentSession/useDocumentSession';
 import {
@@ -25,13 +24,28 @@ import {
 } from '@/modules/documentSession/tauriDocumentSession';
 import { ask, message, open, save as saveDialog } from '@tauri-apps/plugin-dialog';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import type { MarkdownEditor } from '@/types/editor';
+import { isTauri } from '@tauri-apps/api/core';
+import type { WysiwygEditor } from '@/types/editor';
 import { registerWindowCloseGuard } from '@/modules/windowCloseGuard/registerWindowCloseGuard';
-import { connectScrollSync } from '@/modules/scrollSync/connectScrollSync';
-import {
-  setTaskListItemChecked,
-  setTaskListItemCheckedInEditor,
-} from '@/modules/markdownEditing/taskList';
+import { listDirectoryTree } from '@/modules/directoryTree';
+import { getFileViewKind } from '@/types/fileTree';
+import { loadWorkspaceDirectories, saveWorkspaceDirectories } from '@/utils/workspaceStore';
+
+function normalizePath(path: string): string {
+  return path
+    .replace(/[\\/]+$/, '')
+    .replace(/\\/g, '/')
+    .toLocaleLowerCase();
+}
+
+function pathBelongsToDirectory(path: string | null, directory: string): boolean {
+  if (!path) return false;
+  const normalizedPath = normalizePath(path);
+  const normalizedDirectory = normalizePath(directory);
+  return (
+    normalizedPath === normalizedDirectory || normalizedPath.startsWith(`${normalizedDirectory}/`)
+  );
+}
 
 const Layout: React.FC = () => {
   const { t } = useI18n();
@@ -42,25 +56,14 @@ const Layout: React.FC = () => {
   const [showRecentFiles, setShowRecentFiles] = useState(false);
   const [recentClosing, setRecentClosing] = useState(false);
   // Document Session owns document content, persistence, and Recent Documents.
-  const [scrollSyncEnabled, setScrollSyncEnabled] = useState(true);
-  const [previewMode, setPreviewMode] = useState(false);
-  const [editorOnly, setEditorOnly] = useState(false);
-  const [minimapEnabled, setMinimapEnabledState] = useState<boolean>(() => {
-    try {
-      const v = localStorage.getItem('minimapEnabled');
-      return v ? v === 'true' : false;
-    } catch {
-      return false;
-    }
-  });
-  const [editorWidth, setEditorWidth] = useState(50);
-  const [isResizing, setIsResizing] = useState(false);
   const [workDir, setWorkDirState] = useState('');
+  const [workspaceRoots, setWorkspaceRoots] = useState<FileExplorerRoot[]>([]);
+  const [explorerVisible, setExplorerVisible] = useState(false);
+  const workspaceRestoredRef = useRef(false);
   const [forceEditFileName, setForceEditFileName] = useState(false);
   const [showSaveToast, setShowSaveToast] = useState(false);
   const [agentSettings, setAgentSettings] = useState<AgentSettings>(DEFAULT_AGENT_SETTINGS);
   const [agentSettingsReady, setAgentSettingsReady] = useState(false);
-  const [showAgent, setShowAgent] = useState(false);
 
   // 加载个人工作文件夹
   useEffect(() => {
@@ -102,6 +105,7 @@ const Layout: React.FC = () => {
 
   const showDocumentError = useCallback(
     async (error: unknown, fallbackKey: Parameters<typeof t>[0]) => {
+      if (!isTauri()) return;
       console.error('Document operation failed:', error);
       await message(t(fallbackKey), { title: t('dialog.error') });
     },
@@ -183,12 +187,15 @@ const Layout: React.FC = () => {
     agentSettings.model.trim() &&
     agentSettings.apiKey.trim(),
   );
+  const activeWorkspaceDirectory =
+    workspaceRoots.find((root) => pathBelongsToDirectory(currentFilePath, root.path))?.path ??
+    workspaceRoots[0]?.path;
 
   const agentSession = useAgentSession({
     getSettings: () => agentSettings,
     getDocument: () => markdown,
     applyDocument: setMarkdown,
-    getWorkDir: () => workDir,
+    getWorkDir: () => activeWorkspaceDirectory || workDir,
     documentPath: currentFilePath,
   });
 
@@ -263,10 +270,51 @@ const Layout: React.FC = () => {
   const handleOpenDirectory = async (directory: string) => {
     if (!documentSessionReady) return;
     try {
-      await documentSession.loadDirectory(directory);
+      const tree = await listDirectoryTree(directory);
+      setWorkspaceRoots((current) => {
+        const existingIndex = current.findIndex(
+          (root) => normalizePath(root.path) === normalizePath(directory),
+        );
+        const next = [...current];
+        if (existingIndex >= 0) next[existingIndex] = { path: directory, nodes: tree };
+        else next.push({ path: directory, nodes: tree });
+        void saveWorkspaceDirectories(next.map((root) => root.path)).catch((error) => {
+          void showDocumentError(error, 'dialog.settingsSaveFailed');
+        });
+        return next;
+      });
+      setExplorerVisible(true);
+      setRecentClosing(true);
     } catch (error) {
       await showDocumentError(error, 'dialog.openFolderFailed');
     }
+  };
+
+  const refreshWorkspaceTree = useCallback(
+    async (directory: string) => {
+      try {
+        const tree = await listDirectoryTree(directory);
+        setWorkspaceRoots((current) =>
+          current.map((root) =>
+            normalizePath(root.path) === normalizePath(directory) ? { ...root, nodes: tree } : root,
+          ),
+        );
+      } catch (error) {
+        await showDocumentError(error, 'dialog.openFolderFailed');
+      }
+    },
+    [showDocumentError],
+  );
+
+  const removeWorkspaceDirectory = (directory: string) => {
+    setWorkspaceRoots((current) => {
+      const next = current.filter((root) => normalizePath(root.path) !== normalizePath(directory));
+      void saveWorkspaceDirectories(next.map((root) => root.path)).catch((error) => {
+        void showDocumentError(error, 'dialog.settingsSaveFailed');
+      });
+      if (next.length === 0) setExplorerVisible(false);
+      return next;
+    });
   };
 
   const chooseDocument = async () => {
@@ -302,13 +350,20 @@ const Layout: React.FC = () => {
   const createDocument = async () => {
     if (!documentSessionReady) return false;
     try {
-      let directory = workDir;
+      let directory = activeWorkspaceDirectory || workDir;
       if (!directory) {
         const selected = await open({ multiple: false, directory: true });
         if (!selected || Array.isArray(selected)) return false;
         directory = selected;
       }
-      return await handleCreateDocument(directory);
+      const created = await handleCreateDocument(directory);
+      if (
+        created &&
+        workspaceRoots.some((root) => normalizePath(root.path) === normalizePath(directory))
+      ) {
+        await refreshWorkspaceTree(directory);
+      }
+      return created;
     } catch (error) {
       await showDocumentError(error, 'dialog.createFailed');
       return false;
@@ -317,44 +372,60 @@ const Layout: React.FC = () => {
 
   const handleOpenFolder = () => {
     if (!documentSessionReady) return;
+    if (workspaceRoots.length > 0) {
+      setExplorerVisible((visible) => !visible);
+      return;
+    }
     documentSession.clearDirectoryDocuments();
     setShowRecentFiles(true);
     setRecentClosing(false);
   };
 
-  const editorRef = useRef<MarkdownEditor | null>(null);
-  const [editorInstance, setEditorInstance] = useState<MarkdownEditor | null>(null);
-  const [previewElement, setPreviewElement] = useState<HTMLDivElement | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const editorRef = useRef<WysiwygEditor | null>(null);
+  const [editorInstance, setEditorInstance] = useState<WysiwygEditor | null>(null);
+  const markdownDocument = !currentFilePath || getFileViewKind(currentFilePath) === 'markdown';
   const canCloseRef = useRef(documentSession.canClose);
   canCloseRef.current = documentSession.canClose;
 
-  const attachEditor = useCallback((instance: MarkdownEditor | null) => {
+  const attachEditor = useCallback((instance: WysiwygEditor | null) => {
     editorRef.current = instance;
-    setEditorInstance((current) => (current === instance ? current : instance));
+    setEditorInstance(instance);
   }, []);
-
-  const attachPreview = useCallback((element: HTMLDivElement | null) => {
-    setPreviewElement((current) => (current === element ? current : element));
-  }, []);
-
-  const handlePreviewTaskToggle = useCallback(
-    (sourceLine: number, checked: boolean) => {
-      if (!documentSessionReady) return;
-
-      const editor = editorRef.current;
-      if (editor) {
-        setTaskListItemCheckedInEditor(editor, sourceLine, checked);
-        return;
-      }
-
-      const nextMarkdown = setTaskListItemChecked(markdown, sourceLine, checked);
-      if (nextMarkdown !== markdown) setMarkdown(nextMarkdown);
-    },
-    [documentSessionReady, markdown, setMarkdown],
-  );
 
   useEffect(() => {
+    if (!documentSessionReady || workspaceRestoredRef.current) return;
+    workspaceRestoredRef.current = true;
+    let active = true;
+    void loadWorkspaceDirectories().then(async (directories) => {
+      if (directories.length === 0 || !active) return;
+      const restored = (
+        await Promise.all(
+          directories.map(async (directory) => {
+            try {
+              return { path: directory, nodes: await listDirectoryTree(directory) };
+            } catch {
+              return null;
+            }
+          }),
+        )
+      ).filter((root): root is FileExplorerRoot => root !== null);
+      if (active && restored.length > 0) {
+        setWorkspaceRoots(restored);
+        setExplorerVisible(true);
+      }
+      if (active) {
+        void saveWorkspaceDirectories(restored.map((root) => root.path)).catch((error) => {
+          void showDocumentError(error, 'dialog.settingsSaveFailed');
+        });
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [documentSessionReady, showDocumentError]);
+
+  useEffect(() => {
+    if (!isTauri()) return;
     const appWindow = getCurrentWindow();
     return registerWindowCloseGuard(appWindow, () => canCloseRef.current());
   }, []);
@@ -377,9 +448,11 @@ const Layout: React.FC = () => {
       return;
     }
 
-    document.startViewTransition(() => {
+    const transition = document.startViewTransition(() => {
       updateTheme();
     });
+    void transition.ready.catch(() => undefined);
+    void transition.finished.catch(() => undefined);
   }, [theme]);
 
   useEffect(() => {
@@ -395,82 +468,15 @@ const Layout: React.FC = () => {
           updateTheme();
           return;
         }
-        document.startViewTransition(updateTheme);
+        const transition = document.startViewTransition(updateTheme);
+        void transition.ready.catch(() => undefined);
+        void transition.finished.catch(() => undefined);
       }
     };
 
     mediaQuery.addEventListener('change', handleChange);
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, [theme]);
-
-  useEffect(() => {
-    if (!scrollSyncEnabled || previewMode || editorOnly || !editorInstance || !previewElement) {
-      return;
-    }
-
-    return connectScrollSync(editorInstance, previewElement);
-  }, [editorInstance, editorOnly, previewElement, previewMode, scrollSyncEnabled]);
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isResizing || !containerRef.current) return;
-
-      const containerRect = containerRef.current.getBoundingClientRect();
-      const containerWidth = containerRect.width;
-      const mouseX = e.clientX - containerRect.left;
-
-      const newWidth = Math.min(Math.max((mouseX / containerWidth) * 100, 20), 80);
-      setEditorWidth(newWidth);
-    };
-
-    const handleMouseUp = () => {
-      setIsResizing(false);
-    };
-
-    if (isResizing) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-    }
-
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isResizing]);
-
-  const toggleScrollSync = () => {
-    setScrollSyncEnabled(!scrollSyncEnabled);
-  };
-
-  const enterPreviewMode = () => {
-    setPreviewMode(true);
-  };
-
-  const exitPreviewMode = () => {
-    setPreviewMode(false);
-  };
-
-  const enterEditorOnly = () => {
-    setEditorOnly(true);
-  };
-
-  const exitEditorOnly = () => {
-    setEditorOnly(false);
-  };
-
-  const setMinimapEnabled = (v: boolean) => {
-    setMinimapEnabledState(v);
-    try {
-      localStorage.setItem('minimapEnabled', v ? 'true' : 'false');
-    } catch {
-      // ignore
-    }
-  };
-
-  const startResizing = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsResizing(true);
-  };
 
   return (
     <div className={styles.container}>
@@ -479,7 +485,7 @@ const Layout: React.FC = () => {
           onOpenFolder={handleOpenFolder}
           onSave={handleSave}
           onSaveAs={handleSaveAs}
-          editorRef={editorRef}
+          editor={markdownDocument ? editorInstance : null}
           disabled={!documentSessionReady}
           className="toolbar"
         />
@@ -487,7 +493,13 @@ const Layout: React.FC = () => {
           {currentFilePath && (
             <CurrentFileName
               filePath={currentFilePath}
-              onRename={documentSession.renameDocument}
+              onRename={async (newName) => {
+                const renamed = await documentSession.renameDocument(newName);
+                if (renamed && activeWorkspaceDirectory) {
+                  await refreshWorkspaceTree(activeWorkspaceDirectory);
+                }
+                return renamed;
+              }}
               isDirty={isDirty}
               forceEdit={forceEditFileName}
               setForceEdit={setForceEditFileName}
@@ -495,15 +507,6 @@ const Layout: React.FC = () => {
           )}
         </div>
         <div className={styles.topRightControls}>
-          <button
-            className={styles.agentButton}
-            onClick={() => setShowAgent((show) => !show)}
-            title={t('agent.title')}
-            aria-label={t('agent.title')}
-            data-tauri-drag-region="false"
-          >
-            <FaRobot size={20} />
-          </button>
           <SettingsButton
             className="settingsButton"
             onClick={() => {
@@ -536,82 +539,35 @@ const Layout: React.FC = () => {
         }}
       />
       <div className={styles.mainArea}>
-        <div
-          ref={containerRef}
-          className={styles.editorPreview}
-          style={{ cursor: isResizing ? 'col-resize' : 'default' }}
-        >
-          {editorOnly ? (
-            <div className={styles.editorPanel} style={{ width: `100%`, position: 'relative' }}>
-              <Editor
-                ref={attachEditor}
-                value={markdown}
-                onChange={setMarkdown}
-                readOnly={!documentSessionReady}
-                className={styles.editor}
-                theme={theme}
-                minimapEnabled={minimapEnabled}
-                agentSettings={agentSettings}
-                onSave={handleSave}
-                onSaveAs={handleSaveAs}
-              />
-              <button
-                aria-label={t('layout.exitEditMode')}
-                title={t('layout.exitEditMode')}
-                onClick={exitEditorOnly}
-                className={styles.editorOnlyExit}
-              >
-                <FaTimes />
-              </button>
-            </div>
-          ) : (
-            <>
-              {!previewMode && (
-                <>
-                  <div className={styles.editorPanel} style={{ width: `${editorWidth}%` }}>
-                    <Editor
-                      ref={attachEditor}
-                      value={markdown}
-                      onChange={setMarkdown}
-                      readOnly={!documentSessionReady}
-                      className={styles.editor}
-                      theme={theme}
-                      minimapEnabled={minimapEnabled}
-                      agentSettings={agentSettings}
-                      onSave={handleSave}
-                      onSaveAs={handleSaveAs}
-                    />
-                  </div>
-                  <div className={styles.resizer} onMouseDown={startResizing} />
-                </>
-              )}
-              <div
-                className={styles.previewPanel}
-                style={{
-                  width: previewMode ? '100%' : `calc(${100 - editorWidth}% - 5px)`,
-                }}
-              >
-                <Preview
-                  ref={attachPreview}
-                  content={markdown}
-                  filePath={currentFilePath}
-                  scrollSyncEnabled={scrollSyncEnabled}
-                  onScrollSyncToggle={toggleScrollSync}
-                  onTaskToggle={documentSessionReady ? handlePreviewTaskToggle : undefined}
-                  onExitPreviewMode={exitPreviewMode}
-                  onEnterPreviewMode={enterPreviewMode}
-                  onEnterEditorMode={enterEditorOnly}
-                  isPreviewOnly={previewMode}
-                />
-              </div>
-            </>
-          )}
+        {workspaceRoots.length > 0 && explorerVisible && (
+          <FileExplorer
+            roots={workspaceRoots}
+            currentPath={currentFilePath}
+            onOpenFile={handleOpenDocument}
+            onChooseDirectory={chooseDirectory}
+            onRemoveDirectory={removeWorkspaceDirectory}
+            onClose={() => setExplorerVisible(false)}
+          />
+        )}
+        <div className={styles.editorCanvas}>
+          <Editor
+            ref={attachEditor}
+            value={markdown}
+            onChange={setMarkdown}
+            filePath={currentFilePath}
+            readOnly={!documentSessionReady}
+            className={styles.editor}
+            theme={theme}
+            onSave={handleSave}
+            onSaveAs={handleSaveAs}
+          />
+          <SaveSuccessToast show={showSaveToast} />
         </div>
-        {showAgent && (
+        {agentSettings.panelVisible && (
           <AgentPanel
             session={agentSession}
             isConfigured={agentConfigured}
-            onClose={() => setShowAgent(false)}
+            onClose={() => setAgentSettings({ ...agentSettings, panelVisible: false })}
           />
         )}
       </div>
@@ -621,8 +577,6 @@ const Layout: React.FC = () => {
           setTheme={setTheme}
           workDir={workDir}
           setWorkDir={setWorkDir}
-          minimapEnabled={minimapEnabled}
-          setMinimapEnabled={setMinimapEnabled}
           agentSettings={agentSettings}
           setAgentSettings={setAgentSettings}
           isClosing={settingsClosing}
@@ -633,7 +587,6 @@ const Layout: React.FC = () => {
           }}
         />
       )}
-      <SaveSuccessToast show={showSaveToast} />
     </div>
   );
 };

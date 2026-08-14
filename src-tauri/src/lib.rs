@@ -1,5 +1,5 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-use document_storage::{FileInfo, StorageResult};
+use document_storage::{FileInfo, FileTreeNode, StorageResult};
 use std::env;
 use std::path::{Path, PathBuf};
 
@@ -32,6 +32,12 @@ fn list_text_files(dir_path: String) -> StorageResult<Vec<FileInfo>> {
     document_storage::list_text_files(Path::new(&dir_path))
 }
 
+/// Recursively list files and folders for the workspace explorer.
+#[tauri::command]
+fn list_directory_tree(dir_path: String) -> StorageResult<Vec<FileTreeNode>> {
+    document_storage::list_directory_tree(Path::new(&dir_path))
+}
+
 /// Rename a document within its current directory without replacing another file.
 #[tauri::command]
 fn rename_document(path: String, new_name: String) -> StorageResult<String> {
@@ -62,6 +68,7 @@ pub fn run() {
             write_text_file,
             create_untitled_file,
             list_text_files,
+            list_directory_tree,
             rename_document,
             get_startup_file,
             agent_completion::request_agent_completion,

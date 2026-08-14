@@ -1,16 +1,15 @@
-import type { MarkdownEditor } from '@/modules/markdownEditing/applyMarkdownTransform';
-import type { AgentSettings } from './agent';
+import type { Editor } from '@tiptap/core';
+export type { MarkdownEditor } from '@/modules/markdownEditing/applyMarkdownTransform';
 
 export interface EditorProps {
   value: string;
   onChange: (newValue: string) => void;
+  filePath?: string | null;
   className?: string;
   theme?: 'light' | 'dark' | 'system';
-  minimapEnabled?: boolean;
-  agentSettings: AgentSettings;
   readOnly?: boolean;
   onSave?: () => void;
   onSaveAs?: () => void;
 }
 
-export type { MarkdownEditor };
+export type WysiwygEditor = Editor;

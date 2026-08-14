@@ -1,11 +1,10 @@
-import type { RefObject } from 'react';
-import type { MarkdownEditor } from '@/types/editor';
+import type { WysiwygEditor } from '@/types/editor';
 
 export interface ToolbarProps {
   onOpenFolder?: () => void;
   onSave?: () => void;
   onSaveAs?: () => void;
   className?: string;
-  editorRef: RefObject<MarkdownEditor | null>;
+  editor: WysiwygEditor | null;
   disabled?: boolean;
 }

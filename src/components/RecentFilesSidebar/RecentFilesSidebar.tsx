@@ -1,8 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import styles from './RecentFilesSidebar.module.css';
 import { RecentFilesSidebarProps } from '@/types/recentFiles';
-import { FaFolderOpen, FaFile, FaFileAlt, FaTimes, FaTrash } from 'react-icons/fa';
-import { FaCheck } from 'react-icons/fa';
+import { LuCheck, LuFile, LuFilePlus2, LuFolderOpen, LuTrash2, LuX } from 'react-icons/lu';
 import { useI18n } from '@/locales/useI18n';
 
 const RecentFilesSidebar: React.FC<RecentFilesSidebarProps> = ({
@@ -95,7 +94,7 @@ const RecentFilesSidebar: React.FC<RecentFilesSidebarProps> = ({
           title={t('recent.openFolder')}
           aria-label={t('recent.openFolder')}
         >
-          <FaFolderOpen />
+          <LuFolderOpen />
         </button>
         <button
           onClick={handleOpenFile}
@@ -103,7 +102,7 @@ const RecentFilesSidebar: React.FC<RecentFilesSidebarProps> = ({
           title={t('recent.openFile')}
           aria-label={t('recent.openFile')}
         >
-          <FaFile />
+          <LuFile />
         </button>
         <button
           onClick={handleNewFile}
@@ -111,7 +110,7 @@ const RecentFilesSidebar: React.FC<RecentFilesSidebarProps> = ({
           title={t('recent.newFile')}
           aria-label={t('recent.newFile')}
         >
-          <FaFileAlt />
+          <LuFilePlus2 />
         </button>
         <button
           onClick={() => {
@@ -121,7 +120,7 @@ const RecentFilesSidebar: React.FC<RecentFilesSidebarProps> = ({
           title={t('recent.close')}
           aria-label={t('recent.close')}
         >
-          <FaTimes />
+          <LuX />
         </button>
       </div>
       <div className={styles.filesList}>
@@ -167,7 +166,7 @@ const RecentFilesSidebar: React.FC<RecentFilesSidebarProps> = ({
                         }}
                         disabled={deletingId === file.path}
                       >
-                        <FaCheck />
+                        <LuCheck />
                       </button>
                       <button
                         className={styles.cancelButton}
@@ -176,7 +175,7 @@ const RecentFilesSidebar: React.FC<RecentFilesSidebarProps> = ({
                         onClick={() => setConfirmingId(null)}
                         disabled={deletingId === file.path}
                       >
-                        <FaTimes />
+                        <LuX />
                       </button>
                     </span>
                   ) : (
@@ -187,7 +186,7 @@ const RecentFilesSidebar: React.FC<RecentFilesSidebarProps> = ({
                       onClick={() => setConfirmingId(file.path)}
                       disabled={deletingId === file.path}
                     >
-                      <FaTrash />
+                      <LuTrash2 />
                     </button>
                   ))}
               </div>

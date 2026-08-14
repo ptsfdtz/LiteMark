@@ -3,8 +3,16 @@ import React, { useEffect, useState, useRef } from 'react';
 import styles from './Settings.module.css';
 import { SettingsProps } from '@/types/settings';
 import { open } from '@tauri-apps/plugin-dialog';
-import { FiEye, FiEyeOff, FiSun, FiMoon, FiRepeat, FiMoreHorizontal } from 'react-icons/fi';
-import { FaCog, FaTimes } from 'react-icons/fa';
+import {
+  LuEllipsis,
+  LuEye,
+  LuEyeOff,
+  LuMoon,
+  LuSettings,
+  LuSun,
+  LuSunMoon,
+  LuX,
+} from 'react-icons/lu';
 import { useI18n } from '@/locales/useI18n';
 
 const Settings: React.FC<SettingsProps> = ({
@@ -12,8 +20,6 @@ const Settings: React.FC<SettingsProps> = ({
   setTheme,
   workDir,
   setWorkDir,
-  minimapEnabled,
-  setMinimapEnabled,
   agentSettings,
   setAgentSettings,
   onClose,
@@ -37,6 +43,7 @@ const Settings: React.FC<SettingsProps> = ({
 
   const updateAgentSettings = (
     key:
+      | 'panelVisible'
       | 'enabled'
       | 'endpoint'
       | 'model'
@@ -134,14 +141,14 @@ const Settings: React.FC<SettingsProps> = ({
       onTransitionEnd={handleTransitionEnd}
     >
       <div className={styles.header}>
-        <FaCog size={20} />
+        <LuSettings />
         <button
           className={styles.closeButton}
           onClick={handleRequestClose}
           title={t('window.close')}
           aria-label={t('window.close')}
         >
-          <FaTimes />
+          <LuX />
         </button>
       </div>
       <div className={styles.content}>
@@ -161,7 +168,7 @@ const Settings: React.FC<SettingsProps> = ({
                 title={t('settings.themeLight')}
                 aria-label={t('settings.themeLight')}
               >
-                <FiSun size={18} />
+                <LuSun />
               </button>
               <button
                 className={`${styles.switchButton} ${theme === 'system' ? styles.active : ''}`}
@@ -169,7 +176,7 @@ const Settings: React.FC<SettingsProps> = ({
                 title={t('settings.themeSystem')}
                 aria-label={t('settings.themeSystem')}
               >
-                <FiRepeat size={18} />
+                <LuSunMoon />
               </button>
               <button
                 className={`${styles.switchButton} ${
@@ -183,7 +190,7 @@ const Settings: React.FC<SettingsProps> = ({
                 title={t('settings.themeDark')}
                 aria-label={t('settings.themeDark')}
               >
-                <FiMoon size={18} />
+                <LuMoon />
               </button>
             </div>
           </div>
@@ -205,7 +212,7 @@ const Settings: React.FC<SettingsProps> = ({
               title={t('settings.chooseWorkDir')}
               aria-label={t('settings.chooseWorkDir')}
             >
-              <FiMoreHorizontal size={22} />
+              <LuEllipsis />
             </button>
           </div>
         </div>
@@ -247,25 +254,21 @@ const Settings: React.FC<SettingsProps> = ({
             </button>
           </div>
         </div>
-        <div className={styles.settingGroup}>
+        <div className={`${styles.settingGroup} ${styles.agentGroup}`}>
           <div className={styles.editorRow}>
-            <label className={styles.minimapLabel} htmlFor="minimapToggle">
-              {t('settings.minimap')}
+            <label className={styles.settingLabel} htmlFor="agentPanelToggle">
+              {t('settings.agentPanel')}
             </label>
             <label className={styles.switch}>
               <input
-                id="minimapToggle"
+                id="agentPanelToggle"
                 type="checkbox"
-                checked={!!minimapEnabled}
-                onChange={() => {
-                  if (setMinimapEnabled) setMinimapEnabled(!minimapEnabled);
-                }}
+                checked={agentSettings.panelVisible}
+                onChange={(event) => updateAgentSettings('panelVisible', event.target.checked)}
               />
               <span className={styles.slider}></span>
             </label>
           </div>
-        </div>
-        <div className={`${styles.settingGroup} ${styles.agentGroup}`}>
           <div className={styles.editorRow}>
             <label className={styles.settingLabel} htmlFor="agentToggle">
               {t('settings.agentCompletion')}
@@ -327,7 +330,7 @@ const Settings: React.FC<SettingsProps> = ({
                 title={t(showApiKey ? 'settings.hideApiKey' : 'settings.showApiKey')}
                 aria-label={t(showApiKey ? 'settings.hideApiKey' : 'settings.showApiKey')}
               >
-                {showApiKey ? <FiEyeOff size={18} /> : <FiEye size={18} />}
+                {showApiKey ? <LuEyeOff /> : <LuEye />}
               </button>
             </div>
             <p className={styles.securityNote}>{t('settings.agentKeyStorage')}</p>

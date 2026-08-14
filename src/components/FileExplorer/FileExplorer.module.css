@@ -1,0 +1,342 @@
+.explorer {
+  position: relative;
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  min-width: 0;
+  height: 100%;
+  color: var(--text-color);
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--hairline-color);
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  height: 40px;
+  padding: 0 8px 0 10px;
+  border-bottom: 1px solid var(--hairline-color);
+  box-sizing: border-box;
+}
+
+.headerTitle {
+  flex: 1;
+  padding-left: 4px;
+  overflow: hidden;
+  color: var(--muted-text);
+  font-size: 11px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.rootButton {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  height: 32px;
+  padding: 0 6px 0 2px;
+  color: var(--heading-color);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  text-align: left;
+  cursor: pointer;
+}
+
+.rootButton span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.headerButton:hover {
+  background: var(--control-hover);
+}
+
+.rootButton svg,
+.headerButton svg,
+.treeRow svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  stroke-width: 1.8;
+}
+
+.headerButton {
+  display: flex;
+  flex: none;
+  justify-content: center;
+  align-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  color: var(--muted-text);
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.rootButton:focus-visible,
+.headerButton:focus-visible,
+.treeRow:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: -2px;
+}
+
+.treeScroll {
+  flex: 1;
+  min-height: 0;
+  padding: 0 0 12px;
+  overflow: hidden auto;
+}
+
+.tree,
+.treeGroup {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tree li,
+.treeGroup li {
+  min-width: 0;
+}
+
+.empty {
+  padding: 8px 14px 12px 42px;
+  color: var(--muted-text);
+  font-size: 12px;
+}
+
+.rootSection + .rootSection {
+  border-top: 1px solid var(--hairline-color);
+}
+
+.rootHeader {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  height: 32px;
+  margin: 2px 8px;
+  padding-right: 1px;
+  border-radius: 4px;
+}
+
+.rootHeader:hover,
+.rootHeader:focus-within {
+  background: var(--control-hover);
+}
+
+.rootHeader .rootButton > svg:first-child {
+  width: 13px;
+  height: 13px;
+  color: var(--muted-text);
+}
+
+.rootHeader .rootButton > svg:nth-child(2) {
+  color: var(--accent-color);
+}
+
+.removeButton {
+  width: 28px;
+  height: 28px;
+  opacity: 0;
+}
+
+.rootHeader:hover .removeButton,
+.removeButton:focus-visible {
+  opacity: 1;
+}
+
+.rootHeader .removeButton:hover {
+  background: color-mix(in srgb, var(--text-color) 8%, transparent);
+}
+
+.removeConfirmation {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 2px 8px 8px;
+  padding: 9px 10px;
+  color: var(--text-color);
+  background: var(--control-hover);
+  border-left: 2px solid var(--accent-color);
+  border-radius: 0 4px 4px 0;
+  font-size: 12px;
+}
+
+.confirmationText {
+  line-height: 1.5;
+}
+
+.confirmationActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.cancelRemoveButton,
+.confirmRemoveButton {
+  min-width: 52px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--hairline-color);
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.cancelRemoveButton {
+  color: var(--text-color);
+  background: transparent;
+}
+
+.confirmRemoveButton {
+  color: #fff;
+  background: var(--accent-color);
+  border-color: var(--accent-color);
+}
+
+.cancelRemoveButton:hover {
+  background: color-mix(in srgb, var(--text-color) 8%, transparent);
+}
+
+.confirmRemoveButton:hover {
+  filter: brightness(0.94);
+}
+
+.cancelRemoveButton:focus-visible,
+.confirmRemoveButton:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 1px;
+}
+
+.treeRow {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  height: 28px;
+  padding-top: 0;
+  padding-right: 8px;
+  padding-bottom: 0;
+  color: var(--text-color);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-sizing: border-box;
+  font-family: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.treeRow:hover {
+  background: var(--control-hover);
+}
+
+.treeRow.active {
+  color: var(--heading-color);
+  background: color-mix(in srgb, var(--accent-color) 14%, transparent);
+}
+
+.treeRow.active::before {
+  position: absolute;
+  left: 0;
+  width: 2px;
+  height: 20px;
+  background: var(--accent-color);
+  content: '';
+}
+
+.treeRow.unsupported {
+  color: var(--muted-text);
+  cursor: default;
+  opacity: 0.66;
+}
+
+.chevron {
+  display: inline-flex;
+  flex: 0 0 16px;
+  justify-content: center;
+  align-items: center;
+  color: var(--muted-text);
+}
+
+.chevron svg {
+  width: 13px;
+  height: 13px;
+}
+
+.itemIcon {
+  display: inline-flex;
+  flex: 0 0 18px;
+  align-items: center;
+  color: var(--muted-text);
+}
+
+.itemName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.resizeHandle {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  bottom: 0;
+  width: 6px;
+  cursor: col-resize;
+  outline: none;
+  z-index: 8;
+}
+
+.resizeHandle::after {
+  position: absolute;
+  top: 0;
+  right: 2px;
+  bottom: 0;
+  width: 1px;
+  background: transparent;
+  content: '';
+}
+
+.resizeHandle:hover::after,
+.resizeHandle:focus-visible::after,
+.resizeHandle.resizing::after {
+  background: var(--accent-color);
+}
+
+.markdownIcon {
+  color: var(--accent-color);
+}
+
+.codeIcon {
+  color: #4f83a7;
+}
+
+.dataIcon {
+  color: #9a7b32;
+}
+
+.mediaIcon {
+  color: #8a6599;
+}
