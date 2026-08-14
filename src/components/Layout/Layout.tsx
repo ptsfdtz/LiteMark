@@ -27,6 +27,11 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { isTauri } from '@tauri-apps/api/core';
 import type { WysiwygEditor } from '@/types/editor';
 import { registerWindowCloseGuard } from '@/modules/windowCloseGuard/registerWindowCloseGuard';
+import {
+  expandWindowForDocumentWidth,
+  persistWindowState,
+  restoreWindowState,
+} from '@/modules/windowState/windowState';
 import { deleteWorkspaceFile, listDirectoryTree } from '@/modules/directoryTree';
 import { getFileViewKind } from '@/types/fileTree';
 import { loadWorkspaceDirectories, saveWorkspaceDirectories } from '@/utils/workspaceStore';
@@ -68,6 +73,7 @@ const Layout: React.FC = () => {
   const [openTabs, setOpenTabs] = useState<string[]>([]);
   const [activeFilePath, setActiveFilePath] = useState<string | null>(null);
   const pendingSessionActivationRef = useRef(false);
+  const documentAreaRef = useRef<HTMLDivElement | null>(null);
 
   // 加载个人工作文件夹
   useEffect(() => {
@@ -76,6 +82,18 @@ const Layout: React.FC = () => {
       setWorkDirState(dir);
     })();
   }, []);
+
+  useEffect(() => {
+    if (!isTauri() || (!explorerVisible && !agentSettings.panelVisible)) return;
+    const frame = window.requestAnimationFrame(() => {
+      const documentWidth = documentAreaRef.current?.getBoundingClientRect().width;
+      if (documentWidth === undefined) return;
+      void expandWindowForDocumentWidth(getCurrentWindow(), documentWidth, 760).catch((error) =>
+        console.error('Failed to expand the window for side panels:', error),
+      );
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [agentSettings.panelVisible, explorerVisible]);
 
   // 启动时加载主题设置
   useEffect(() => {
@@ -651,7 +669,48 @@ const Layout: React.FC = () => {
   useEffect(() => {
     if (!isTauri()) return;
     const appWindow = getCurrentWindow();
-    return registerWindowCloseGuard(appWindow, () => canCloseRef.current());
+    return registerWindowCloseGuard(
+      appWindow,
+      () => canCloseRef.current(),
+      () => persistWindowState(appWindow),
+    );
+  }, []);
+
+  useEffect(() => {
+    if (!isTauri()) return;
+    const appWindow = getCurrentWindow();
+    let disposed = false;
+    let timeout = 0;
+    const unlisten: Array<() => void> = [];
+
+    const schedulePersist = () => {
+      window.clearTimeout(timeout);
+      timeout = window.setTimeout(() => {
+        void persistWindowState(appWindow).catch(console.error);
+      }, 200);
+    };
+
+    void (async () => {
+      try {
+        await restoreWindowState(appWindow);
+        if (disposed) return;
+        await persistWindowState(appWindow);
+        const listeners = await Promise.all([
+          appWindow.onMoved(schedulePersist),
+          appWindow.onResized(schedulePersist),
+        ]);
+        if (disposed) listeners.forEach((stopListening) => stopListening());
+        else unlisten.push(...listeners);
+      } catch (error) {
+        console.error('Failed to restore window state:', error);
+      }
+    })();
+
+    return () => {
+      disposed = true;
+      window.clearTimeout(timeout);
+      unlisten.forEach((stopListening) => stopListening());
+    };
   }, []);
 
   useEffect(() => {
@@ -787,7 +846,7 @@ const Layout: React.FC = () => {
             onClose={() => setExplorerVisible(false)}
           />
         )}
-        <div className={styles.documentArea}>
+        <div className={styles.documentArea} ref={documentAreaRef}>
           <OpenTabs
             paths={openTabs}
             activePath={activeFilePath}
