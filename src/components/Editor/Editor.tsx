@@ -2,6 +2,7 @@ import React from 'react';
 import EditorImpl from './EditorImpl';
 import type { EditorProps, WysiwygEditor } from '@/types/editor';
 import { getFileViewKind } from '@/types/fileTree';
+import ImagePreview from './ImagePreview';
 
 const LazyCodeEditor = React.lazy(() => import('./CodeEditor'));
 
@@ -14,6 +15,10 @@ const Editor = React.forwardRef<WysiwygEditor, EditorProps>((props, ref) => {
         <LazyCodeEditor {...props} />
       </React.Suspense>
     );
+  }
+
+  if (viewKind === 'image' && props.filePath) {
+    return <ImagePreview filePath={props.filePath} className={props.className} />;
   }
 
   return <EditorImpl {...props} ref={ref} />;

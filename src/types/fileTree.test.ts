@@ -7,7 +7,8 @@ describe('file type routing', () => {
     expect(getFileViewKind('notes.mdx')).toBe('markdown');
     expect(getFileViewKind('src/App.tsx')).toBe('code');
     expect(getFileViewKind('config.yaml')).toBe('code');
-    expect(getFileViewKind('photo.png')).toBe('unsupported');
+    expect(getFileViewKind('photo.png')).toBe('image');
+    expect(getFileViewKind('cover.WEBP')).toBe('image');
   });
 
   it('maps common extensions to Monaco language identifiers', () => {

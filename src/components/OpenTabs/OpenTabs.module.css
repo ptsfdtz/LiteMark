@@ -1,0 +1,159 @@
+.tabBar {
+  position: relative;
+  display: flex;
+  flex: none;
+  min-width: 0;
+  height: 36px;
+  overflow: hidden;
+  background: var(--toolbar-bg);
+  border-bottom: 1px solid var(--hairline-color);
+  box-sizing: border-box;
+}
+
+.tabScroller {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  overflow: auto hidden;
+  scrollbar-width: none;
+}
+
+.tabScroller::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollThumb {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: var(--tab-scroll-width, 0);
+  height: 3px;
+  background: var(--scrollbar-thumb);
+  border-radius: 2px;
+  cursor: ew-resize;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(var(--tab-scroll-left, 0));
+  transition: opacity 0.12s ease;
+  z-index: 2;
+}
+
+.tabBar:hover .tabScroller[data-overflowing='true'] + .scrollThumb {
+  background: var(--scrollbar-thumb);
+  opacity: 0.82;
+  pointer-events: auto;
+}
+
+.tab {
+  position: relative;
+  display: flex;
+  flex: 0 1 180px;
+  align-items: center;
+  min-width: 92px;
+  max-width: 220px;
+  height: 100%;
+  color: var(--muted-text);
+  background: transparent;
+  border-right: 1px solid var(--hairline-color);
+  box-sizing: border-box;
+}
+
+.tab:hover {
+  color: var(--text-color);
+  background: color-mix(in srgb, var(--control-hover) 64%, transparent);
+}
+
+.tab.active {
+  color: var(--text-color);
+  background: var(--paper-bg);
+}
+
+.tab.active::after {
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  background: var(--accent-color);
+  content: '';
+  z-index: 1;
+}
+
+.activateButton {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  height: 100%;
+  padding: 0 4px 0 11px;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  cursor: default;
+}
+
+.activateButton:focus-visible,
+.closeButton:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: -2px;
+}
+
+.fileIcon {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  stroke-width: 1.7;
+}
+
+.name {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 12px;
+  letter-spacing: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dirtyDot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  background: var(--accent-color);
+  border-radius: 50%;
+}
+
+.closeButton {
+  display: inline-flex;
+  flex: none;
+  justify-content: center;
+  align-items: center;
+  width: 26px;
+  height: 26px;
+  margin-right: 4px;
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 0;
+}
+
+.tab:hover .closeButton,
+.tab.active .closeButton,
+.closeButton:focus-visible {
+  opacity: 1;
+}
+
+.closeButton:hover {
+  color: var(--text-color);
+  background: var(--control-hover);
+}
+
+.closeButton svg {
+  width: 15px;
+  height: 15px;
+  stroke-width: 1.8;
+}

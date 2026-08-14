@@ -30,6 +30,7 @@ import { registerWindowCloseGuard } from '@/modules/windowCloseGuard/registerWin
 import { listDirectoryTree } from '@/modules/directoryTree';
 import { getFileViewKind } from '@/types/fileTree';
 import { loadWorkspaceDirectories, saveWorkspaceDirectories } from '@/utils/workspaceStore';
+import OpenTabs from '@/components/OpenTabs/OpenTabs';
 
 function normalizePath(path: string): string {
   return path
@@ -64,6 +65,9 @@ const Layout: React.FC = () => {
   const [showSaveToast, setShowSaveToast] = useState(false);
   const [agentSettings, setAgentSettings] = useState<AgentSettings>(DEFAULT_AGENT_SETTINGS);
   const [agentSettingsReady, setAgentSettingsReady] = useState(false);
+  const [openTabs, setOpenTabs] = useState<string[]>([]);
+  const [activeFilePath, setActiveFilePath] = useState<string | null>(null);
+  const pendingSessionActivationRef = useRef(false);
 
   // 加载个人工作文件夹
   useEffect(() => {
@@ -181,6 +185,27 @@ const Layout: React.FC = () => {
     directoryDocuments,
   } = documentSession;
 
+  const rememberTab = useCallback((path: string) => {
+    setOpenTabs((current) => (current.includes(path) ? current : [...current, path]));
+    setActiveFilePath(path);
+  }, []);
+
+  useEffect(() => {
+    if (!currentFilePath) return;
+    if (pendingSessionActivationRef.current || activeFilePath === null) {
+      pendingSessionActivationRef.current = false;
+      rememberTab(currentFilePath);
+    }
+  }, [activeFilePath, currentFilePath, rememberTab]);
+
+  const activeViewKind = activeFilePath ? getFileViewKind(activeFilePath) : 'markdown';
+  const activeTextDocument =
+    activeFilePath === null
+      ? currentFilePath === null
+      : activeFilePath === currentFilePath &&
+        activeViewKind !== 'image' &&
+        activeViewKind !== 'unsupported';
+
   const agentConfigured = Boolean(
     agentSettings.enabled &&
     agentSettings.endpoint.trim() &&
@@ -188,15 +213,17 @@ const Layout: React.FC = () => {
     agentSettings.apiKey.trim(),
   );
   const activeWorkspaceDirectory =
-    workspaceRoots.find((root) => pathBelongsToDirectory(currentFilePath, root.path))?.path ??
+    workspaceRoots.find((root) => pathBelongsToDirectory(activeFilePath, root.path))?.path ??
     workspaceRoots[0]?.path;
 
   const agentSession = useAgentSession({
     getSettings: () => agentSettings,
-    getDocument: () => markdown,
-    applyDocument: setMarkdown,
+    getDocument: () => (activeTextDocument ? markdown : ''),
+    applyDocument: (content) => {
+      if (activeTextDocument) setMarkdown(content);
+    },
     getWorkDir: () => activeWorkspaceDirectory || workDir,
-    documentPath: currentFilePath,
+    documentPath: activeTextDocument ? currentFilePath : null,
   });
 
   const showSaveSuccess = () => {
@@ -205,7 +232,7 @@ const Layout: React.FC = () => {
   };
 
   const handleSave = async () => {
-    if (!documentSessionReady) return;
+    if (!documentSessionReady || (activeFilePath && !activeTextDocument)) return;
     try {
       let saved: boolean;
       if (currentFilePath) {
@@ -228,7 +255,7 @@ const Layout: React.FC = () => {
   };
 
   const handleSaveAs = async () => {
-    if (!documentSessionReady) return;
+    if (!documentSessionReady || (activeFilePath && !activeTextDocument)) return;
     try {
       const selected = await saveDialog({
         filters: [
@@ -239,7 +266,17 @@ const Layout: React.FC = () => {
       });
       if (!selected) return;
       const saved = await documentSession.saveDocumentAs(selected);
-      if (saved) showSaveSuccess();
+      if (saved) {
+        if (currentFilePath) {
+          setOpenTabs((current) =>
+            current.map((path) => (path === currentFilePath ? selected : path)),
+          );
+        } else {
+          setOpenTabs((current) => (current.includes(selected) ? current : [...current, selected]));
+        }
+        setActiveFilePath(selected);
+        showSaveSuccess();
+      }
     } catch (error) {
       await showDocumentError(error, 'dialog.saveFailed');
     }
@@ -247,8 +284,20 @@ const Layout: React.FC = () => {
 
   const handleOpenDocument = async (path: string) => {
     if (!documentSessionReady) return false;
+    const viewKind = getFileViewKind(path);
+    if (viewKind === 'unsupported') return false;
+    if (viewKind === 'image') {
+      rememberTab(path);
+      return true;
+    }
+    if (path === currentFilePath) {
+      rememberTab(path);
+      return true;
+    }
     try {
-      return await documentSession.openDocument(path);
+      const opened = await documentSession.openDocument(path);
+      if (opened) rememberTab(path);
+      return opened;
     } catch (error) {
       await showDocumentError(error, 'dialog.fileMissing');
       return false;
@@ -258,7 +307,9 @@ const Layout: React.FC = () => {
   const handleCreateDocument = async (directory: string) => {
     if (!documentSessionReady) return false;
     try {
+      pendingSessionActivationRef.current = true;
       const created = await documentSession.createDocument(directory, t('recent.newFileContent'));
+      if (!created) pendingSessionActivationRef.current = false;
       if (created) setForceEditFileName(true);
       return created;
     } catch (error) {
@@ -383,13 +434,128 @@ const Layout: React.FC = () => {
 
   const editorRef = useRef<WysiwygEditor | null>(null);
   const [editorInstance, setEditorInstance] = useState<WysiwygEditor | null>(null);
-  const markdownDocument = !currentFilePath || getFileViewKind(currentFilePath) === 'markdown';
+  const markdownDocument = !activeFilePath || activeViewKind === 'markdown';
   const canCloseRef = useRef(documentSession.canClose);
   canCloseRef.current = documentSession.canClose;
 
   const attachEditor = useCallback((instance: WysiwygEditor | null) => {
     editorRef.current = instance;
     setEditorInstance(instance);
+  }, []);
+
+  const handleActivateTab = async (path: string) => {
+    if (path === activeFilePath) return;
+    const previousPath = activeFilePath;
+    setActiveFilePath(path);
+    const opened = await handleOpenDocument(path);
+    if (!opened) {
+      setActiveFilePath((current) => (current === path ? previousPath : current));
+    }
+  };
+
+  const handleCloseTab = async (path: string) => {
+    if (path === currentFilePath && isDirty) {
+      if (!(await confirmDiscard())) return;
+      documentSession.discardChanges();
+    }
+
+    const closingIndex = openTabs.indexOf(path);
+    const nextTabs = openTabs.filter((tabPath) => tabPath !== path);
+    setOpenTabs(nextTabs);
+    if (activeFilePath !== path) return;
+
+    const nextPath = nextTabs[Math.min(closingIndex, nextTabs.length - 1)] ?? null;
+    setActiveFilePath(null);
+    if (nextPath) await handleActivateTab(nextPath);
+  };
+
+  const shortcutActionsRef = useRef({
+    activeFilePath,
+    activeTextDocument,
+    openTabs,
+    activateTab: handleActivateTab,
+    closeTab: handleCloseTab,
+    createDocument,
+    openDocument: chooseDocument,
+    openDirectory: chooseDirectory,
+    save: handleSave,
+    saveAs: handleSaveAs,
+  });
+  shortcutActionsRef.current = {
+    activeFilePath,
+    activeTextDocument,
+    openTabs,
+    activateTab: handleActivateTab,
+    closeTab: handleCloseTab,
+    createDocument,
+    openDocument: chooseDocument,
+    openDirectory: chooseDirectory,
+    save: handleSave,
+    saveAs: handleSaveAs,
+  };
+
+  useEffect(() => {
+    const handleShortcut = (event: KeyboardEvent) => {
+      const primaryModifier = event.ctrlKey || event.metaKey;
+      const key = event.key.toLowerCase();
+      const actions = shortcutActionsRef.current;
+      let handled = false;
+
+      if (!event.altKey && primaryModifier) {
+        if (key === 's') {
+          handled = true;
+          if (!event.repeat) void (event.shiftKey ? actions.saveAs() : actions.save());
+        } else if (key === 'w' && !event.shiftKey) {
+          handled = true;
+          if (!event.repeat && actions.activeFilePath) {
+            void actions.closeTab(actions.activeFilePath);
+          }
+        } else if (key === 'n' && !event.shiftKey) {
+          handled = true;
+          if (!event.repeat) void actions.createDocument();
+        } else if (key === 'o') {
+          handled = true;
+          if (!event.repeat) {
+            void (event.shiftKey ? actions.openDirectory() : actions.openDocument());
+          }
+        } else if (key === 'p' && !event.shiftKey) {
+          handled = true;
+          if (!event.repeat) {
+            setShowRecentFiles(true);
+            setRecentClosing(false);
+          }
+        } else if (key === ',' && !event.shiftKey) {
+          handled = true;
+          if (!event.repeat) {
+            setShowSettings(true);
+            setSettingsClosing(false);
+          }
+        } else if (key === 'tab' || key === 'pageup' || key === 'pagedown') {
+          handled = true;
+          if (!event.repeat && actions.openTabs.length > 1) {
+            const currentIndex = Math.max(
+              0,
+              actions.openTabs.indexOf(actions.activeFilePath ?? ''),
+            );
+            const backwards = key === 'pageup' || (key === 'tab' && event.shiftKey);
+            const offset = backwards ? -1 : 1;
+            const nextIndex =
+              (currentIndex + offset + actions.openTabs.length) % actions.openTabs.length;
+            void actions.activateTab(actions.openTabs[nextIndex]);
+          }
+        }
+      } else if (!primaryModifier && !event.altKey && key === 'f2') {
+        handled = Boolean(actions.activeFilePath && actions.activeTextDocument);
+        if (handled && !event.repeat) setForceEditFileName(true);
+      }
+
+      if (!handled) return;
+      event.preventDefault();
+      event.stopPropagation();
+    };
+
+    window.addEventListener('keydown', handleShortcut, { capture: true });
+    return () => window.removeEventListener('keydown', handleShortcut, { capture: true });
   }, []);
 
   useEffect(() => {
@@ -490,11 +656,23 @@ const Layout: React.FC = () => {
           className="toolbar"
         />
         <div className={styles.currentFileNameSlot}>
-          {currentFilePath && (
+          {activeTextDocument && activeFilePath && (
             <CurrentFileName
-              filePath={currentFilePath}
+              filePath={activeFilePath}
               onRename={async (newName) => {
+                const previousPath = activeFilePath;
                 const renamed = await documentSession.renameDocument(newName);
+                if (renamed) {
+                  const separatorIndex = Math.max(
+                    previousPath.lastIndexOf('/'),
+                    previousPath.lastIndexOf('\\'),
+                  );
+                  const nextPath = `${previousPath.slice(0, separatorIndex + 1)}${newName}`;
+                  setOpenTabs((current) =>
+                    current.map((path) => (path === previousPath ? nextPath : path)),
+                  );
+                  setActiveFilePath(nextPath);
+                }
                 if (renamed && activeWorkspaceDirectory) {
                   await refreshWorkspaceTree(activeWorkspaceDirectory);
                 }
@@ -542,26 +720,35 @@ const Layout: React.FC = () => {
         {workspaceRoots.length > 0 && explorerVisible && (
           <FileExplorer
             roots={workspaceRoots}
-            currentPath={currentFilePath}
+            currentPath={activeFilePath}
             onOpenFile={handleOpenDocument}
             onChooseDirectory={chooseDirectory}
             onRemoveDirectory={removeWorkspaceDirectory}
             onClose={() => setExplorerVisible(false)}
           />
         )}
-        <div className={styles.editorCanvas}>
-          <Editor
-            ref={attachEditor}
-            value={markdown}
-            onChange={setMarkdown}
-            filePath={currentFilePath}
-            readOnly={!documentSessionReady}
-            className={styles.editor}
-            theme={theme}
-            onSave={handleSave}
-            onSaveAs={handleSaveAs}
+        <div className={styles.documentArea}>
+          <OpenTabs
+            paths={openTabs}
+            activePath={activeFilePath}
+            dirtyPath={isDirty ? currentFilePath : null}
+            onActivate={(path) => void handleActivateTab(path)}
+            onClose={(path) => void handleCloseTab(path)}
           />
-          <SaveSuccessToast show={showSaveToast} />
+          <div className={styles.editorCanvas}>
+            <Editor
+              ref={attachEditor}
+              value={markdown}
+              onChange={setMarkdown}
+              filePath={activeFilePath}
+              readOnly={!documentSessionReady || !activeTextDocument}
+              className={styles.editor}
+              theme={theme}
+              onSave={handleSave}
+              onSaveAs={handleSaveAs}
+            />
+            <SaveSuccessToast show={showSaveToast} />
+          </div>
         </div>
         {agentSettings.panelVisible && (
           <AgentPanel

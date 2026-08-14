@@ -2,6 +2,7 @@
 use document_storage::{FileInfo, FileTreeNode, StorageResult};
 use std::env;
 use std::path::{Path, PathBuf};
+use tauri::Manager;
 
 mod agent;
 mod agent_completion;
@@ -38,6 +39,19 @@ fn list_directory_tree(dir_path: String) -> StorageResult<Vec<FileTreeNode>> {
     document_storage::list_directory_tree(Path::new(&dir_path))
 }
 
+/// Allow one validated local image through Tauri's read-only asset protocol.
+#[tauri::command]
+fn prepare_image_preview(app: tauri::AppHandle, path: String) -> Result<String, String> {
+    let canonical_path = std::fs::canonicalize(&path).map_err(|error| error.to_string())?;
+    if !canonical_path.is_file() || !document_storage::is_image_extension(&canonical_path) {
+        return Err("The selected path is not a supported image file.".to_owned());
+    }
+    app.asset_protocol_scope()
+        .allow_file(&canonical_path)
+        .map_err(|error| error.to_string())?;
+    Ok(canonical_path.to_string_lossy().into_owned())
+}
+
 /// Rename a document within its current directory without replacing another file.
 #[tauri::command]
 fn rename_document(path: String, new_name: String) -> StorageResult<String> {
@@ -69,6 +83,7 @@ pub fn run() {
             create_untitled_file,
             list_text_files,
             list_directory_tree,
+            prepare_image_preview,
             rename_document,
             get_startup_file,
             agent_completion::request_agent_completion,

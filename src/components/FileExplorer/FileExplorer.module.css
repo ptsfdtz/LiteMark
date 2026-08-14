@@ -16,19 +16,18 @@
   flex: none;
   align-items: center;
   gap: 4px;
-  height: 40px;
-  padding: 0 8px 0 10px;
+  height: 36px;
+  padding: 0 8px 0 12px;
   border-bottom: 1px solid var(--hairline-color);
   box-sizing: border-box;
 }
 
 .headerTitle {
   flex: 1;
-  padding-left: 4px;
   overflow: hidden;
   color: var(--muted-text);
   font-size: 11px;
-  font-weight: 650;
+  font-weight: 600;
   text-overflow: ellipsis;
   text-transform: uppercase;
   white-space: nowrap;
@@ -38,17 +37,17 @@
   display: flex;
   flex: 1;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
   min-width: 0;
-  height: 32px;
-  padding: 0 6px 0 2px;
+  height: 34px;
+  padding: 0 6px 0 12px;
   color: var(--heading-color);
   background: transparent;
   border: 0;
   border-radius: 0;
   font-family: inherit;
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 600;
   text-align: left;
   cursor: pointer;
 }
@@ -60,7 +59,8 @@
 }
 
 .headerButton:hover {
-  background: var(--control-hover);
+  color: var(--heading-color);
+  background: color-mix(in srgb, var(--control-hover) 72%, transparent);
 }
 
 .rootButton svg,
@@ -129,15 +129,13 @@
   display: flex;
   align-items: center;
   min-width: 0;
-  height: 32px;
-  margin: 2px 8px;
-  padding-right: 1px;
-  border-radius: 4px;
+  height: 34px;
+  padding-right: 8px;
 }
 
 .rootHeader:hover,
 .rootHeader:focus-within {
-  background: var(--control-hover);
+  background: color-mix(in srgb, var(--control-hover) 66%, transparent);
 }
 
 .rootHeader .rootButton > svg:first-child {
@@ -147,7 +145,7 @@
 }
 
 .rootHeader .rootButton > svg:nth-child(2) {
-  color: var(--accent-color);
+  color: var(--muted-text);
 }
 
 .removeButton {
@@ -162,19 +160,20 @@
 }
 
 .rootHeader .removeButton:hover {
-  background: color-mix(in srgb, var(--text-color) 8%, transparent);
+  color: var(--heading-color);
+  background: transparent;
 }
 
 .removeConfirmation {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin: 2px 8px 8px;
-  padding: 9px 10px;
+  gap: 7px;
+  margin: 0;
+  padding: 8px 10px 10px 34px;
   color: var(--text-color);
-  background: var(--control-hover);
-  border-left: 2px solid var(--accent-color);
-  border-radius: 0 4px 4px 0;
+  background: color-mix(in srgb, var(--control-hover) 40%, transparent);
+  border-top: 1px solid var(--hairline-color);
+  border-bottom: 1px solid var(--hairline-color);
   font-size: 12px;
 }
 
@@ -194,7 +193,7 @@
   height: 28px;
   padding: 0 10px;
   border: 1px solid var(--hairline-color);
-  border-radius: 4px;
+  border-radius: 3px;
   font-family: inherit;
   font-size: 12px;
   cursor: pointer;
@@ -231,9 +230,9 @@
   align-items: center;
   width: 100%;
   min-width: 0;
-  height: 28px;
+  height: 29px;
   padding-top: 0;
-  padding-right: 8px;
+  padding-right: 12px;
   padding-bottom: 0;
   color: var(--text-color);
   background: transparent;
@@ -247,19 +246,20 @@
 }
 
 .treeRow:hover {
-  background: var(--control-hover);
+  color: var(--heading-color);
+  background: color-mix(in srgb, var(--control-hover) 62%, transparent);
 }
 
 .treeRow.active {
   color: var(--heading-color);
-  background: color-mix(in srgb, var(--accent-color) 14%, transparent);
+  background: color-mix(in srgb, var(--accent-color) 10%, transparent);
 }
 
 .treeRow.active::before {
   position: absolute;
   left: 0;
   width: 2px;
-  height: 20px;
+  height: 18px;
   background: var(--accent-color);
   content: '';
 }
@@ -287,7 +287,7 @@
   display: inline-flex;
   flex: 0 0 18px;
   align-items: center;
-  color: var(--muted-text);
+  color: color-mix(in srgb, var(--muted-text) 82%, transparent);
 }
 
 .itemName {
@@ -326,6 +326,11 @@
 }
 
 .markdownIcon {
+  color: inherit;
+}
+
+.treeRow:hover .itemIcon,
+.treeRow.active .itemIcon {
   color: var(--accent-color);
 }
 

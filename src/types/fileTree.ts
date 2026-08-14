@@ -6,7 +6,7 @@ export interface FileTreeNode {
   children: FileTreeNode[];
 }
 
-export type FileViewKind = 'markdown' | 'code' | 'unsupported';
+export type FileViewKind = 'markdown' | 'code' | 'image' | 'unsupported';
 
 function getExtension(path: string): string {
   const name = path.split(/[\\/]/).pop() ?? '';
@@ -17,6 +17,7 @@ function getExtension(path: string): string {
 }
 
 const MARKDOWN_EXTENSIONS = new Set(['md', 'markdown', 'mdown', 'mkd', 'mdx']);
+const IMAGE_EXTENSIONS = new Set(['avif', 'bmp', 'gif', 'jpeg', 'jpg', 'png', 'webp']);
 const CODE_EXTENSIONS = new Set([
   'c',
   'cc',
@@ -58,6 +59,7 @@ const CODE_EXTENSIONS = new Set([
 export function getFileViewKind(path: string): FileViewKind {
   const extension = getExtension(path);
   if (MARKDOWN_EXTENSIONS.has(extension)) return 'markdown';
+  if (IMAGE_EXTENSIONS.has(extension)) return 'image';
   if (CODE_EXTENSIONS.has(extension)) return 'code';
   return 'unsupported';
 }

@@ -219,7 +219,7 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
           title={t('explorer.addFolder')}
           aria-label={t('explorer.addFolder')}
         >
-          <LuFolderPlus />
+          <LuFolderPlus aria-hidden="true" />
         </button>
         <button
           type="button"
@@ -228,7 +228,7 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
           title={t('explorer.hide')}
           aria-label={t('explorer.hide')}
         >
-          <LuPanelLeftClose />
+          <LuPanelLeftClose aria-hidden="true" />
         </button>
       </div>
       <div className={styles.treeScroll}>
@@ -249,8 +249,16 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
                   aria-expanded={!collapsed}
                   title={root.path}
                 >
-                  {collapsed ? <LuChevronRight /> : <LuChevronDown />}
-                  {collapsed ? <LuFolder /> : <LuFolderOpen />}
+                  {collapsed ? (
+                    <LuChevronRight aria-hidden="true" />
+                  ) : (
+                    <LuChevronDown aria-hidden="true" />
+                  )}
+                  {collapsed ? (
+                    <LuFolder aria-hidden="true" />
+                  ) : (
+                    <LuFolderOpen aria-hidden="true" />
+                  )}
                   <span>{rootName}</span>
                 </button>
                 <button
@@ -260,7 +268,7 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
                   title={t('explorer.removeFolder', { name: rootName })}
                   aria-label={t('explorer.removeFolder', { name: rootName })}
                 >
-                  <LuX />
+                  <LuX aria-hidden="true" />
                 </button>
               </div>
               {confirmingRoot === root.path && (

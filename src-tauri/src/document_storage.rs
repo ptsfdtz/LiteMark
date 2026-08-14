@@ -65,6 +65,17 @@ pub fn read_text_file(path: &Path) -> StorageResult<String> {
     fs::read_to_string(path).map_err(StorageError::from)
 }
 
+pub fn is_image_extension(path: &Path) -> bool {
+    path.extension()
+        .and_then(|extension| extension.to_str())
+        .is_some_and(|extension| {
+            matches!(
+                extension.to_ascii_lowercase().as_str(),
+                "avif" | "bmp" | "gif" | "jpeg" | "jpg" | "png" | "webp"
+            )
+        })
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct FileInfo {
     pub path: String,
@@ -411,6 +422,7 @@ mod tests {
     use super::atomic_write_text_file;
     use super::create_untitled_file;
     use super::document_parent;
+    use super::is_image_extension;
     use super::list_directory_tree;
     use super::read_text_file;
     use super::rename_document;
@@ -422,6 +434,15 @@ mod tests {
     use super::rename_via_hard_link;
     #[cfg(unix)]
     use std::io;
+
+    #[test]
+    fn image_preview_extensions_are_explicitly_allowlisted() {
+        assert!(is_image_extension(Path::new("cover.PNG")));
+        assert!(is_image_extension(Path::new("photo.webp")));
+        assert!(is_image_extension(Path::new("frame.avif")));
+        assert!(!is_image_extension(Path::new("illustration.svg")));
+        assert!(!is_image_extension(Path::new("notes.md")));
+    }
 
     #[test]
     fn creating_an_untitled_document_writes_content_and_preserves_existing_files() {

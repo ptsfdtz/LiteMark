@@ -45,7 +45,7 @@ const EditorImpl = React.forwardRef<WysiwygEditor, EditorProps>(
     useImperativeHandle(ref, () => editor as WysiwygEditor, [editor]);
 
     useEffect(() => {
-      editor?.setEditable(!readOnly);
+      editor?.setEditable(!readOnly, false);
     }, [editor, readOnly]);
 
     useEffect(() => {

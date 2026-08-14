@@ -164,6 +164,41 @@ describe('Document Session', () => {
     expect(deps.storage.createUntitled).not.toHaveBeenCalled();
   });
 
+  it('does not block opening a Document while Recent Documents are being persisted', async () => {
+    const recentSave = deferred<void>();
+    const deps = dependencies(async () => []);
+    vi.mocked(deps.storage.read).mockResolvedValue('# Opened\n');
+    vi.mocked(deps.recentDocuments.save).mockReturnValue(recentSave.promise);
+    const { result } = renderHook(() => useDocumentSession(deps));
+    await waitFor(() => expect(result.current.ready).toBe(true));
+
+    let opened = false;
+    await act(async () => {
+      opened = await result.current.openDocument('C:\\notes\\opened.md');
+    });
+
+    expect(opened).toBe(true);
+    expect(result.current.currentDocumentPath).toBe('C:\\notes\\opened.md');
+    expect(result.current.content).toBe('# Opened\n');
+
+    await act(async () => recentSave.resolve());
+  });
+
+  it('restores persisted content when changes are explicitly discarded', async () => {
+    const deps = dependencies(async () => []);
+    vi.mocked(deps.storage.getStartupDocument).mockResolvedValue('C:\\notes\\draft.md');
+    vi.mocked(deps.storage.read).mockResolvedValue('# Saved\n');
+    const { result } = renderHook(() => useDocumentSession(deps));
+    await waitFor(() => expect(result.current.ready).toBe(true));
+
+    act(() => result.current.setContent('# Unsaved\n'));
+    expect(result.current.isDirty).toBe(true);
+
+    act(() => result.current.discardChanges());
+    expect(result.current.content).toBe('# Saved\n');
+    expect(result.current.isDirty).toBe(false);
+  });
+
   it('uses the unique path returned for a newly created Document', async () => {
     const deps = dependencies(async () => []);
     vi.mocked(deps.storage.createUntitled).mockResolvedValue('C:\\notes\\untitled-2.md');

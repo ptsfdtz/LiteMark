@@ -77,8 +77,8 @@
 
 /* 滚动条样式 */
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 7px;
+  height: 7px;
 }
 
 ::-webkit-scrollbar-track {
@@ -105,6 +105,8 @@ body {
   color: var(--text-color);
   background-color: var(--background-color);
   font-family: Inter, 'Segoe UI', 'Microsoft YaHei UI', sans-serif;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+  scrollbar-width: thin;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

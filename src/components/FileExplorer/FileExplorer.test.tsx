@@ -69,10 +69,8 @@ describe('FileExplorer', () => {
     await user.click(screen.getByRole('button', { name: 'guide.md' }));
 
     expect(onOpenFile).toHaveBeenCalledWith('C:\\workspace\\docs\\guide.md');
-    expect(screen.getByRole('button', { name: 'logo.png' })).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    );
+    await user.click(screen.getByRole('button', { name: 'logo.png' }));
+    expect(onOpenFile).toHaveBeenCalledWith('C:\\workspace\\logo.png');
 
     await user.click(screen.getByRole('button', { name: 'Add folder' }));
     expect(onChooseDirectory).toHaveBeenCalledOnce();
@@ -87,7 +85,7 @@ describe('FileExplorer', () => {
     expect(screen.getByRole('alertdialog', { name: 'Confirm removal of notes' })).toHaveTextContent(
       'Files on disk will not be deleted',
     );
-    await user.click(screen.getByRole('button', { name: 'Remove', exact: true }));
+    await user.click(screen.getByRole('button', { name: /^Remove$/ }));
     expect(onRemoveDirectory).toHaveBeenCalledWith('C:\\notes');
 
     const resizeHandle = screen.getByRole('separator', { name: 'Resize file explorer' });
