@@ -48,15 +48,19 @@
 }
 
 .title {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-color);
   font-size: 0.8rem;
   font-weight: 650;
   letter-spacing: 0;
-  text-transform: uppercase;
-  color: var(--text-color);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .headerActions {
   display: flex;
+  flex: none;
   align-items: center;
   gap: 0.4rem;
 }

@@ -20,6 +20,12 @@ fn write_text_file(path: String, content: String) -> StorageResult<()> {
     document_storage::atomic_write_text_file(Path::new(&path), &content)
 }
 
+/// Permanently delete one regular file. Directories and symlinks are rejected.
+#[tauri::command]
+fn delete_file(path: String) -> StorageResult<()> {
+    document_storage::delete_file(Path::new(&path))
+}
+
 /// Create a markdown document with initial content without replacing an existing one.
 #[tauri::command]
 fn create_untitled_file(dir_path: String, content: String) -> StorageResult<String> {
@@ -80,6 +86,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             read_text_file,
             write_text_file,
+            delete_file,
             create_untitled_file,
             list_text_files,
             list_directory_tree,

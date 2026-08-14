@@ -5,6 +5,7 @@
   "windows": ["main"],
   "permissions": [
     "opener:allow-open-url",
+    "opener:allow-reveal-item-in-dir",
     "opener:allow-default-urls"
   ]
 }

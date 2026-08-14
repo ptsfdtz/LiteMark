@@ -9,6 +9,7 @@ import { useResizablePanel } from '@/hooks/useResizablePanel';
 interface AgentPanelProps {
   session: AgentSession;
   isConfigured: boolean;
+  modelName: string;
   onClose: () => void;
 }
 
@@ -20,7 +21,7 @@ const toolNameKeys: Record<string, TranslationKey> = {
   read_file: 'agent.tool.readFile',
 };
 
-const AgentPanel: React.FC<AgentPanelProps> = ({ session, isConfigured, onClose }) => {
+const AgentPanel: React.FC<AgentPanelProps> = ({ session, isConfigured, modelName, onClose }) => {
   const { t } = useI18n();
   const [input, setInput] = useState('');
   const listRef = useRef<HTMLDivElement>(null);
@@ -35,6 +36,7 @@ const AgentPanel: React.FC<AgentPanelProps> = ({ session, isConfigured, onClose 
 
   const { items, status, error, send, stop, clear, applyEdit, respondPermission } = session;
   const running = status === 'running';
+  const panelTitle = isConfigured && modelName.trim() ? modelName.trim() : t('agent.title');
 
   useEffect(() => {
     const list = listRef.current;
@@ -67,7 +69,9 @@ const AgentPanel: React.FC<AgentPanelProps> = ({ session, isConfigured, onClose 
         onKeyDown={onResizeKeyDown}
       />
       <div className={styles.header}>
-        <span className={styles.title}>{t('agent.title')}</span>
+        <span className={styles.title} title={panelTitle}>
+          {panelTitle}
+        </span>
         <div className={styles.headerActions}>
           <button
             className={styles.headerButton}

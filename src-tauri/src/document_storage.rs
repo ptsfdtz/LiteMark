@@ -65,6 +65,18 @@ pub fn read_text_file(path: &Path) -> StorageResult<String> {
     fs::read_to_string(path).map_err(StorageError::from)
 }
 
+pub fn delete_file(path: &Path) -> StorageResult<()> {
+    let metadata = fs::symlink_metadata(path)?;
+    if !metadata.file_type().is_file() {
+        return Err(StorageError::new(StorageErrorCategory::InvalidPath));
+    }
+
+    let parent = document_parent(path)?;
+    fs::remove_file(path)?;
+    sync_directory(parent)?;
+    Ok(())
+}
+
 pub fn is_image_extension(path: &Path) -> bool {
     path.extension()
         .and_then(|extension| extension.to_str())
@@ -421,6 +433,7 @@ pub fn rename_document(current_path: &Path, new_name: &str) -> StorageResult<Pat
 mod tests {
     use super::atomic_write_text_file;
     use super::create_untitled_file;
+    use super::delete_file;
     use super::document_parent;
     use super::is_image_extension;
     use super::list_directory_tree;
@@ -462,6 +475,25 @@ mod tests {
             fs::read_to_string(created_path).expect("read new document"),
             "# New document\n"
         );
+    }
+
+    #[test]
+    fn deleting_a_file_removes_it_without_allowing_directories() {
+        let directory = tempfile::tempdir().expect("temporary directory");
+        let file_path = directory.path().join("remove.md");
+        let child_directory = directory.path().join("keep");
+        fs::write(&file_path, "delete me").expect("seed document");
+        fs::create_dir(&child_directory).expect("create directory");
+
+        delete_file(&file_path).expect("delete document");
+        assert!(!file_path.exists());
+        assert_eq!(
+            delete_file(&child_directory)
+                .expect_err("directories must not be deleted")
+                .category,
+            StorageErrorCategory::InvalidPath
+        );
+        assert!(child_directory.exists());
     }
 
     #[test]

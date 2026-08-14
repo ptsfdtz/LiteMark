@@ -27,7 +27,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { isTauri } from '@tauri-apps/api/core';
 import type { WysiwygEditor } from '@/types/editor';
 import { registerWindowCloseGuard } from '@/modules/windowCloseGuard/registerWindowCloseGuard';
-import { listDirectoryTree } from '@/modules/directoryTree';
+import { deleteWorkspaceFile, listDirectoryTree } from '@/modules/directoryTree';
 import { getFileViewKind } from '@/types/fileTree';
 import { loadWorkspaceDirectories, saveWorkspaceDirectories } from '@/utils/workspaceStore';
 import OpenTabs from '@/components/OpenTabs/OpenTabs';
@@ -368,6 +368,33 @@ const Layout: React.FC = () => {
     });
   };
 
+  const reorderWorkspaceDirectory = (
+    sourcePath: string,
+    targetPath: string,
+    position: 'before' | 'after',
+  ) => {
+    setWorkspaceRoots((current) => {
+      const sourceIndex = current.findIndex(
+        (root) => normalizePath(root.path) === normalizePath(sourcePath),
+      );
+      if (sourceIndex < 0 || normalizePath(sourcePath) === normalizePath(targetPath))
+        return current;
+
+      const next = [...current];
+      const [source] = next.splice(sourceIndex, 1);
+      const targetIndex = next.findIndex(
+        (root) => normalizePath(root.path) === normalizePath(targetPath),
+      );
+      if (!source || targetIndex < 0) return current;
+
+      next.splice(targetIndex + (position === 'after' ? 1 : 0), 0, source);
+      void saveWorkspaceDirectories(next.map((root) => root.path)).catch((error) => {
+        void showDocumentError(error, 'dialog.settingsSaveFailed');
+      });
+      return next;
+    });
+  };
+
   const chooseDocument = async () => {
     if (!documentSessionReady) return false;
     try {
@@ -467,6 +494,37 @@ const Layout: React.FC = () => {
     const nextPath = nextTabs[Math.min(closingIndex, nextTabs.length - 1)] ?? null;
     setActiveFilePath(null);
     if (nextPath) await handleActivateTab(nextPath);
+    else if (path === currentFilePath) documentSession.closeDocument();
+  };
+
+  const handleDeleteWorkspaceFile = async (path: string) => {
+    const deletingCurrentDocument = path === currentFilePath;
+    if (deletingCurrentDocument && isDirty && !(await confirmDiscard())) return false;
+
+    try {
+      await deleteWorkspaceFile(path);
+      void documentSession.removeRecentDocument(path).catch((error) => {
+        void showDocumentError(error, 'dialog.recentSaveFailed');
+      });
+
+      const closingIndex = openTabs.indexOf(path);
+      const nextTabs = openTabs.filter((tabPath) => tabPath !== path);
+      setOpenTabs(nextTabs);
+      if (deletingCurrentDocument) documentSession.closeDocument();
+
+      if (activeFilePath === path) {
+        const nextPath = nextTabs[Math.min(closingIndex, nextTabs.length - 1)] ?? null;
+        setActiveFilePath(null);
+        if (nextPath) await handleActivateTab(nextPath);
+      }
+
+      const root = workspaceRoots.find((candidate) => pathBelongsToDirectory(path, candidate.path));
+      if (root) await refreshWorkspaceTree(root.path);
+      return true;
+    } catch (error) {
+      await showDocumentError(error, 'dialog.deleteFailed');
+      return false;
+    }
   };
 
   const shortcutActionsRef = useRef({
@@ -724,6 +782,8 @@ const Layout: React.FC = () => {
             onOpenFile={handleOpenDocument}
             onChooseDirectory={chooseDirectory}
             onRemoveDirectory={removeWorkspaceDirectory}
+            onReorderDirectory={reorderWorkspaceDirectory}
+            onDeleteFile={handleDeleteWorkspaceFile}
             onClose={() => setExplorerVisible(false)}
           />
         )}
@@ -754,6 +814,7 @@ const Layout: React.FC = () => {
           <AgentPanel
             session={agentSession}
             isConfigured={agentConfigured}
+            modelName={agentSettings.model}
             onClose={() => setAgentSettings({ ...agentSettings, panelVisible: false })}
           />
         )}

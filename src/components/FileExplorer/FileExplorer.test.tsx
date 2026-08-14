@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '@/locales';
@@ -48,6 +48,8 @@ describe('FileExplorer', () => {
     const onOpenFile = vi.fn();
     const onChooseDirectory = vi.fn();
     const onRemoveDirectory = vi.fn();
+    const onReorderDirectory = vi.fn();
+    const onDeleteFile = vi.fn().mockResolvedValue(true);
 
     render(
       <I18nProvider>
@@ -60,6 +62,8 @@ describe('FileExplorer', () => {
           onOpenFile={onOpenFile}
           onChooseDirectory={onChooseDirectory}
           onRemoveDirectory={onRemoveDirectory}
+          onReorderDirectory={onReorderDirectory}
+          onDeleteFile={onDeleteFile}
           onClose={vi.fn()}
         />
       </I18nProvider>,
@@ -79,6 +83,43 @@ describe('FileExplorer', () => {
     expect(screen.queryByRole('button', { name: 'readme.md' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'notes' }));
     expect(screen.getByRole('button', { name: 'readme.md' })).toBeInTheDocument();
+
+    const workspaceButton = screen.getByRole('button', { name: 'workspace' });
+    const notesButton = screen.getByRole('button', { name: 'notes' });
+    const notesHeader = notesButton.parentElement as HTMLDivElement;
+    const dataTransfer = {
+      dropEffect: 'none',
+      effectAllowed: 'none',
+      setData: vi.fn(),
+    };
+    vi.spyOn(notesHeader, 'getBoundingClientRect').mockReturnValue({
+      top: 0,
+      bottom: 34,
+      left: 0,
+      right: 252,
+      width: 252,
+      height: 34,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    });
+    fireEvent.dragStart(workspaceButton, { dataTransfer });
+    fireEvent.dragOver(notesHeader, { clientY: 30, dataTransfer });
+    fireEvent.drop(notesHeader, { clientY: 30, dataTransfer });
+    expect(onReorderDirectory).toHaveBeenCalledWith('C:\\workspace', 'C:\\notes', 'after');
+
+    const logoButton = screen.getByRole('button', { name: 'logo.png' });
+    await user.click(logoButton);
+    await user.keyboard('{Delete}');
+    const keyboardDeleteDialog = screen.getByRole('alertdialog', { name: 'Delete file?' });
+    await user.click(within(keyboardDeleteDialog).getByRole('button', { name: 'Cancel' }));
+
+    fireEvent.contextMenu(logoButton, { clientX: 32, clientY: 32 });
+    const contextMenu = screen.getByRole('menu', { name: 'Actions for logo.png' });
+    await user.click(within(contextMenu).getByRole('menuitem', { name: 'Delete' }));
+    const deleteDialog = screen.getByRole('alertdialog', { name: 'Delete file?' });
+    await user.click(within(deleteDialog).getByRole('button', { name: 'Delete' }));
+    expect(onDeleteFile).toHaveBeenCalledWith('C:\\workspace\\logo.png');
 
     await user.click(screen.getByRole('button', { name: 'Remove notes from explorer' }));
     expect(onRemoveDirectory).not.toHaveBeenCalled();

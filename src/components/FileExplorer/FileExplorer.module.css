@@ -49,7 +49,15 @@
   font-size: 12px;
   font-weight: 600;
   text-align: left;
-  cursor: pointer;
+  cursor: grab;
+}
+
+.rootButton:active {
+  cursor: grabbing;
+}
+
+.rootButton.dragging {
+  opacity: 0.45;
 }
 
 .rootButton span {
@@ -99,6 +107,27 @@
   min-height: 0;
   padding: 0 0 12px;
   overflow: hidden auto;
+  scrollbar-color: transparent transparent;
+  scrollbar-width: thin;
+}
+
+.treeScroll::-webkit-scrollbar {
+  width: 5px;
+}
+
+.treeScroll::-webkit-scrollbar-track,
+.treeScroll::-webkit-scrollbar-thumb {
+  background: transparent;
+}
+
+.treeScroll:hover,
+.treeScroll:focus-within {
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
+.treeScroll:hover::-webkit-scrollbar-thumb,
+.treeScroll:focus-within::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
 }
 
 .tree,
@@ -136,6 +165,14 @@
 .rootHeader:hover,
 .rootHeader:focus-within {
   background: color-mix(in srgb, var(--control-hover) 66%, transparent);
+}
+
+.rootHeader.dropBefore {
+  box-shadow: inset 0 2px var(--accent-color);
+}
+
+.rootHeader.dropAfter {
+  box-shadow: inset 0 -2px var(--accent-color);
 }
 
 .rootHeader .rootButton > svg:first-child {
@@ -255,6 +292,10 @@
   background: color-mix(in srgb, var(--accent-color) 10%, transparent);
 }
 
+.treeRow.selected:not(.active) {
+  background: color-mix(in srgb, var(--accent-color) 6%, transparent);
+}
+
 .treeRow.active::before {
   position: absolute;
   left: 0;
@@ -344,4 +385,139 @@
 
 .mediaIcon {
   color: #8a6599;
+}
+
+.contextMenu {
+  position: fixed;
+  z-index: 40;
+  width: 224px;
+  padding: 4px;
+  color: var(--text-color);
+  background: var(--paper-bg);
+  border: 1px solid var(--hairline-color);
+  border-radius: 5px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 16%);
+}
+
+.contextMenuItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 30px;
+  padding: 0 8px;
+  color: var(--text-color);
+  background: transparent;
+  border: 0;
+  border-radius: 3px;
+  font-family: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.contextMenuItem svg {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  stroke-width: 1.8;
+}
+
+.contextMenuItem span {
+  flex: 1;
+}
+
+.contextMenuItem kbd {
+  color: var(--muted-text);
+  font-family: inherit;
+  font-size: 11px;
+}
+
+.contextMenuItem:hover:not(:disabled),
+.contextMenuItem:focus-visible {
+  background: var(--control-hover);
+}
+
+.contextMenuItem:disabled {
+  color: var(--muted-text);
+  cursor: not-allowed;
+}
+
+.deleteMenuItem {
+  color: var(--error-color, #c62828);
+}
+
+.contextMenuDivider {
+  height: 1px;
+  margin: 4px;
+  background: var(--hairline-color);
+}
+
+.deleteDialogBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  background: rgb(0 0 0 / 20%);
+}
+
+.deleteDialog {
+  width: min(360px, 100%);
+  padding: 18px;
+  color: var(--text-color);
+  background: var(--paper-bg);
+  border: 1px solid var(--hairline-color);
+  border-radius: 6px;
+  box-shadow: 0 12px 30px rgb(0 0 0 / 18%);
+}
+
+.deleteDialog h2 {
+  margin: 0;
+  color: var(--heading-color);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.deleteDialog p {
+  margin: 8px 0 0;
+  color: var(--muted-text);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.deleteDialogActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.deleteDialogActions button {
+  height: 30px;
+  padding: 0 11px;
+  color: var(--text-color);
+  background: transparent;
+  border: 1px solid var(--hairline-color);
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.deleteDialogActions button:hover {
+  background: var(--control-hover);
+}
+
+.deleteDialogActions .deleteConfirmButton {
+  color: #fff;
+  background: var(--error-color, #c62828);
+  border-color: var(--error-color, #c62828);
+}
+
+.deleteDialogActions .deleteConfirmButton:hover {
+  filter: brightness(0.94);
 }
