@@ -131,6 +131,8 @@ const common = {
   'explorer.show': 'ファイルツリーを表示',
   'explorer.unsupported': '認識済みですが LiteMark ではまだ開けません',
   'explorer.empty': 'フォルダーは空です',
+  'explorer.standaloneFiles': '単独で開いたファイル',
+  'explorer.removeStandaloneFile': '{name} をファイルツリーから外す',
   'explorer.fileActions': '{name} の操作',
   'explorer.folderActions': '{name} の操作',
   'explorer.newFile': '新規ファイル',

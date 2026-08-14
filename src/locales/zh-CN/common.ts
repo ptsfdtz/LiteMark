@@ -129,6 +129,8 @@ const common = {
   'explorer.show': '显示文件目录',
   'explorer.unsupported': '已识别，暂不支持在 LiteMark 中打开',
   'explorer.empty': '文件夹为空',
+  'explorer.standaloneFiles': '单独打开的文件',
+  'explorer.removeStandaloneFile': '从文件目录中移除 {name}',
   'explorer.fileActions': '{name} 的操作',
   'explorer.folderActions': '{name} 的操作',
   'explorer.newFile': '新建文件',
@@ -175,7 +177,7 @@ const common = {
   'dialog.fileMissing': '文件不存在或无法访问',
   'file.renameHint': '双击重命名',
   'file.unsaved': '存在未保存修改',
-  'file.saved': '已保存',
+  'file.saved': '保存成功',
 } as const;
 
 export default common;

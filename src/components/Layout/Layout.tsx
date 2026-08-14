@@ -257,16 +257,8 @@ const Layout: React.FC = () => {
       (document) =>
         !workspaceRoots.some((root) => pathBelongsToDirectory(document.path, root.path)),
     )
-    .slice(0, 8)
     .map(({ path, name }) => ({ path, name }));
-  const recentWorkspaceFolders = workspaceRoots.slice(0, 8).map((root) => ({
-    path: root.path,
-    name:
-      root.path
-        .replace(/[\\/]+$/, '')
-        .split(/[\\/]/)
-        .pop() || root.path,
-  }));
+  const explorerHasItems = workspaceRoots.length > 0 || recentStandaloneFiles.length > 0;
 
   const agentSession = useAgentSession({
     getSettings: () => agentSettings,
@@ -348,7 +340,10 @@ const Layout: React.FC = () => {
     }
     try {
       const opened = await documentSession.openDocument(path);
-      if (opened) rememberTab(path);
+      if (opened) {
+        rememberTab(path);
+        setExplorerVisible(true);
+      }
       return opened;
     } catch (error) {
       await showDocumentError(error, 'dialog.fileMissing');
@@ -419,7 +414,6 @@ const Layout: React.FC = () => {
       void saveWorkspaceDirectories(next.map((root) => root.path)).catch((error) => {
         void showDocumentError(error, 'dialog.settingsSaveFailed');
       });
-      if (next.length === 0) setExplorerVisible(false);
       return next;
     });
   };
@@ -850,10 +844,6 @@ const Layout: React.FC = () => {
         <Toolbar
           onOpenFolder={() => void chooseDirectory()}
           onOpenDocument={() => void chooseDocument()}
-          recentFolders={recentWorkspaceFolders}
-          recentFiles={recentStandaloneFiles}
-          onOpenRecentFolder={(path) => void handleOpenDirectory(path)}
-          onOpenRecentDocument={(path) => void handleOpenDocument(path)}
           onSave={handleSave}
           onSaveAs={handleSaveAs}
           editor={markdownDocument ? editorInstance : null}
@@ -922,9 +912,10 @@ const Layout: React.FC = () => {
         }}
       />
       <div className={styles.mainArea}>
-        {workspaceRoots.length > 0 && explorerRendered && (
+        {explorerHasItems && explorerRendered && (
           <FileExplorer
             roots={workspaceRoots}
+            standaloneFiles={recentStandaloneFiles}
             currentPath={activeFilePath}
             onOpenFile={handleOpenDocument}
             onChooseDirectory={chooseDirectory}
@@ -934,6 +925,13 @@ const Layout: React.FC = () => {
             onDeleteFile={handleDeleteWorkspaceFile}
             onCreateFile={handleCreateWorkspaceFile}
             onDeleteDirectory={handleDeleteWorkspaceDirectory}
+            onRemoveStandaloneFile={async (path) => {
+              try {
+                await documentSession.removeRecentDocument(path);
+              } catch (error) {
+                await showDocumentError(error, 'dialog.recentSaveFailed');
+              }
+            }}
             onClose={() => setExplorerVisible(false)}
             closing={!explorerVisible}
             onCloseComplete={() => setExplorerRendered(false)}
@@ -945,7 +943,7 @@ const Layout: React.FC = () => {
             activePath={activeFilePath}
             dirtyPath={isDirty ? currentFilePath : null}
             leadingControl={
-              workspaceRoots.length > 0 && !explorerVisible ? (
+              explorerHasItems && !explorerVisible ? (
                 <button
                   type="button"
                   className={styles.showExplorerButton}

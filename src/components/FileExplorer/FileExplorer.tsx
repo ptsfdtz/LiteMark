@@ -31,8 +31,14 @@ export interface FileExplorerRoot {
   nodes: FileTreeNode[];
 }
 
+export interface FileExplorerStandaloneFile {
+  path: string;
+  name: string;
+}
+
 interface FileExplorerProps {
   roots: FileExplorerRoot[];
+  standaloneFiles: FileExplorerStandaloneFile[];
   currentPath: string | null;
   onOpenFile: (path: string) => boolean | void | Promise<boolean | void>;
   onChooseDirectory: () => void | Promise<void>;
@@ -46,6 +52,7 @@ interface FileExplorerProps {
   onDeleteFile: (path: string) => Promise<boolean>;
   onCreateFile: (directory: string) => Promise<boolean>;
   onDeleteDirectory: (path: string) => Promise<boolean>;
+  onRemoveStandaloneFile: (path: string) => void | Promise<void>;
   onClose: () => void;
   /** When true the panel plays its close animation before unmounting. */
   closing?: boolean;
@@ -279,6 +286,7 @@ const TreeItem: React.FC<TreeItemProps> = ({
 
 const FileExplorer: React.FC<FileExplorerProps> = ({
   roots,
+  standaloneFiles,
   currentPath,
   onOpenFile,
   onChooseDirectory,
@@ -288,6 +296,7 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
   onDeleteFile,
   onCreateFile,
   onDeleteDirectory,
+  onRemoveStandaloneFile,
   onClose,
   closing = false,
   onCloseComplete,
@@ -659,6 +668,66 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
             </section>
           );
         })}
+        {standaloneFiles.length > 0 && (
+          <section className={styles.standaloneSection}>
+            <ul role="tree" className={styles.tree} aria-label={t('explorer.standaloneFiles')}>
+              {standaloneFiles.map((file) => {
+                const supported = getFileViewKind(file.path) !== 'unsupported';
+                const selected = selectedFile?.path === file.path;
+                const active = currentPath === file.path;
+                const extension = file.name.split('.').pop()?.toLowerCase() ?? null;
+                return (
+                  <li key={file.path} className={styles.standaloneRow} role="treeitem">
+                    <button
+                      type="button"
+                      className={`${styles.treeRow} ${active ? styles.active : ''} ${
+                        selected ? styles.selected : ''
+                      } ${supported ? '' : styles.unsupported}`}
+                      onClick={() => {
+                        const target = { path: file.path, name: file.name, supported };
+                        setSelectedFile(target);
+                        if (supported) void onOpenFile(file.path);
+                      }}
+                      onContextMenu={(event) => {
+                        event.preventDefault();
+                        const x = Math.max(8, Math.min(event.clientX, window.innerWidth - 232));
+                        const y = Math.max(8, Math.min(event.clientY, window.innerHeight - 208));
+                        setFolderContextMenu(null);
+                        setSelectedFile({ path: file.path, name: file.name, supported });
+                        setContextMenu({
+                          path: file.path,
+                          name: file.name,
+                          supported,
+                          x,
+                          y,
+                          relativePath: getWorkspaceRelativePath(file.path, roots),
+                        });
+                      }}
+                      title={file.path}
+                      aria-current={active ? 'page' : undefined}
+                      aria-disabled={!supported}
+                    >
+                      <span className={styles.chevron} aria-hidden="true" />
+                      <span className={styles.itemIcon} aria-hidden="true">
+                        <FileIcon extension={extension} />
+                      </span>
+                      <span className={styles.itemName}>{file.name}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`${styles.headerButton} ${styles.standaloneRemoveButton}`}
+                      onClick={() => void onRemoveStandaloneFile(file.path)}
+                      title={t('explorer.removeStandaloneFile', { name: file.name })}
+                      aria-label={t('explorer.removeStandaloneFile', { name: file.name })}
+                    >
+                      <LuX aria-hidden="true" />
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        )}
       </div>
       {contextMenu && (
         <div

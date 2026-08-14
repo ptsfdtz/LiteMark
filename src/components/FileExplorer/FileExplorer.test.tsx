@@ -53,6 +53,8 @@ describe('FileExplorer', () => {
     const onDeleteFile = vi.fn().mockResolvedValue(true);
     const onCreateFile = vi.fn().mockResolvedValue(true);
     const onDeleteDirectory = vi.fn().mockResolvedValue(true);
+    const onRemoveStandaloneFile = vi.fn().mockResolvedValue(undefined);
+    const standaloneFile = { path: 'C:\\scratch\\draft.md', name: 'draft.md' };
 
     render(
       <I18nProvider>
@@ -61,6 +63,7 @@ describe('FileExplorer', () => {
             { path: 'C:\\workspace', nodes: tree },
             { path: 'C:\\notes', nodes: secondTree },
           ]}
+          standaloneFiles={[standaloneFile]}
           currentPath={null}
           onOpenFile={onOpenFile}
           onChooseDirectory={onChooseDirectory}
@@ -70,6 +73,7 @@ describe('FileExplorer', () => {
           onDeleteFile={onDeleteFile}
           onCreateFile={onCreateFile}
           onDeleteDirectory={onDeleteDirectory}
+          onRemoveStandaloneFile={onRemoveStandaloneFile}
           onClose={vi.fn()}
         />
       </I18nProvider>,
@@ -87,6 +91,10 @@ describe('FileExplorer', () => {
 
     await user.click(screen.getByRole('button', { name: 'Refresh explorer' }));
     expect(onRefresh).toHaveBeenCalledOnce();
+
+    expect(screen.getByRole('button', { name: 'draft.md' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Remove draft.md from explorer' }));
+    expect(onRemoveStandaloneFile).toHaveBeenCalledWith(standaloneFile.path);
 
     await user.click(screen.getByRole('button', { name: 'notes' }));
     expect(screen.queryByRole('button', { name: 'readme.md' })).not.toBeInTheDocument();

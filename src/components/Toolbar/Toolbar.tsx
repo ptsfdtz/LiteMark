@@ -29,10 +29,6 @@ import { useI18n } from '@/locales/useI18n';
 const Toolbar: React.FC<ToolbarProps> = ({
   onOpenFolder,
   onOpenDocument,
-  recentFolders = [],
-  recentFiles = [],
-  onOpenRecentFolder,
-  onOpenRecentDocument,
   onSave,
   onSaveAs,
   className,
@@ -619,44 +615,6 @@ const Toolbar: React.FC<ToolbarProps> = ({
                 <kbd aria-hidden="true">Ctrl+Shift+O</kbd>
               </button>
             )}
-            {(recentFolders.length > 0 || recentFiles.length > 0) && (
-              <div className={styles.openMenuDivider} role="separator" />
-            )}
-            {recentFolders.map((folder) => (
-              <button
-                key={folder.path}
-                type="button"
-                className={styles.recentOpenItem}
-                role="menuitem"
-                title={folder.path}
-                onClick={() => {
-                  setOpenMenuOpen(false);
-                  onOpenRecentFolder?.(folder.path);
-                }}
-              >
-                <LuFolderOpen aria-hidden="true" />
-                <span>{folder.name}</span>
-              </button>
-            ))}
-            {recentFolders.length > 0 && recentFiles.length > 0 && (
-              <div className={styles.openMenuDivider} role="separator" />
-            )}
-            {recentFiles.map((file) => (
-              <button
-                key={file.path}
-                type="button"
-                className={styles.recentOpenItem}
-                role="menuitem"
-                title={file.path}
-                onClick={() => {
-                  setOpenMenuOpen(false);
-                  onOpenRecentDocument?.(file.path);
-                }}
-              >
-                <LuFileText aria-hidden="true" />
-                <span>{file.name}</span>
-              </button>
-            ))}
           </div>,
           document.body,
         )}

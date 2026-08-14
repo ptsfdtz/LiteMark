@@ -12,9 +12,9 @@ const SaveSuccessToast: React.FC<{ show: boolean }> = ({ show }) => {
       role="status"
       aria-live="polite"
       aria-hidden={!show}
+      aria-label={t('file.saved')}
     >
       <LuCheck aria-hidden="true" />
-      <span>{t('file.saved')}</span>
     </div>
   );
 };

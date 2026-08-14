@@ -198,6 +198,35 @@
   border-top: 1px solid var(--hairline-color);
 }
 
+.standaloneSection {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--hairline-color);
+}
+
+.standaloneRow {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.standaloneRow .treeRow {
+  flex: 1;
+}
+
+.standaloneRemoveButton {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  margin-right: 8px;
+  opacity: 0;
+}
+
+.standaloneRow:hover .standaloneRemoveButton,
+.standaloneRemoveButton:focus-visible {
+  opacity: 1;
+}
+
 .rootHeader {
   display: flex;
   align-items: center;

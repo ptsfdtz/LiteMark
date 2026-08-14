@@ -107,6 +107,8 @@
   box-shadow: 0 8px 24px rgb(0 0 0 / 16%);
   box-sizing: border-box;
   z-index: 80;
+  transform-origin: top left;
+  animation: menu-pop 0.12s ease;
 }
 
 .blockMenuOption {
@@ -164,6 +166,8 @@
   box-shadow: 0 8px 24px rgb(0 0 0 / 16%);
   box-sizing: border-box;
   z-index: 80;
+  transform-origin: top left;
+  animation: menu-pop 0.12s ease;
 }
 
 .linkLabel {
@@ -251,6 +255,15 @@
   border-radius: 5px;
   box-shadow: 0 8px 24px rgb(0 0 0 / 16%);
   box-sizing: border-box;
+  transform-origin: top left;
+  animation: menu-pop 0.12s ease;
+}
+
+@keyframes menu-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-3px);
+  }
 }
 
 .openMenu button {
@@ -291,21 +304,12 @@
   font-size: 11px;
 }
 
-.openMenuDivider {
-  flex: none;
-  height: 1px;
-  margin: 4px 3px;
-  background: var(--hairline-color);
-}
-
-.openMenu .recentOpenItem {
-  color: var(--muted-text);
-}
-
-.openMenu .recentOpenItem span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+@media (prefers-reduced-motion: reduce) {
+  .openMenu,
+  .blockMenu,
+  .linkPopover {
+    animation: none;
+  }
 }
 
 @media (width <= 980px) {

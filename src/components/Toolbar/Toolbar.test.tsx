@@ -33,10 +33,6 @@ describe('Toolbar links', () => {
     const user = userEvent.setup();
     const onOpenDocument = vi.fn();
     const onOpenFolder = vi.fn();
-    const onOpenRecentFolder = vi.fn();
-    const onOpenRecentDocument = vi.fn();
-    const recentFolder = { path: 'C:\\notes', name: 'notes' };
-    const recentFile = { path: 'C:\\scratch\\draft.md', name: 'draft.md' };
 
     render(
       <I18nProvider>
@@ -44,10 +40,6 @@ describe('Toolbar links', () => {
           editor={createEditor().editor}
           onOpenDocument={onOpenDocument}
           onOpenFolder={onOpenFolder}
-          recentFolders={[recentFolder]}
-          recentFiles={[recentFile]}
-          onOpenRecentFolder={onOpenRecentFolder}
-          onOpenRecentDocument={onOpenRecentDocument}
         />
       </I18nProvider>,
     );
@@ -61,14 +53,6 @@ describe('Toolbar links', () => {
     await user.click(screen.getByRole('button', { name: 'Open' }));
     await user.click(screen.getByRole('menuitem', { name: 'Open Folder' }));
     expect(onOpenFolder).toHaveBeenCalledOnce();
-
-    await user.click(screen.getByRole('button', { name: 'Open' }));
-    await user.click(screen.getByRole('menuitem', { name: 'notes' }));
-    expect(onOpenRecentFolder).toHaveBeenCalledWith(recentFolder.path);
-
-    await user.click(screen.getByRole('button', { name: 'Open' }));
-    await user.click(screen.getByRole('menuitem', { name: 'draft.md' }));
-    expect(onOpenRecentDocument).toHaveBeenCalledWith(recentFile.path);
   });
 
   it('opens an in-app link editor instead of a browser prompt', async () => {

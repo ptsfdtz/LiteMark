@@ -131,6 +131,8 @@ const common = {
   'explorer.show': 'Show file explorer',
   'explorer.unsupported': 'Recognized, but not supported in LiteMark yet',
   'explorer.empty': 'Folder is empty',
+  'explorer.standaloneFiles': 'Standalone files',
+  'explorer.removeStandaloneFile': 'Remove {name} from explorer',
   'explorer.fileActions': 'Actions for {name}',
   'explorer.folderActions': 'Actions for {name}',
   'explorer.newFile': 'New File',
