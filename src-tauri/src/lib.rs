@@ -2,6 +2,7 @@
 use document_storage::{FileInfo, FileTreeNode, StorageResult};
 use std::env;
 use std::path::{Path, PathBuf};
+use tauri::Manager;
 
 mod agent;
 mod agent_completion;
@@ -17,6 +18,18 @@ fn read_text_file(path: String) -> StorageResult<String> {
 #[tauri::command]
 fn write_text_file(path: String, content: String) -> StorageResult<()> {
     document_storage::atomic_write_text_file(Path::new(&path), &content)
+}
+
+/// Permanently delete one regular file. Directories and symlinks are rejected.
+#[tauri::command]
+fn delete_file(path: String) -> StorageResult<()> {
+    document_storage::delete_file(Path::new(&path))
+}
+
+/// Permanently delete one real directory and its contents. Symlinks are rejected.
+#[tauri::command]
+fn delete_directory(path: String) -> StorageResult<()> {
+    document_storage::delete_directory(Path::new(&path))
 }
 
 /// Create a markdown document with initial content without replacing an existing one.
@@ -36,6 +49,36 @@ fn list_text_files(dir_path: String) -> StorageResult<Vec<FileInfo>> {
 #[tauri::command]
 fn list_directory_tree(dir_path: String) -> StorageResult<Vec<FileTreeNode>> {
     document_storage::list_directory_tree(Path::new(&dir_path))
+}
+
+/// Allow one validated local image through Tauri's read-only asset protocol.
+#[tauri::command]
+fn prepare_image_preview(app: tauri::AppHandle, path: String) -> Result<String, String> {
+    let canonical_path = std::fs::canonicalize(&path).map_err(|error| error.to_string())?;
+    if !canonical_path.is_file() || !document_storage::is_image_extension(&canonical_path) {
+        return Err("The selected path is not a supported image file.".to_owned());
+    }
+    app.asset_protocol_scope()
+        .allow_file(&canonical_path)
+        .map_err(|error| error.to_string())?;
+    Ok(canonical_path.to_string_lossy().into_owned())
+}
+
+/// Read one validated local PDF file and return its raw bytes for in-app preview.
+#[tauri::command]
+fn read_pdf_file(path: String) -> Result<tauri::ipc::Response, String> {
+    let canonical_path = std::fs::canonicalize(&path).map_err(|error| error.to_string())?;
+    if !canonical_path.is_file() || !document_storage::is_pdf_extension(&canonical_path) {
+        return Err("The selected path is not a supported PDF file.".to_owned());
+    }
+    let bytes = std::fs::read(&canonical_path).map_err(|error| error.to_string())?;
+    Ok(tauri::ipc::Response::new(bytes))
+}
+
+/// Write raw bytes to a file the user explicitly chose through the save dialog.
+#[tauri::command]
+fn write_binary_file(path: String, data: Vec<u8>) -> Result<(), String> {
+    std::fs::write(Path::new(&path), data).map_err(|error| error.to_string())
 }
 
 /// Rename a document within its current directory without replacing another file.
@@ -60,15 +103,26 @@ fn get_startup_file() -> Option<String> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+        }))
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_store::Builder::default().build())
         .invoke_handler(tauri::generate_handler![
             read_text_file,
             write_text_file,
+            delete_file,
+            delete_directory,
             create_untitled_file,
             list_text_files,
             list_directory_tree,
+            prepare_image_preview,
+            read_pdf_file,
+            write_binary_file,
             rename_document,
             get_startup_file,
             agent_completion::request_agent_completion,

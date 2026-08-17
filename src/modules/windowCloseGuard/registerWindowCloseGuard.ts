@@ -5,6 +5,7 @@ export type CloseRequestWindow = Pick<TauriWindow, 'destroy' | 'onCloseRequested
 export function registerWindowCloseGuard(
   window: CloseRequestWindow,
   canClose: () => Promise<boolean>,
+  beforeDestroy: () => Promise<void> = async () => undefined,
   onError: (error: unknown) => void = console.error,
 ): () => void {
   let disposed = false;
@@ -16,7 +17,14 @@ export function registerWindowCloseGuard(
       event.preventDefault();
       try {
         const closeAllowed = await canClose();
-        if (!disposed && closeAllowed) await window.destroy();
+        if (!disposed && closeAllowed) {
+          try {
+            await beforeDestroy();
+          } catch (error) {
+            onError(error);
+          }
+          if (!disposed) await window.destroy();
+        }
       } catch (error) {
         onError(error);
       }

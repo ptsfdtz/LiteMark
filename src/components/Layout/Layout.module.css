@@ -30,16 +30,20 @@
 .currentFileName {
   min-width: 0;
   max-width: 100%;
+  padding: 0;
   overflow: hidden;
   color: var(--muted-text);
   background: none;
+  border: 0;
+  font-family: inherit;
   font-size: 12px;
   font-weight: 560;
   letter-spacing: 0;
   text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
-  cursor: text;
+  cursor: pointer;
+  user-select: text;
 }
 
 .currentFileNameInput {
@@ -52,6 +56,7 @@
   border-radius: 4px;
   box-sizing: border-box;
   font-size: 12px;
+  cursor: text;
   outline: none;
 }
 
@@ -72,10 +77,24 @@
   overflow: hidden;
 }
 
+.documentArea {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  width: 0;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .editorCanvas {
   position: relative;
   display: flex;
   flex: 1;
+  width: 100%;
+  height: 0;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
@@ -83,6 +102,32 @@
 
 .editor {
   min-width: 0;
+}
+
+.showExplorerButton {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 30px;
+  height: 30px;
+  margin: 0 3px;
+  padding: 0;
+  color: var(--muted-text);
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.showExplorerButton:hover {
+  color: var(--heading-color);
+  background: var(--control-hover);
+}
+
+.showExplorerButton svg {
+  width: 16px;
+  height: 16px;
+  stroke-width: 1.8;
 }
 
 @media (width <= 1080px) {

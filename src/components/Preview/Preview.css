@@ -136,7 +136,7 @@
     color: var(--text-color, #414141);
     background: transparent;
     border: 0;
-    border-radius: 50%;
+    border-radius: 4px;
     box-shadow: none;
     cursor: pointer;
     opacity: 0.72;
@@ -222,7 +222,9 @@
     color: var(--link-color, #06c);
     text-decoration: none;
     border-bottom: 1px solid transparent;
-    transition: all 0.2s ease;
+    transition:
+      color 0.16s ease,
+      border-bottom-color 0.16s ease;
 
     &:hover {
       color: var(--link-hover-color, #049);
@@ -399,8 +401,10 @@
   width: 36px;
   height: 36px;
   background: none;
-  transition: all 0.2s ease;
-  border-radius: 18px;
+  transition:
+    color 0.16s ease,
+    background-color 0.16s ease;
+  border-radius: 4px;
   cursor: pointer;
   z-index: 100;
 

@@ -67,6 +67,10 @@ const CodeEditor: React.FC<EditorProps> = ({
           padding: { top: 24, bottom: 40 },
           readOnly,
           renderLineHighlight: 'line',
+          scrollbar: {
+            horizontalScrollbarSize: 7,
+            verticalScrollbarSize: 7,
+          },
           scrollBeyondLastLine: false,
           smoothScrolling: true,
           wordWrap: 'on',

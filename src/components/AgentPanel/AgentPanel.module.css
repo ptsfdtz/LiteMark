@@ -8,6 +8,21 @@
   background-color: var(--sidebar-bg, #fff);
   border-left: 1px solid var(--hairline-color, #ddd);
   overflow: hidden;
+  transition: width 0.22s ease;
+}
+
+.panel.resizing {
+  transition: none;
+}
+
+.panel.closing {
+  border-left-color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel {
+    transition: none;
+  }
 }
 
 .resizeHandle {
@@ -41,22 +56,71 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  height: 46px;
-  padding: 0 14px;
+  height: 36px;
+  padding: 0 10px;
   border-bottom: 1px solid var(--hairline-color, #ddd);
   box-sizing: border-box;
 }
 
 .title {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-color);
   font-size: 0.8rem;
   font-weight: 650;
   letter-spacing: 0;
-  text-transform: uppercase;
+  text-overflow: ellipsis;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.titleGroup {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+}
+
+.closeTitleButton {
+  display: flex;
+  flex: none;
+  justify-content: center;
+  align-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  color: var(--muted-text);
+  background: transparent;
+  border: 0;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.closeTitleButton:hover {
   color: var(--text-color);
+  background: var(--control-hover);
+}
+
+.closeTitleButton svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 1.8;
+}
+
+.scope {
+  flex: none;
+  padding: 2px 5px;
+  color: var(--muted-text);
+  background: var(--control-hover);
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.2;
 }
 
 .headerActions {
   display: flex;
+  flex: none;
   align-items: center;
   gap: 0.4rem;
 }
@@ -65,8 +129,8 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   padding: 0;
   color: var(--text-color);
   background: transparent;
@@ -89,25 +153,127 @@
 
 .headerButton:disabled {
   opacity: 0.4;
-  cursor: default;
+  cursor: not-allowed;
+}
+
+.conversationSection {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 152px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--hairline-color, #ddd);
+}
+
+.conversationList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.conversationRow {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  border-radius: 4px;
+}
+
+.conversationRow:hover,
+.activeConversation {
+  background: var(--control-hover);
+}
+
+.conversationButton {
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  padding: 0 6px;
+  overflow: hidden;
+  color: var(--text-color);
+  background: transparent;
+  border: 0;
+  font-family: inherit;
+  font-size: 12px;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.conversationTitleInput {
+  flex: 1;
+  min-width: 0;
+  height: 26px;
+  margin-left: 2px;
+  padding: 0 4px;
+  color: var(--text-color);
+  background: var(--paper-bg);
+  border: 1px solid var(--accent-color);
+  border-radius: 3px;
+  font-family: inherit;
+  font-size: 12px;
+  outline: none;
+}
+
+.conversationButton:disabled,
+.deleteConversationButton:disabled {
+  cursor: not-allowed;
+}
+
+.deleteConversationButton {
+  display: flex;
+  flex: none;
+  justify-content: center;
+  align-items: center;
+  width: 24px;
+  height: 24px;
+  margin-right: 2px;
+  padding: 0;
+  color: var(--muted-text);
+  background: transparent;
+  border: 0;
+  border-radius: 3px;
+  cursor: pointer;
+  opacity: 0;
+}
+
+.conversationRow:hover .deleteConversationButton,
+.deleteConversationButton:focus-visible {
+  opacity: 1;
+}
+
+.deleteConversationButton:hover:not(:disabled) {
+  color: var(--error-color, #d32f2f);
+  background: rgb(211 47 47 / 8%);
+}
+
+.deleteConversationButton svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 1.8;
 }
 
 .messages {
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: 0.75rem;
-  padding: 18px 14px;
+  gap: 12px;
+  padding: 16px 14px;
   overflow-y: auto;
   min-height: 0;
 }
 
 .notice {
-  padding: 0.6rem;
-  color: var(--text-color);
-  background: var(--toolbar-bg, #f3f3f3);
-  border-radius: 6px;
-  font-size: 0.85rem;
+  padding: 10px 11px;
+  color: var(--muted-text);
+  background: color-mix(in srgb, var(--control-hover) 48%, transparent);
+  border-left: 2px solid var(--accent-color);
+  border-radius: 0 3px 3px 0;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .userRow {
@@ -117,12 +283,11 @@
 
 .userBubble {
   max-width: 85%;
-  padding: 0.5rem 0.75rem;
+  padding: 7px 10px;
   color: #fff;
   background: var(--accent-color, #287b76);
-  border-radius: 7px;
-  border-bottom-right-radius: 4px;
-  font-size: 0.9rem;
+  border-radius: 4px;
+  font-size: 13px;
   white-space: pre-wrap;
   overflow-wrap: break-word;
 }
@@ -134,12 +299,11 @@
 
 .assistantBubble {
   max-width: 85%;
-  padding: 0.5rem 0.75rem;
+  padding: 4px 2px;
   color: var(--text-color);
   background: transparent;
   border-radius: 0;
-  border-bottom-left-radius: 4px;
-  font-size: 0.9rem;
+  font-size: 13px;
   white-space: pre-wrap;
   overflow-wrap: break-word;
 }
@@ -169,8 +333,8 @@
   color: var(--text-color);
   background: transparent;
   border: 1px dashed var(--editor-border, #ccc);
-  border-radius: 8px;
-  font-size: 0.82rem;
+  border-radius: 4px;
+  font-size: 12px;
 }
 
 .toolName {
@@ -202,8 +366,8 @@
   color: var(--text-color);
   background: transparent;
   border: 1px solid var(--link-color, #06c);
-  border-radius: 8px;
-  font-size: 0.82rem;
+  border-radius: 4px;
+  font-size: 12px;
 }
 
 .permissionTitle {
@@ -230,10 +394,19 @@
   background: var(--link-color, #06c);
 }
 
+.allowButton:hover,
+.applyButton:hover {
+  filter: brightness(0.94);
+}
+
 .denyButton {
   color: var(--text-color);
   background: var(--toolbar-bg, #f3f3f3);
   border: 1px solid var(--editor-border, #ddd);
+}
+
+.denyButton:hover {
+  background: var(--control-hover, rgb(0 0 0 / 8%));
 }
 
 .editCard {
@@ -319,20 +492,32 @@
 
 .input {
   flex: 1;
+  min-width: 0;
+  min-height: 36px;
+  max-height: 144px;
+  height: 36px;
   padding: 0.5rem 0.6rem;
   color: var(--text-color);
   background: var(--paper-bg, #fff);
   border: 1px solid var(--hairline-color, #ddd);
-  border-radius: 5px;
+  border-radius: 4px;
+  box-sizing: border-box;
   resize: none;
   font-family: inherit;
-  font-size: 0.9rem;
+  font-size: 12px;
   line-height: 1.4;
   outline: none;
+  overflow-y: auto;
+  scrollbar-width: none;
 }
 
-.input:focus {
+.input::-webkit-scrollbar {
+  display: none;
+}
+
+.input:focus-visible {
   border-color: var(--accent-color, #287b76);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-color) 20%, transparent);
 }
 
 .sendButton,
@@ -347,13 +532,13 @@
   color: #fff;
   background: var(--accent-color, #287b76);
   border: none;
-  border-radius: 6px;
+  border-radius: 4px;
   cursor: pointer;
 }
 
 .sendButton:disabled {
   opacity: 0.5;
-  cursor: default;
+  cursor: not-allowed;
 }
 
 .stopButton {

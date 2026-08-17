@@ -4,9 +4,9 @@ import styles from './Settings.module.css';
 import { SettingsProps } from '@/types/settings';
 import { open } from '@tauri-apps/plugin-dialog';
 import {
-  LuEllipsis,
   LuEye,
   LuEyeOff,
+  LuFolderOpen,
   LuMoon,
   LuSettings,
   LuSun,
@@ -141,14 +141,17 @@ const Settings: React.FC<SettingsProps> = ({
       onTransitionEnd={handleTransitionEnd}
     >
       <div className={styles.header}>
-        <LuSettings />
+        <div className={styles.headerTitle}>
+          <LuSettings aria-hidden="true" />
+          <span>{t('settings.title')}</span>
+        </div>
         <button
           className={styles.closeButton}
           onClick={handleRequestClose}
           title={t('window.close')}
           aria-label={t('window.close')}
         >
-          <LuX />
+          <LuX aria-hidden="true" />
         </button>
       </div>
       <div className={styles.content}>
@@ -196,7 +199,7 @@ const Settings: React.FC<SettingsProps> = ({
           </div>
         </div>
         <div className={styles.settingGroup}>
-          <div style={{ marginBottom: 8, fontWeight: 500 }}>{t('settings.workDirTitle')}</div>
+          <div className={styles.sectionLabel}>{t('settings.workDirTitle')}</div>
           <div className={styles.workDirRow}>
             <input
               type="text"
@@ -212,7 +215,7 @@ const Settings: React.FC<SettingsProps> = ({
               title={t('settings.chooseWorkDir')}
               aria-label={t('settings.chooseWorkDir')}
             >
-              <LuEllipsis />
+              <LuFolderOpen />
             </button>
           </div>
         </div>
@@ -319,7 +322,7 @@ const Settings: React.FC<SettingsProps> = ({
                 value={agentSettings.apiKey}
                 onChange={(event) => updateAgentSettings('apiKey', event.target.value)}
                 className={styles.textInput}
-                placeholder="sk-..."
+                placeholder="sk-…"
                 autoComplete="off"
                 spellCheck={false}
               />

@@ -9,6 +9,21 @@
   background: var(--sidebar-bg);
   border-right: 1px solid var(--hairline-color);
   overflow: hidden;
+  transition: width 0.22s ease;
+}
+
+.explorer.resizing {
+  transition: none;
+}
+
+.explorer.closing {
+  border-right-color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .explorer {
+    transition: none;
+  }
 }
 
 .header {
@@ -16,19 +31,18 @@
   flex: none;
   align-items: center;
   gap: 4px;
-  height: 40px;
-  padding: 0 8px 0 10px;
+  height: 36px;
+  padding: 0 8px 0 12px;
   border-bottom: 1px solid var(--hairline-color);
   box-sizing: border-box;
 }
 
 .headerTitle {
   flex: 1;
-  padding-left: 4px;
   overflow: hidden;
   color: var(--muted-text);
   font-size: 11px;
-  font-weight: 650;
+  font-weight: 600;
   text-overflow: ellipsis;
   text-transform: uppercase;
   white-space: nowrap;
@@ -38,29 +52,39 @@
   display: flex;
   flex: 1;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
   min-width: 0;
-  height: 32px;
-  padding: 0 6px 0 2px;
+  height: 34px;
+  padding: 0 6px 0 12px;
   color: var(--heading-color);
   background: transparent;
   border: 0;
   border-radius: 0;
   font-family: inherit;
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 600;
   text-align: left;
-  cursor: pointer;
+  cursor: grab;
+}
+
+.rootButton:active {
+  cursor: grabbing;
+}
+
+.rootButton.dragging {
+  opacity: 0.45;
 }
 
 .rootButton span {
   overflow: hidden;
   text-overflow: ellipsis;
+  user-select: none;
   white-space: nowrap;
 }
 
 .headerButton:hover {
-  background: var(--control-hover);
+  color: var(--heading-color);
+  background: color-mix(in srgb, var(--control-hover) 72%, transparent);
 }
 
 .rootButton svg,
@@ -99,6 +123,35 @@
   min-height: 0;
   padding: 0 0 12px;
   overflow: hidden auto;
+  scrollbar-color: transparent transparent;
+  scrollbar-width: thin;
+}
+
+.treeScroll::-webkit-scrollbar {
+  width: 5px;
+}
+
+.treeScroll::-webkit-scrollbar-track,
+.treeScroll::-webkit-scrollbar-thumb {
+  background: transparent;
+}
+
+.treeScroll::-webkit-scrollbar-thumb {
+  transition: background-color 0.16s ease;
+}
+
+.treeScroll::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.treeScroll:hover {
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
+.treeScroll:hover::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
 }
 
 .tree,
@@ -108,6 +161,35 @@
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+.groupWrapper {
+  display: grid;
+  /* stylelint-disable-next-line unit-allowed-list -- fr is required for the grid-rows expand animation */
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  transition:
+    grid-template-rows 0.18s ease,
+    visibility 0s linear 0.18s;
+}
+
+.groupWrapper.groupOpen {
+  /* stylelint-disable-next-line unit-allowed-list -- fr is required for the grid-rows expand animation */
+  grid-template-rows: 1fr;
+  visibility: visible;
+  transition: grid-template-rows 0.18s ease;
+}
+
+.groupWrapper > * {
+  min-height: 0;
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .groupWrapper,
+  .groupWrapper.groupOpen {
+    transition: none;
+  }
 }
 
 .tree li,
@@ -125,19 +207,52 @@
   border-top: 1px solid var(--hairline-color);
 }
 
+.standaloneSection {
+  border-top: 1px solid var(--hairline-color);
+}
+
+.standaloneRow {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.standaloneRow .treeRow {
+  flex: 1;
+}
+
+.standaloneRemoveButton {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  margin-right: 8px;
+  opacity: 0;
+}
+
+.standaloneRow:hover .standaloneRemoveButton,
+.standaloneRemoveButton:focus-visible {
+  opacity: 1;
+}
+
 .rootHeader {
   display: flex;
   align-items: center;
   min-width: 0;
-  height: 32px;
-  margin: 2px 8px;
-  padding-right: 1px;
-  border-radius: 4px;
+  height: 34px;
+  padding-right: 8px;
 }
 
 .rootHeader:hover,
 .rootHeader:focus-within {
-  background: var(--control-hover);
+  background: color-mix(in srgb, var(--control-hover) 66%, transparent);
+}
+
+.rootHeader.dropBefore {
+  box-shadow: inset 0 2px var(--accent-color);
+}
+
+.rootHeader.dropAfter {
+  box-shadow: inset 0 -2px var(--accent-color);
 }
 
 .rootHeader .rootButton > svg:first-child {
@@ -147,7 +262,7 @@
 }
 
 .rootHeader .rootButton > svg:nth-child(2) {
-  color: var(--accent-color);
+  color: var(--muted-text);
 }
 
 .removeButton {
@@ -162,20 +277,29 @@
 }
 
 .rootHeader .removeButton:hover {
-  background: color-mix(in srgb, var(--text-color) 8%, transparent);
+  color: var(--heading-color);
+  background: transparent;
 }
 
 .removeConfirmation {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin: 2px 8px 8px;
-  padding: 9px 10px;
+  gap: 7px;
+  margin: 0;
+  padding: 8px 10px 10px 34px;
   color: var(--text-color);
-  background: var(--control-hover);
-  border-left: 2px solid var(--accent-color);
-  border-radius: 0 4px 4px 0;
+  background: color-mix(in srgb, var(--control-hover) 40%, transparent);
+  border-top: 1px solid var(--hairline-color);
+  border-bottom: 1px solid var(--hairline-color);
   font-size: 12px;
+  animation: confirm-in 0.16s ease;
+}
+
+@keyframes confirm-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
 }
 
 .confirmationText {
@@ -194,7 +318,7 @@
   height: 28px;
   padding: 0 10px;
   border: 1px solid var(--hairline-color);
-  border-radius: 4px;
+  border-radius: 3px;
   font-family: inherit;
   font-size: 12px;
   cursor: pointer;
@@ -231,9 +355,9 @@
   align-items: center;
   width: 100%;
   min-width: 0;
-  height: 28px;
+  height: 29px;
   padding-top: 0;
-  padding-right: 8px;
+  padding-right: 12px;
   padding-bottom: 0;
   color: var(--text-color);
   background: transparent;
@@ -247,19 +371,24 @@
 }
 
 .treeRow:hover {
-  background: var(--control-hover);
+  color: var(--heading-color);
+  background: color-mix(in srgb, var(--control-hover) 62%, transparent);
 }
 
 .treeRow.active {
   color: var(--heading-color);
-  background: color-mix(in srgb, var(--accent-color) 14%, transparent);
+  background: color-mix(in srgb, var(--accent-color) 10%, transparent);
+}
+
+.treeRow.selected:not(.active) {
+  background: color-mix(in srgb, var(--accent-color) 6%, transparent);
 }
 
 .treeRow.active::before {
   position: absolute;
   left: 0;
   width: 2px;
-  height: 20px;
+  height: 18px;
   background: var(--accent-color);
   content: '';
 }
@@ -287,7 +416,7 @@
   display: inline-flex;
   flex: 0 0 18px;
   align-items: center;
-  color: var(--muted-text);
+  color: color-mix(in srgb, var(--muted-text) 82%, transparent);
 }
 
 .itemName {
@@ -326,6 +455,11 @@
 }
 
 .markdownIcon {
+  color: inherit;
+}
+
+.treeRow:hover .itemIcon,
+.treeRow.active .itemIcon {
   color: var(--accent-color);
 }
 
@@ -339,4 +473,172 @@
 
 .mediaIcon {
   color: #8a6599;
+}
+
+.contextMenu {
+  position: fixed;
+  z-index: 40;
+  width: 224px;
+  padding: 4px;
+  color: var(--text-color);
+  background: var(--paper-bg);
+  border: 1px solid var(--hairline-color);
+  border-radius: 5px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 16%);
+  transform-origin: top left;
+  animation: menu-pop 0.12s ease;
+}
+
+@keyframes menu-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-3px);
+  }
+}
+
+.contextMenuItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 30px;
+  padding: 0 8px;
+  color: var(--text-color);
+  background: transparent;
+  border: 0;
+  border-radius: 3px;
+  font-family: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.contextMenuItem svg {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  stroke-width: 1.8;
+}
+
+.contextMenuItem span {
+  flex: 1;
+}
+
+.contextMenuItem kbd {
+  color: var(--muted-text);
+  font-family: inherit;
+  font-size: 11px;
+}
+
+.contextMenuItem:hover:not(:disabled),
+.contextMenuItem:focus-visible {
+  background: var(--control-hover);
+}
+
+.contextMenuItem:disabled {
+  color: var(--muted-text);
+  cursor: not-allowed;
+}
+
+.deleteMenuItem {
+  color: var(--error-color, #c62828);
+}
+
+.contextMenuDivider {
+  height: 1px;
+  margin: 4px;
+  background: var(--hairline-color);
+}
+
+.deleteDialogBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  background: rgb(0 0 0 / 20%);
+  animation: fade-in 0.15s ease;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.deleteDialog {
+  width: min(360px, 100%);
+  padding: 18px;
+  color: var(--text-color);
+  background: var(--paper-bg);
+  border: 1px solid var(--hairline-color);
+  border-radius: 6px;
+  box-shadow: 0 12px 30px rgb(0 0 0 / 18%);
+  animation: dialog-pop 0.16s ease;
+}
+
+@keyframes dialog-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .contextMenu,
+  .deleteDialogBackdrop,
+  .deleteDialog,
+  .removeConfirmation {
+    animation: none;
+  }
+}
+
+.deleteDialog h2 {
+  margin: 0;
+  color: var(--heading-color);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.deleteDialog p {
+  margin: 8px 0 0;
+  color: var(--muted-text);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.deleteDialogActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.deleteDialogActions button {
+  height: 30px;
+  padding: 0 11px;
+  color: var(--text-color);
+  background: transparent;
+  border: 1px solid var(--hairline-color);
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.deleteDialogActions button:hover {
+  background: var(--control-hover);
+}
+
+.deleteDialogActions .deleteConfirmButton {
+  color: #fff;
+  background: var(--error-color, #c62828);
+  border-color: var(--error-color, #c62828);
+}
+
+.deleteDialogActions .deleteConfirmButton:hover {
+  filter: brightness(0.94);
 }

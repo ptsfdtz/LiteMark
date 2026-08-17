@@ -18,6 +18,7 @@ export type AgentEvent =
   | { type: 'permission_request'; id: number; name: string; arguments: string }
   | { type: 'assistant_message'; content: string; tool_calls: ToolCall[] }
   | { type: 'edit'; content: string }
+  | { type: 'file_written'; path: string }
   | { type: 'done' };
 
 export interface DiffSummary {

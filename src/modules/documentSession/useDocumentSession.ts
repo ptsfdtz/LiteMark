@@ -46,6 +46,8 @@ export interface DocumentSession {
   removeRecentDocument(path: string): Promise<void>;
   loadDirectory(directory: string): Promise<void>;
   clearDirectoryDocuments(): void;
+  discardChanges(): void;
+  closeDocument(): void;
   canClose(): Promise<boolean>;
 }
 
@@ -286,7 +288,7 @@ export default function useDocumentSession(
     setCurrentDocumentPath(path);
     setContent(nextContent);
     setPersistedContent(nextContent);
-    await recordRecentDocument(path);
+    void recordRecentDocument(path);
     return true;
   };
 
@@ -366,6 +368,24 @@ export default function useDocumentSession(
     setDirectoryDocuments(null);
   };
 
+  const discardChanges = () => {
+    editRevisionRef.current += 1;
+    contentRef.current = persistedContentRef.current;
+    setContent(persistedContentRef.current);
+  };
+
+  const closeDocument = () => {
+    documentIntentRef.current += 1;
+    sessionEpochRef.current += 1;
+    editRevisionRef.current += 1;
+    currentDocumentPathRef.current = null;
+    contentRef.current = '';
+    persistedContentRef.current = '';
+    setCurrentDocumentPath(null);
+    setContent('');
+    setPersistedContent('');
+  };
+
   const canClose = async () => {
     await documentWriteQueueRef.current;
     return canReplaceDocument();
@@ -387,6 +407,8 @@ export default function useDocumentSession(
     removeRecentDocument,
     loadDirectory,
     clearDirectoryDocuments,
+    discardChanges,
+    closeDocument,
     canClose,
   };
 }

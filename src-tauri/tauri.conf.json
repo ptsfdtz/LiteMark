@@ -5,7 +5,7 @@
   "identifier": "com.ptsfdtz.LiteMark",
   "build": {
     "beforeDevCommand": "pnpm dev",
-    "devUrl": "http://localhost:1420",
+    "devUrl": "http://localhost:1422",
     "beforeBuildCommand": "pnpm build",
     "frontendDist": "../dist"
   },
@@ -13,9 +13,10 @@
     "windows": [
       {
         "title": "LiteMark",
-        "width": 1200,
-        "height": 800,
-        "minWidth": 1038,
+        "width": 900,
+        "height": 1200,
+        "minWidth": 600,
+        "minHeight": 600,
         "center": true,
         "decorations": false
       }
@@ -24,8 +25,8 @@
       "csp": {
         "default-src": "'self' customprotocol: asset:",
         "base-uri": "'none'",
-        "connect-src": "'self' ipc: http://ipc.localhost",
-        "font-src": "'self' data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net",
+        "connect-src": "'self' ipc: http://ipc.localhost asset: http://asset.localhost",
+        "font-src": "'self' data: blob: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net",
         "form-action": "'none'",
         "frame-src": "'none'",
         "img-src": "'self' asset: http://asset.localhost blob: data:",
@@ -37,8 +38,8 @@
       "devCsp": {
         "default-src": "'self' customprotocol: asset:",
         "base-uri": "'none'",
-        "connect-src": "'self' ipc: http://ipc.localhost ws:",
-        "font-src": "'self' data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net",
+        "connect-src": "'self' ipc: http://ipc.localhost ws: asset: http://asset.localhost",
+        "font-src": "'self' data: blob: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net",
         "form-action": "'none'",
         "frame-src": "'none'",
         "img-src": "'self' asset: http://asset.localhost blob: data:",

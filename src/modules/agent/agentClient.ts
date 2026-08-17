@@ -7,6 +7,8 @@ export interface RunAgentTurnParams {
   document: string;
   messages: ChatMessage[];
   workDir: string;
+  currentFilePath: string | null;
+  fileTree: string | null;
   confirmWrites: boolean;
   onEvent: (event: AgentEvent) => void;
 }
@@ -16,6 +18,8 @@ export async function runAgentTurn({
   document,
   messages,
   workDir,
+  currentFilePath,
+  fileTree,
   confirmWrites,
   onEvent,
 }: RunAgentTurnParams): Promise<void> {
@@ -30,6 +34,8 @@ export async function runAgentTurn({
     instructions: settings.instructions.trim() || null,
     maxSteps: settings.maxSteps,
     workDir: workDir || null,
+    currentFilePath: currentFilePath || null,
+    fileTree: fileTree || null,
     confirmWrites,
     onEvent: channel,
   });

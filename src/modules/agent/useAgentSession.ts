@@ -10,7 +10,14 @@ export interface AgentSessionOptions {
   getDocument: () => string;
   applyDocument: (content: string) => void;
   getWorkDir: () => string;
-  documentPath: string | null;
+  /** Scope the conversation is persisted under: the project directory. */
+  sessionKey: string | null;
+  /** The document the user is editing right now; the agent's primary reference. */
+  getCurrentFilePath: () => string | null;
+  /** Serialized project file tree injected into the system prompt. */
+  getFileTree: () => string | null;
+  /** Called after the agent writes a project file to disk via write_file. */
+  onFileWritten?: (path: string) => void;
 }
 
 export interface AgentSession {
@@ -50,7 +57,10 @@ export function useAgentSession({
   getDocument,
   applyDocument,
   getWorkDir,
-  documentPath,
+  sessionKey,
+  getCurrentFilePath,
+  getFileTree,
+  onFileWritten,
 }: AgentSessionOptions): AgentSession {
   const [items, setItems] = useState<AgentItem[]>([]);
   const [status, setStatus] = useState<AgentStatus>('idle');
@@ -60,10 +70,16 @@ export function useAgentSession({
   const getDocumentRef = useRef(getDocument);
   const applyDocumentRef = useRef(applyDocument);
   const getWorkDirRef = useRef(getWorkDir);
+  const getCurrentFilePathRef = useRef(getCurrentFilePath);
+  const getFileTreeRef = useRef(getFileTree);
+  const onFileWrittenRef = useRef(onFileWritten);
   getSettingsRef.current = getSettings;
   getDocumentRef.current = getDocument;
   applyDocumentRef.current = applyDocument;
   getWorkDirRef.current = getWorkDir;
+  getCurrentFilePathRef.current = getCurrentFilePath;
+  getFileTreeRef.current = getFileTree;
+  onFileWrittenRef.current = onFileWritten;
 
   const historyRef = useRef<ChatMessage[]>([]);
   const runningRef = useRef(false);
@@ -72,17 +88,17 @@ export function useAgentSession({
   const pendingPermissionsRef = useRef(new Map<number, string>());
   const itemsRef = useRef<AgentItem[]>([]);
   itemsRef.current = items;
-  const pathRef = useRef(documentPath);
+  const scopeRef = useRef(sessionKey);
   const loadedRef = useRef(false);
   const editRevisionRef = useRef(0);
 
-  // Restore the conversation for the current document, persisting the one we leave.
+  // Restore the conversation for the current project, persisting the one we leave.
   useEffect(() => {
-    const previousPath = pathRef.current;
-    pathRef.current = documentPath;
+    const previousScope = scopeRef.current;
+    scopeRef.current = sessionKey;
 
-    if (previousPath !== documentPath) {
-      void saveAgentSession(previousPath, {
+    if (previousScope !== sessionKey) {
+      void saveAgentSession(previousScope, {
         items: itemsRef.current,
         history: [...historyRef.current],
       });
@@ -90,7 +106,7 @@ export function useAgentSession({
 
     const revision = editRevisionRef.current;
     let active = true;
-    void loadAgentSession(documentPath).then((restored) => {
+    void loadAgentSession(sessionKey).then((restored) => {
       if (!active) return;
       loadedRef.current = true;
       // A turn started while loading; keep the user's fresh message instead of clobbering it.
@@ -105,13 +121,13 @@ export function useAgentSession({
     return () => {
       active = false;
     };
-  }, [documentPath]);
+  }, [sessionKey]);
 
   // Persist the conversation whenever it changes (debounced).
   useEffect(() => {
     if (!loadedRef.current) return;
     const timeout = window.setTimeout(() => {
-      void saveAgentSession(pathRef.current, {
+      void saveAgentSession(scopeRef.current, {
         items,
         history: [...historyRef.current],
       });
@@ -238,6 +254,9 @@ export function useAgentSession({
           ]);
           break;
         }
+        case 'file_written':
+          onFileWrittenRef.current?.(event.path);
+          break;
         case 'done':
           break;
       }
@@ -249,6 +268,8 @@ export function useAgentSession({
         document: getDocumentRef.current(),
         messages: [...historyRef.current],
         workDir: getWorkDirRef.current(),
+        currentFilePath: getCurrentFilePathRef.current(),
+        fileTree: getFileTreeRef.current(),
         confirmWrites: getSettingsRef.current().confirmWrites !== false,
         onEvent,
       });

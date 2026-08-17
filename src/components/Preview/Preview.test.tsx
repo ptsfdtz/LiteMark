@@ -66,6 +66,19 @@ const answer = true;
     expect(container.querySelector('i.editormd-logo-2x')).toBeInTheDocument();
   });
 
+  it('renders LaTeX-style \\(...\\) and \\[...\\] math delimiters', () => {
+    const { container } = renderPreview(
+      [
+        'Inline \\(e^{i\\pi} + 1 = 0\\) math',
+        '',
+        '\\[\\sum_{i=1}^{n} i = \\frac{n(n+1)}{2}\\]',
+      ].join('\n'),
+    );
+
+    expect(container.querySelectorAll('.katex').length).toBeGreaterThanOrEqual(2);
+    expect(container.querySelector('.katex-display')).toBeInTheDocument();
+  });
+
   it('copies fenced code from its code block control', async () => {
     const user = userEvent.setup();
     const originalClipboard = Object.getOwnPropertyDescriptor(navigator, 'clipboard');

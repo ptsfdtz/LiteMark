@@ -93,15 +93,18 @@ const CurrentFileName: React.FC<CurrentFileNameProps> = ({
       }}
     />
   ) : (
-    <div
+    <button
+      type="button"
       className={styles.currentFileName}
       title={isDirty ? t('file.unsaved') : t('file.renameHint')}
-      style={{ cursor: 'pointer', userSelect: 'text' }}
       onDoubleClick={() => setEditing(true)}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === 'F2') setEditing(true);
+      }}
     >
       {filePath.split(/[/\\\\]/).pop()}
       {isDirty ? ' *' : ''}
-    </div>
+    </button>
   );
 };
 

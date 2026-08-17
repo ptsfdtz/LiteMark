@@ -1,15 +1,28 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { LuSend, LuSquare, LuTrash2, LuX } from 'react-icons/lu';
+import { LuPlus, LuSend, LuSquare, LuTrash2, LuX } from 'react-icons/lu';
 import styles from './AgentPanel.module.css';
 import type { AgentSession } from '@/modules/agent/useAgentSession';
+import type { AgentConversationSummary } from '@/modules/agent/agentConversationStore';
 import { useI18n } from '@/locales/useI18n';
 import type { TranslationKey } from '@/locales/config';
 import { useResizablePanel } from '@/hooks/useResizablePanel';
 
 interface AgentPanelProps {
   session: AgentSession;
+  conversations: AgentConversationSummary[];
+  activeConversationId: string;
+  scopeKind: 'project' | 'file';
+  onCreateConversation: () => void;
+  onSelectConversation: (id: string) => void;
+  onRenameConversation: (id: string, title: string) => void;
+  onDeleteConversation: (id: string) => void;
   isConfigured: boolean;
+  modelName: string;
   onClose: () => void;
+  /** When true the panel plays its close animation before unmounting. */
+  closing?: boolean;
+  /** Fired once the close animation finished and the panel can unmount. */
+  onCloseComplete?: () => void;
 }
 
 const toolNameKeys: Record<string, TranslationKey> = {
@@ -18,12 +31,35 @@ const toolNameKeys: Record<string, TranslationKey> = {
   replace_in_document: 'agent.tool.replaceDocument',
   list_documents: 'agent.tool.listDocuments',
   read_file: 'agent.tool.readFile',
+  write_file: 'agent.tool.writeFile',
 };
 
-const AgentPanel: React.FC<AgentPanelProps> = ({ session, isConfigured, onClose }) => {
+const AgentPanel: React.FC<AgentPanelProps> = ({
+  session,
+  conversations,
+  activeConversationId,
+  scopeKind,
+  onCreateConversation,
+  onSelectConversation,
+  onRenameConversation,
+  onDeleteConversation,
+  isConfigured,
+  modelName,
+  onClose,
+  closing = false,
+  onCloseComplete,
+}) => {
   const { t } = useI18n();
   const [input, setInput] = useState('');
+  const [editingConversationId, setEditingConversationId] = useState<string | null>(null);
+  const [editingConversationTitle, setEditingConversationTitle] = useState('');
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const conversationTitleInputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const asideRef = useRef<HTMLElement | null>(null);
+  // Slide in from zero width on mount.
+  const [entered, setEntered] = useState(false);
+  const closeCompleteRef = useRef(false);
   const { width, resizing, onResizeStart, onResizeKeyDown } = useResizablePanel({
     storageKey: 'litemark.agentPanelWidth',
     initialWidth: 360,
@@ -33,13 +69,65 @@ const AgentPanel: React.FC<AgentPanelProps> = ({ session, isConfigured, onClose 
     edge: 'left',
   });
 
-  const { items, status, error, send, stop, clear, applyEdit, respondPermission } = session;
+  useEffect(() => {
+    let raf2 = 0;
+    const raf1 = window.requestAnimationFrame(() => {
+      raf2 = window.requestAnimationFrame(() => setEntered(true));
+    });
+    return () => {
+      window.cancelAnimationFrame(raf1);
+      if (raf2) window.cancelAnimationFrame(raf2);
+    };
+  }, []);
+
+  // Unmount after the close animation; the timeout covers reduced-motion
+  // environments where no transitionend event fires.
+  useEffect(() => {
+    if (!closing || !onCloseComplete) return;
+    const timeout = window.setTimeout(() => {
+      if (closeCompleteRef.current) return;
+      closeCompleteRef.current = true;
+      onCloseComplete();
+    }, 400);
+    return () => window.clearTimeout(timeout);
+  }, [closing, onCloseComplete]);
+
+  const handlePanelTransitionEnd = (event: React.TransitionEvent) => {
+    if (!closing || !onCloseComplete) return;
+    if (event.target !== asideRef.current || event.propertyName !== 'width') return;
+    if (closeCompleteRef.current) return;
+    closeCompleteRef.current = true;
+    onCloseComplete();
+  };
+
+  const panelWidth = closing || !entered ? 0 : width;
+
+  const { items, status, error, send, stop, applyEdit, respondPermission } = session;
   const running = status === 'running';
+  const panelTitle = isConfigured && modelName.trim() ? modelName.trim() : t('agent.title');
+  const scopeLabel = scopeKind === 'project' ? t('agent.scope.project') : t('agent.scope.file');
 
   useEffect(() => {
     const list = listRef.current;
     if (list) list.scrollTop = list.scrollHeight;
   }, [items, running]);
+
+  useEffect(() => {
+    const textarea = inputRef.current;
+    if (!textarea) return;
+    if (!input) {
+      textarea.style.height = '36px';
+      return;
+    }
+    textarea.style.height = '0px';
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 144)}px`;
+  }, [input]);
+
+  useEffect(() => {
+    if (!editingConversationId) return;
+    conversationTitleInputRef.current?.focus();
+    conversationTitleInputRef.current?.select();
+  }, [editingConversationId]);
 
   const handleSend = () => {
     if (!input.trim() || running || !isConfigured) return;
@@ -52,8 +140,26 @@ const AgentPanel: React.FC<AgentPanelProps> = ({ session, isConfigured, onClose 
     return key ? t(key) : name;
   };
 
+  const startRenameConversation = (id: string, title: string) => {
+    if (running) return;
+    setEditingConversationId(id);
+    setEditingConversationTitle(title);
+  };
+
+  const finishRenameConversation = () => {
+    if (!editingConversationId) return;
+    onRenameConversation(editingConversationId, editingConversationTitle);
+    setEditingConversationId(null);
+  };
+
   return (
-    <aside className={styles.panel} data-tauri-drag-region="false" style={{ width }}>
+    <aside
+      ref={asideRef}
+      className={`${styles.panel} ${resizing ? styles.resizing : ''} ${closing ? styles.closing : ''}`}
+      data-tauri-drag-region="false"
+      style={{ width: panelWidth }}
+      onTransitionEnd={handlePanelTransitionEnd}
+    >
       <div
         className={`${styles.resizeHandle} ${resizing ? styles.resizing : ''}`}
         role="separator"
@@ -67,25 +173,81 @@ const AgentPanel: React.FC<AgentPanelProps> = ({ session, isConfigured, onClose 
         onKeyDown={onResizeKeyDown}
       />
       <div className={styles.header}>
-        <span className={styles.title}>{t('agent.title')}</span>
-        <div className={styles.headerActions}>
+        <div className={styles.titleGroup}>
+          <span className={styles.title} title={panelTitle}>
+            {panelTitle}
+          </span>
           <button
-            className={styles.headerButton}
-            onClick={clear}
-            title={t('agent.clear')}
-            aria-label={t('agent.clear')}
-            disabled={running || items.length === 0}
-          >
-            <LuTrash2 />
-          </button>
-          <button
-            className={styles.headerButton}
+            className={styles.closeTitleButton}
             onClick={onClose}
             title={t('agent.close')}
             aria-label={t('agent.close')}
           >
             <LuX />
           </button>
+          <span className={styles.scope}>{scopeLabel}</span>
+        </div>
+        <div className={styles.headerActions}>
+          <button
+            className={styles.headerButton}
+            onClick={onCreateConversation}
+            title={t('agent.newChat')}
+            aria-label={t('agent.newChat')}
+            disabled={running}
+          >
+            <LuPlus />
+          </button>
+        </div>
+      </div>
+
+      <div className={styles.conversationSection}>
+        <div className={styles.conversationList} role="list" aria-label={t('agent.chats')}>
+          {conversations.map((conversation) => {
+            const active = conversation.id === activeConversationId;
+            const title = conversation.title || t('agent.newChat');
+            return (
+              <div
+                key={conversation.id}
+                className={`${styles.conversationRow} ${active ? styles.activeConversation : ''}`}
+                role="listitem"
+              >
+                {editingConversationId === conversation.id ? (
+                  <input
+                    ref={conversationTitleInputRef}
+                    className={styles.conversationTitleInput}
+                    value={editingConversationTitle}
+                    onChange={(event) => setEditingConversationTitle(event.target.value)}
+                    onBlur={finishRenameConversation}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') finishRenameConversation();
+                      if (event.key === 'Escape') setEditingConversationId(null);
+                    }}
+                    aria-label={t('agent.renameChat')}
+                  />
+                ) : (
+                  <button
+                    className={styles.conversationButton}
+                    onClick={() => onSelectConversation(conversation.id)}
+                    onDoubleClick={() => startRenameConversation(conversation.id, title)}
+                    aria-current={active ? 'page' : undefined}
+                    title={title}
+                    disabled={running}
+                  >
+                    {title}
+                  </button>
+                )}
+                <button
+                  className={styles.deleteConversationButton}
+                  onClick={() => onDeleteConversation(conversation.id)}
+                  title={t('agent.deleteChat')}
+                  aria-label={`${t('agent.deleteChat')}: ${title}`}
+                  disabled={running}
+                >
+                  <LuTrash2 />
+                </button>
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -200,6 +362,7 @@ const AgentPanel: React.FC<AgentPanelProps> = ({ session, isConfigured, onClose 
 
       <div className={styles.composer}>
         <textarea
+          ref={inputRef}
           className={styles.input}
           value={input}
           onChange={(event) => setInput(event.target.value)}
@@ -210,7 +373,7 @@ const AgentPanel: React.FC<AgentPanelProps> = ({ session, isConfigured, onClose 
             }
           }}
           placeholder={t('agent.placeholder')}
-          rows={2}
+          rows={1}
           disabled={running || !isConfigured}
         />
         {running ? (

@@ -49,14 +49,14 @@
 }
 
 .toolbar button:focus-visible,
-.blockSelect:focus-visible {
+.blockMenuButton:focus-visible {
   outline: 2px solid var(--accent-color);
   outline-offset: -2px;
 }
 
 .toolbar button:disabled {
   opacity: 0.34;
-  cursor: default;
+  cursor: not-allowed;
 }
 
 .divider {
@@ -66,10 +66,11 @@
   background: var(--hairline-color);
 }
 
-.blockSelect {
-  width: 82px;
+.toolbar .blockMenuButton {
+  justify-content: space-between;
+  width: 88px;
   height: 32px;
-  padding: 0 22px 0 8px;
+  padding: 0 7px 0 9px;
   color: var(--muted-text);
   background: transparent;
   border: 0;
@@ -79,8 +80,236 @@
   cursor: pointer;
 }
 
-.blockSelect:hover {
+.toolbar .blockMenuButton:hover:not(:disabled) {
   background: var(--control-hover);
+}
+
+.blockMenuButton span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.toolbar .blockMenuButton svg {
+  width: 14px;
+  height: 14px;
+}
+
+.blockMenu {
+  position: fixed;
+  width: 136px;
+  padding: 4px;
+  color: var(--text-color);
+  background: var(--toolbar-bg);
+  border: 1px solid var(--hairline-color);
+  border-radius: 5px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 16%);
+  box-sizing: border-box;
+  z-index: 80;
+  transform-origin: top left;
+  animation: menu-pop 0.12s ease;
+}
+
+.blockMenuOption {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  height: 30px;
+  padding: 0 8px 0 5px;
+  color: var(--text-color);
+  background: transparent;
+  border: 0;
+  border-radius: 3px;
+  font-family: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.blockMenuOption:hover,
+.blockMenuOption:focus-visible {
+  color: var(--heading-color);
+  background: var(--control-hover);
+  outline: none;
+}
+
+.selectedBlockOption {
+  color: var(--accent-color);
+  background: color-mix(in srgb, var(--accent-color) 10%, transparent);
+}
+
+.optionCheck {
+  display: inline-flex;
+  flex: 0 0 14px;
+  align-items: center;
+}
+
+.optionCheck svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2;
+}
+
+.linkPopover {
+  position: fixed;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: min(332px, calc(100vw - 16px));
+  padding: 9px;
+  color: var(--text-color);
+  background: var(--toolbar-bg);
+  border: 1px solid var(--hairline-color);
+  border-radius: 5px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 16%);
+  box-sizing: border-box;
+  z-index: 80;
+  transform-origin: top left;
+  animation: menu-pop 0.12s ease;
+}
+
+.linkLabel {
+  color: var(--muted-text);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.linkEditorRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.linkInput {
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+  padding: 0 8px;
+  color: var(--text-color);
+  background: var(--paper-bg);
+  border: 1px solid var(--hairline-color);
+  border-radius: 4px;
+  box-sizing: border-box;
+  font-family: inherit;
+  font-size: 12px;
+  outline: none;
+}
+
+.linkInput:focus-visible {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 1px var(--accent-color);
+}
+
+.linkActionButton {
+  display: inline-flex;
+  flex: 0 0 32px;
+  justify-content: center;
+  align-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  color: var(--muted-text);
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.linkActionButton:hover {
+  color: var(--heading-color);
+  background: var(--control-hover);
+}
+
+.linkActionButton:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: -2px;
+}
+
+.linkActionButton svg {
+  width: 16px;
+  height: 16px;
+  stroke-width: 1.8;
+}
+
+.applyLinkButton {
+  color: #fff;
+  background: var(--accent-color);
+}
+
+.applyLinkButton:hover {
+  color: #fff;
+  background: color-mix(in srgb, var(--accent-color) 88%, #000);
+}
+
+.openMenu {
+  position: fixed;
+  z-index: 80;
+  width: 214px;
+  padding: 4px;
+  color: var(--text-color);
+  background: var(--toolbar-bg);
+  border: 1px solid var(--hairline-color);
+  border-radius: 5px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 16%);
+  box-sizing: border-box;
+  transform-origin: top left;
+  animation: menu-pop 0.12s ease;
+}
+
+@keyframes menu-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-3px);
+  }
+}
+
+.openMenu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 30px;
+  padding: 0 8px;
+  color: var(--text-color);
+  background: transparent;
+  border: 0;
+  border-radius: 3px;
+  font-family: inherit;
+  font-size: 12px;
+  text-align: left;
+}
+
+.openMenu button:hover,
+.openMenu button:focus-visible {
+  background: var(--control-hover);
+  outline: none;
+}
+
+.openMenu button svg {
+  flex: none;
+  width: 15px;
+  height: 15px;
+}
+
+.openMenu span {
+  flex: 1;
+}
+
+.openMenu kbd {
+  color: var(--muted-text);
+  font-family: inherit;
+  font-size: 11px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .openMenu,
+  .blockMenu,
+  .linkPopover {
+    animation: none;
+  }
 }
 
 @media (width <= 980px) {
