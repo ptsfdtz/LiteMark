@@ -1,0 +1,186 @@
+.backdrop {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgb(0 0 0 / 38%);
+}
+
+.dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(980px, 100%);
+  height: min(760px, 100%);
+  overflow: hidden;
+  color: var(--text-color);
+  background: var(--toolbar-bg);
+  border: 1px solid var(--hairline-color);
+  border-radius: 6px;
+  box-shadow: 0 18px 48px rgb(0 0 0 / 26%);
+}
+
+.header,
+.footer {
+  display: flex;
+  flex: none;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 56px;
+  padding: 0 16px;
+  border-color: var(--hairline-color);
+}
+
+.header {
+  border-bottom: 1px solid var(--hairline-color);
+}
+
+.footer {
+  justify-content: flex-end;
+  gap: 8px;
+  border-top: 1px solid var(--hairline-color);
+}
+
+.header h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.header span {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted-text);
+  font-size: 12px;
+}
+
+.closeButton,
+.cancelButton,
+.exportButton {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 7px;
+  min-height: 32px;
+  border-radius: 4px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.closeButton {
+  width: 32px;
+  padding: 0;
+  color: var(--muted-text);
+  background: transparent;
+  border: 0;
+}
+
+.closeButton:hover {
+  color: var(--heading-color);
+  background: var(--control-hover);
+}
+
+.closeButton svg,
+.exportButton svg {
+  width: 16px;
+  height: 16px;
+}
+
+.viewport {
+  flex: 1;
+  min-height: 0;
+  padding: 24px;
+  overflow: auto;
+  background: var(--canvas-bg);
+}
+
+.page {
+  --preview-bg: #fff;
+  --preview-text: #000;
+  --table-border: #ddd;
+  --table-header-bg: #f5f5f5;
+  --table-header-text: #000;
+  --table-even-row-bg: #f9f9f9;
+  --table-odd-row-bg: #fff;
+  --code-block-bg: #f5f5f5;
+  --inline-code-bg: #f5f5f5;
+  --blockquote-border: #ddd;
+  --blockquote-text: #666;
+  --link-color: #06c;
+
+  width: 840px;
+  min-height: 100%;
+  margin: 0 auto;
+  background: #fff;
+  box-shadow: 0 2px 10px rgb(0 0 0 / 14%);
+}
+
+/* Preview uses global CSS classes. */
+/* stylelint-disable-next-line selector-pseudo-class-no-unknown */
+.page :global(.preview-container) {
+  height: auto;
+  min-height: 100%;
+  overflow: visible;
+}
+
+/* stylelint-disable-next-line selector-pseudo-class-no-unknown */
+.page :global(.code-copy-button),
+/* stylelint-disable-next-line selector-pseudo-class-no-unknown */
+.page :global(.code-copy-status) {
+  display: none;
+}
+
+.cancelButton {
+  padding: 0 12px;
+  color: var(--text-color);
+  background: transparent;
+  border: 1px solid var(--hairline-color);
+}
+
+.exportButton {
+  padding: 0 13px;
+  color: #fff;
+  background: var(--accent-color);
+  border: 1px solid var(--accent-color);
+}
+
+.cancelButton:hover:not(:disabled) {
+  background: var(--control-hover);
+}
+
+.exportButton:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent-color) 88%, #000);
+}
+
+.closeButton:focus-visible,
+.cancelButton:focus-visible,
+.exportButton:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+}
+
+.cancelButton:disabled,
+.exportButton:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+@media (width <= 720px) {
+  .backdrop {
+    padding: 10px;
+  }
+
+  .dialog {
+    height: 100%;
+  }
+
+  .viewport {
+    padding: 14px;
+  }
+
+  .page {
+    width: max(100%, 480px);
+  }
+}

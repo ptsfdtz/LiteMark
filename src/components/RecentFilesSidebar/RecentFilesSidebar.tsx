@@ -88,40 +88,43 @@ const RecentFilesSidebar: React.FC<RecentFilesSidebarProps> = ({
       }}
     >
       <div className={styles.header}>
-        <button
-          onClick={handleOpenDirectory}
-          className={styles.openButton}
-          title={t('recent.openFolder')}
-          aria-label={t('recent.openFolder')}
-        >
-          <LuFolderOpen />
-        </button>
-        <button
-          onClick={handleOpenFile}
-          className={styles.openButton}
-          title={t('recent.openFile')}
-          aria-label={t('recent.openFile')}
-        >
-          <LuFile />
-        </button>
-        <button
-          onClick={handleNewFile}
-          className={styles.openButton}
-          title={t('recent.newFile')}
-          aria-label={t('recent.newFile')}
-        >
-          <LuFilePlus2 />
-        </button>
-        <button
-          onClick={() => {
-            requestClose();
-          }}
-          className={styles.closeButton}
-          title={t('recent.close')}
-          aria-label={t('recent.close')}
-        >
-          <LuX />
-        </button>
+        <span className={styles.headerTitle}>{t('recent.title')}</span>
+        <div className={styles.headerActions}>
+          <button
+            onClick={handleOpenDirectory}
+            className={styles.openButton}
+            title={t('recent.openFolder')}
+            aria-label={t('recent.openFolder')}
+          >
+            <LuFolderOpen />
+          </button>
+          <button
+            onClick={handleOpenFile}
+            className={styles.openButton}
+            title={t('recent.openFile')}
+            aria-label={t('recent.openFile')}
+          >
+            <LuFile />
+          </button>
+          <button
+            onClick={handleNewFile}
+            className={styles.openButton}
+            title={t('recent.newFile')}
+            aria-label={t('recent.newFile')}
+          >
+            <LuFilePlus2 />
+          </button>
+          <button
+            onClick={() => {
+              requestClose();
+            }}
+            className={styles.closeButton}
+            title={t('recent.close')}
+            aria-label={t('recent.close')}
+          >
+            <LuX />
+          </button>
+        </div>
       </div>
       <div className={styles.filesList}>
         {files.length === 0 ? (

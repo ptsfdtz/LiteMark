@@ -1,6 +1,15 @@
 import React from 'react';
 import { revealItemInDir } from '@tauri-apps/plugin-opener';
-import { LuCode, LuCopy, LuFileText, LuFolderOpen, LuImage, LuTrash2, LuX } from 'react-icons/lu';
+import {
+  LuCode,
+  LuCopy,
+  LuFileText,
+  LuFileType,
+  LuFolderOpen,
+  LuImage,
+  LuTrash2,
+  LuX,
+} from 'react-icons/lu';
 import { useI18n } from '@/locales/useI18n';
 import { getFileViewKind } from '@/types/fileTree';
 import styles from './OpenTabs.module.css';
@@ -147,7 +156,14 @@ const OpenTabs: React.FC<OpenTabsProps> = ({
           const dirty = path === dirtyPath;
           const closing = closingPaths.includes(path);
           const kind = getFileViewKind(path);
-          const Icon = kind === 'image' ? LuImage : kind === 'code' ? LuCode : LuFileText;
+          const Icon =
+            kind === 'image'
+              ? LuImage
+              : kind === 'pdf'
+                ? LuFileType
+                : kind === 'code'
+                  ? LuCode
+                  : LuFileText;
           const name = fileName(path);
 
           return (

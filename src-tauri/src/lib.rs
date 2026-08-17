@@ -64,6 +64,23 @@ fn prepare_image_preview(app: tauri::AppHandle, path: String) -> Result<String, 
     Ok(canonical_path.to_string_lossy().into_owned())
 }
 
+/// Read one validated local PDF file and return its raw bytes for in-app preview.
+#[tauri::command]
+fn read_pdf_file(path: String) -> Result<tauri::ipc::Response, String> {
+    let canonical_path = std::fs::canonicalize(&path).map_err(|error| error.to_string())?;
+    if !canonical_path.is_file() || !document_storage::is_pdf_extension(&canonical_path) {
+        return Err("The selected path is not a supported PDF file.".to_owned());
+    }
+    let bytes = std::fs::read(&canonical_path).map_err(|error| error.to_string())?;
+    Ok(tauri::ipc::Response::new(bytes))
+}
+
+/// Write raw bytes to a file the user explicitly chose through the save dialog.
+#[tauri::command]
+fn write_binary_file(path: String, data: Vec<u8>) -> Result<(), String> {
+    std::fs::write(Path::new(&path), data).map_err(|error| error.to_string())
+}
+
 /// Rename a document within its current directory without replacing another file.
 #[tauri::command]
 fn rename_document(path: String, new_name: String) -> StorageResult<String> {
@@ -86,6 +103,12 @@ fn get_startup_file() -> Option<String> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+        }))
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_store::Builder::default().build())
@@ -98,6 +121,8 @@ pub fn run() {
             list_text_files,
             list_directory_tree,
             prepare_image_preview,
+            read_pdf_file,
+            write_binary_file,
             rename_document,
             get_startup_file,
             agent_completion::request_agent_completion,

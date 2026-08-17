@@ -5,6 +5,8 @@ export interface ToolbarProps {
   onOpenDocument?: () => void;
   onSave?: () => void;
   onSaveAs?: () => void;
+  onExportImage?: () => void;
+  onExportPdf?: () => void;
   className?: string;
   editor: WysiwygEditor | null;
   disabled?: boolean;

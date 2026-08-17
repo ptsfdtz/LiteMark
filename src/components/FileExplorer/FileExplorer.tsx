@@ -10,6 +10,7 @@ import {
   LuFilePlus,
   LuFileJson,
   LuFileText,
+  LuFileType,
   LuFolder,
   LuFolderOpen,
   LuImage,
@@ -166,6 +167,7 @@ function FileIcon({ extension }: { extension: string | null }) {
   if (extension && ['avif', 'gif', 'jpeg', 'jpg', 'png', 'webp'].includes(extension)) {
     return <LuImage className={styles.mediaIcon} />;
   }
+  if (extension === 'pdf') return <LuFileType className={styles.mediaIcon} />;
   return <LuFile />;
 }
 

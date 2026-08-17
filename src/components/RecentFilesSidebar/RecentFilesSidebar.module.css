@@ -5,13 +5,14 @@
   left: 0;
   display: flex;
   flex-direction: column;
-  width: 300px;
+  width: 320px;
   height: 100%;
-  box-shadow: 2px 0 10px rgb(0 0 0 / 10%);
+  box-shadow: var(--floating-shadow);
   transition: transform 0.3s ease;
   min-width: 250px; /* 设置最小宽度 */
   max-width: 90vw; /* 设置最大宽度 */
   background-color: var(--sidebar-bg, #fff);
+  border-right: 1px solid var(--hairline-color);
   z-index: 1000;
 
   &.open {
@@ -28,9 +29,10 @@
   justify-content: space-between;
   align-items: center;
   height: 46px;
-  padding: 0 10px;
+  gap: 8px;
+  padding: 0 8px 0 14px;
   box-sizing: border-box;
-  border-bottom: 1px solid var(--editor-border, #ddd);
+  border-bottom: 1px solid var(--hairline-color);
 
   & h3 {
     margin: 0;
@@ -42,6 +44,24 @@
   }
 }
 
+.headerTitle {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--heading-color);
+  font-size: 13px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.headerActions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+}
+
 .closeButton,
 .openButton {
   display: flex;
@@ -50,7 +70,7 @@
   width: 32px;
   height: 32px;
   padding: 0;
-  color: var(--text-color, #0f0f0f);
+  color: var(--muted-text);
   background: none;
   border: none;
   font-size: 16px;
@@ -69,35 +89,38 @@
   stroke-width: 1.8;
 }
 
-.closeButton:hover {
-  background-color: var(--toolbar-bg, #f3f3f3);
+.closeButton:hover,
+.openButton:hover {
+  color: var(--heading-color);
+  background-color: var(--control-hover);
 }
 
 .filesList {
   flex: 1;
-  padding: 1rem;
+  padding: 8px;
   overflow-y: auto;
   min-height: 0; /* 允许列表区域收缩 */
 
   .fileItem {
     position: relative;
-    padding: 0.8rem;
-    transition: background-color 0.2s ease;
+    padding: 10px;
+    border: 1px solid transparent;
     transition:
-      background-color 0.2s,
-      opacity 0.4s,
-      transform 0.4s;
-    border-bottom: 1px solid var(--editor-border, #eee);
+      background-color 0.15s ease,
+      opacity 0.18s ease,
+      transform 0.18s ease;
+    border-radius: 4px;
     overflow-wrap: break-word;
 
     &.deleting {
       opacity: 0;
-      transform: scale(0.95) translateX(-30px);
+      transform: translateX(-12px);
       pointer-events: none;
     }
 
     &:hover {
-      background-color: var(--toolbar-bg, #f3f3f3);
+      background-color: var(--control-hover);
+      border-color: var(--hairline-color);
     }
 
     .fileContent {
@@ -115,8 +138,8 @@
 
     .trashButton {
       position: absolute;
-      right: 0.6rem;
-      bottom: 0.6rem;
+      right: 6px;
+      bottom: 6px;
       display: flex;
       justify-content: center;
       align-items: center;
@@ -137,37 +160,44 @@
     }
 
     .fileName {
-      font-weight: bold;
+      overflow: hidden;
+      font-size: 12px;
+      font-weight: 600;
+      text-overflow: ellipsis;
+      white-space: nowrap;
       margin: 0;
       color: var(--text-color, #0f0f0f);
       overflow-wrap: break-word;
     }
 
     .filePath {
-      margin: 0.2rem 0;
-      color: var(--blockquote-text, #666);
-      font-size: 0.9rem;
-      overflow-wrap: break-word;
+      margin: 3px 0;
+      overflow: hidden;
+      color: var(--muted-text);
+      font-size: 11px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .fileModified {
       margin: 0;
-      color: var(--blockquote-text, #666);
-      font-size: 0.8rem;
+      color: var(--muted-text);
+      font-size: 10px;
     }
   }
 
   .noFiles {
-    padding: 2rem;
-    color: var(--blockquote-text, #666);
+    padding: 28px 12px;
+    color: var(--muted-text);
+    font-size: 12px;
     text-align: center;
   }
 }
 
 .confirmBtns {
   position: absolute;
-  right: 0.6rem;
-  bottom: 0.6rem;
+  right: 6px;
+  bottom: 6px;
   display: flex;
   flex-direction: row;
   gap: 4px;
@@ -177,10 +207,10 @@
   .confirmButton {
     padding: 4px 8px;
     color: #fff;
-    background: #ff4d4f;
+    background: var(--danger-color);
     border: none;
     transition: background 0.2s;
-    border-radius: 5px;
+    border-radius: 4px;
     cursor: pointer;
 
     &:disabled {
@@ -189,7 +219,7 @@
     }
 
     &:hover:not(:disabled) {
-      background: var(--link-active-color, #c00);
+      filter: brightness(0.94);
     }
   }
 
@@ -199,7 +229,7 @@
     background: var(--background-color);
     border: none;
     transition: background 0.2s;
-    border-radius: 5px;
+    border-radius: 4px;
     cursor: pointer;
 
     &:disabled {
@@ -208,7 +238,7 @@
     }
 
     &:hover:not(:disabled) {
-      background: var(--button-bg-hover, #95a5a6);
+      background: var(--control-hover);
     }
   }
 }

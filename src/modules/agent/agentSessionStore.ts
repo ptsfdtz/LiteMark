@@ -49,3 +49,13 @@ export async function saveAgentSession(
     // Persistence is best-effort; ignore failures so editing never blocks.
   }
 }
+
+export async function deleteAgentSession(documentPath: string | null): Promise<void> {
+  try {
+    const store = await getStore();
+    await store.delete(keyFor(documentPath));
+    await store.save();
+  } catch {
+    // Persistence is best-effort; ignore failures so editing never blocks.
+  }
+}

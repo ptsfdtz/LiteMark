@@ -70,6 +70,39 @@ describe('Toolbar links', () => {
     expect(screen.getByRole('dialog', { name: 'Edit link' })).toBeInTheDocument();
   });
 
+  it('groups save-as and export actions behind the export control', async () => {
+    window.localStorage.setItem('litemark.locale', 'en');
+    const user = userEvent.setup();
+    const onSaveAs = vi.fn();
+    const onExportImage = vi.fn();
+    const onExportPdf = vi.fn();
+
+    render(
+      <I18nProvider>
+        <Toolbar
+          editor={createEditor().editor}
+          onSaveAs={onSaveAs}
+          onExportImage={onExportImage}
+          onExportPdf={onExportPdf}
+        />
+      </I18nProvider>,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Export' }));
+    const menu = screen.getByRole('menu', { name: 'Export' });
+    await user.click(screen.getByRole('menuitem', { name: /Save as/ }));
+    expect(onSaveAs).toHaveBeenCalledOnce();
+    expect(menu).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Export' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Export as PNG image' }));
+    expect(onExportImage).toHaveBeenCalledOnce();
+
+    await user.click(screen.getByRole('button', { name: 'Export' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Export as PDF' }));
+    expect(onExportPdf).toHaveBeenCalledOnce();
+  });
+
   it('uses an in-app heading menu and applies the selected heading level', async () => {
     window.localStorage.setItem('litemark.locale', 'en');
     const user = userEvent.setup();

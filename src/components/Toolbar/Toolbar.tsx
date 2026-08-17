@@ -8,7 +8,9 @@ import {
   LuChevronDown,
   LuCode,
   LuCopy,
+  LuFileOutput,
   LuFileText,
+  LuFileType,
   LuFolderOpen,
   LuImage,
   LuItalic,
@@ -31,6 +33,8 @@ const Toolbar: React.FC<ToolbarProps> = ({
   onOpenDocument,
   onSave,
   onSaveAs,
+  onExportImage,
+  onExportPdf,
   className,
   editor,
   disabled,
@@ -40,19 +44,23 @@ const Toolbar: React.FC<ToolbarProps> = ({
   const [linkEditorOpen, setLinkEditorOpen] = useState(false);
   const [blockMenuOpen, setBlockMenuOpen] = useState(false);
   const [openMenuOpen, setOpenMenuOpen] = useState(false);
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [linkValue, setLinkValue] = useState('');
   const [editingLink, setEditingLink] = useState(false);
   const [linkPosition, setLinkPosition] = useState({ left: 8, top: 48 });
   const [blockMenuPosition, setBlockMenuPosition] = useState({ left: 8, top: 48 });
   const [openMenuPosition, setOpenMenuPosition] = useState({ left: 8, top: 48 });
+  const [exportMenuPosition, setExportMenuPosition] = useState({ left: 8, top: 48 });
   const linkInputId = useId();
   const blockMenuId = useId();
   const linkButtonRef = useRef<HTMLButtonElement>(null);
   const blockButtonRef = useRef<HTMLButtonElement>(null);
   const openButtonRef = useRef<HTMLButtonElement>(null);
+  const exportButtonRef = useRef<HTMLButtonElement>(null);
   const linkPopoverRef = useRef<HTMLFormElement>(null);
   const blockMenuRef = useRef<HTMLDivElement>(null);
   const openMenuRef = useRef<HTMLDivElement>(null);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
   const linkInputRef = useRef<HTMLInputElement>(null);
   const noDrag = { 'data-tauri-drag-region': 'false' } as const;
 
@@ -184,6 +192,28 @@ const Toolbar: React.FC<ToolbarProps> = ({
     };
   }, [openMenuOpen]);
 
+  useEffect(() => {
+    if (!exportMenuOpen) return;
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (!exportButtonRef.current?.contains(target) && !exportMenuRef.current?.contains(target)) {
+        setExportMenuOpen(false);
+      }
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setExportMenuOpen(false);
+        exportButtonRef.current?.focus();
+      }
+    };
+    document.addEventListener('pointerdown', closeOnOutsidePointer);
+    window.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsidePointer);
+      window.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [exportMenuOpen]);
+
   const applyLink = () => {
     if (!editor) return;
     const href = linkValue.trim();
@@ -271,6 +301,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
               setOpenMenuPosition({ left: Math.max(8, rect.left), top: rect.bottom + 6 });
               setLinkEditorOpen(false);
               setBlockMenuOpen(false);
+              setExportMenuOpen(false);
               setOpenMenuOpen((open) => !open);
             }}
             title={t('toolbar.open')}
@@ -294,15 +325,25 @@ const Toolbar: React.FC<ToolbarProps> = ({
             <LuSave />
           </button>
         )}
-        {onSaveAs && (
+        {(onSaveAs || onExportImage || onExportPdf) && (
           <button
-            onClick={onSaveAs}
-            title={t('toolbar.saveAs')}
-            aria-label={t('toolbar.saveAs')}
+            ref={exportButtonRef}
+            onClick={(event) => {
+              const rect = event.currentTarget.getBoundingClientRect();
+              setExportMenuPosition({ left: Math.max(8, rect.left), top: rect.bottom + 6 });
+              setLinkEditorOpen(false);
+              setBlockMenuOpen(false);
+              setOpenMenuOpen(false);
+              setExportMenuOpen((open) => !open);
+            }}
+            title={t('toolbar.export')}
+            aria-label={t('toolbar.export')}
+            aria-haspopup="menu"
+            aria-expanded={exportMenuOpen}
             disabled={disabled}
             {...noDrag}
           >
-            <LuCopy />
+            <LuFileOutput />
           </button>
         )}
       </div>
@@ -615,6 +656,58 @@ const Toolbar: React.FC<ToolbarProps> = ({
                 <LuFolderOpen aria-hidden="true" />
                 <span>{t('toolbar.openFolder')}</span>
                 <kbd aria-hidden="true">Ctrl+Shift+O</kbd>
+              </button>
+            )}
+          </div>,
+          document.body,
+        )}
+      {exportMenuOpen &&
+        createPortal(
+          <div
+            ref={exportMenuRef}
+            className={styles.openMenu}
+            role="menu"
+            aria-label={t('toolbar.export')}
+            style={exportMenuPosition}
+          >
+            {onSaveAs && (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setExportMenuOpen(false);
+                  onSaveAs();
+                }}
+              >
+                <LuCopy aria-hidden="true" />
+                <span>{t('toolbar.saveAs')}</span>
+                <kbd aria-hidden="true">Ctrl+Shift+S</kbd>
+              </button>
+            )}
+            {onExportImage && (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setExportMenuOpen(false);
+                  onExportImage();
+                }}
+              >
+                <LuImage aria-hidden="true" />
+                <span>{t('toolbar.exportImage')}</span>
+              </button>
+            )}
+            {onExportPdf && (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setExportMenuOpen(false);
+                  onExportPdf();
+                }}
+              >
+                <LuFileType aria-hidden="true" />
+                <span>{t('toolbar.exportPdf')}</span>
               </button>
             )}
           </div>,

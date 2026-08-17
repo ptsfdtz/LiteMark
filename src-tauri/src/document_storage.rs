@@ -102,6 +102,12 @@ pub fn is_image_extension(path: &Path) -> bool {
         })
 }
 
+pub fn is_pdf_extension(path: &Path) -> bool {
+    path.extension()
+        .and_then(|extension| extension.to_str())
+        .is_some_and(|extension| extension.eq_ignore_ascii_case("pdf"))
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct FileInfo {
     pub path: String,
@@ -451,6 +457,7 @@ mod tests {
     use super::delete_file;
     use super::document_parent;
     use super::is_image_extension;
+    use super::is_pdf_extension;
     use super::list_directory_tree;
     use super::read_text_file;
     use super::rename_document;
@@ -470,6 +477,14 @@ mod tests {
         assert!(is_image_extension(Path::new("frame.avif")));
         assert!(!is_image_extension(Path::new("illustration.svg")));
         assert!(!is_image_extension(Path::new("notes.md")));
+    }
+
+    #[test]
+    fn pdf_preview_extension_is_explicitly_allowlisted() {
+        assert!(is_pdf_extension(Path::new("paper.pdf")));
+        assert!(is_pdf_extension(Path::new("Report.PDF")));
+        assert!(!is_pdf_extension(Path::new("notes.md")));
+        assert!(!is_pdf_extension(Path::new("archive.pdfx")));
     }
 
     #[test]

@@ -9,20 +9,20 @@
 .workDirInput {
   flex: 1;
   height: 30px;
-  padding: 0 10px;
-  padding: 6px 10px;
+  padding: 0 9px;
   color: var(--text-color, #222);
-  background: var(--toolbar-bg, #f7f7f7);
+  background: var(--paper-bg, #fff);
   border: 1px solid var(--editor-border, #ddd);
   transition: border 0.2s;
   box-sizing: border-box;
   min-width: 0;
   border-radius: 4px;
-  font-size: 1rem;
+  font-size: 12px;
 
   &:focus {
-    outline: none;
-    border-color: var(--link-active-color, #d33);
+    outline: 2px solid color-mix(in srgb, var(--accent-color) 24%, transparent);
+    outline-offset: 0;
+    border-color: var(--accent-color);
   }
 }
 
@@ -59,11 +59,12 @@
   flex-direction: column;
   width: 340px;
   height: 100%;
-  box-shadow: -2px 0 10px rgb(0 0 0 / 10%);
+  box-shadow: var(--floating-shadow);
   transition: transform 0.3s ease;
   min-width: 250px;
   max-width: 90vw;
-  background-color: var(--background-color);
+  background-color: var(--sidebar-bg);
+  border-left: 1px solid var(--hairline-color);
   transform: translateX(100%);
   z-index: 1000;
 
@@ -72,10 +73,20 @@
     justify-content: space-between;
     align-items: center;
     height: 46px;
-    padding: 0 14px;
+    padding: 0 8px 0 14px;
     box-sizing: border-box;
     color: var(--text-color);
-    border-bottom: 1px solid var(--editor-border, #ddd);
+    border-bottom: 1px solid var(--hairline-color);
+
+    .headerTitle {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      min-width: 0;
+      color: var(--heading-color);
+      font-size: 13px;
+      font-weight: 600;
+    }
 
     .closeButton {
       display: flex;
@@ -84,7 +95,7 @@
       width: 32px;
       height: 32px;
       padding: 0;
-      color: var(--text-color, #0f0f0f);
+      color: var(--muted-text);
       background: none;
       border: none;
       font-size: 16px;
@@ -92,18 +103,19 @@
       border-radius: 4px;
 
       &:hover {
-        background-color: var(--toolbar-bg, #f3f3f3);
+        color: var(--heading-color);
+        background-color: var(--control-hover);
       }
     }
   }
 
   .content {
     flex: 1;
-    padding: 1rem;
+    padding: 16px 14px 24px;
     overflow-y: auto;
 
     .settingGroup {
-      margin-bottom: 1rem;
+      margin-bottom: 20px;
       color: var(--text-color);
 
       .editorRow {
@@ -128,7 +140,7 @@
         .slider {
           position: absolute;
           inset: 0;
-          background-color: var(--editor-border, #ccc);
+          background-color: var(--hairline-color);
           border-radius: 22px;
           transition:
             background-color 0.2s ease,
@@ -140,16 +152,16 @@
             left: 2px;
             width: 18px;
             height: 18px;
-            box-shadow: 0 0 3px rgb(0 0 0 / 20%);
+            box-shadow: 0 1px 2px rgb(0 0 0 / 18%);
             transition: transform 0.25s ease;
             content: '';
-            background-color: var(--background-color);
+            background-color: var(--paper-bg);
             border-radius: 50%;
           }
         }
 
         input:checked + .slider {
-          background-color: var(--blockquote-text);
+          background-color: var(--accent-color);
         }
 
         input:checked + .slider::before {
@@ -157,7 +169,7 @@
         }
 
         &:hover .slider {
-          box-shadow: 0 0 0 2px var(--toolbar-bg);
+          box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-color) 16%, transparent);
         }
       }
     }
@@ -227,22 +239,24 @@
 }
 
 .languageButton {
-  padding: 6px 10px;
+  height: 30px;
+  padding: 0 10px;
   color: var(--text-color, #0f0f0f);
-  background: var(--toolbar-bg, #f3f3f3);
+  background: transparent;
   border: 1px solid var(--editor-border, #bbb);
-  border-radius: 6px;
-  font-size: 0.9rem;
+  border-radius: 4px;
+  font-size: 12px;
   cursor: pointer;
   transition:
     background 0.2s,
     border-color 0.2s,
-    box-shadow 0.2s;
+    color 0.2s;
 }
 
 .languageButtonActive {
-  box-shadow: 0 0 0 2px var(--text-color, #0f0f0f);
-  border-color: transparent;
+  color: var(--accent-color);
+  background: color-mix(in srgb, var(--accent-color) 10%, transparent);
+  border-color: color-mix(in srgb, var(--accent-color) 35%, transparent);
 }
 
 .languageButton:hover {
@@ -252,7 +266,16 @@
 }
 
 .settingLabel {
+  font-size: 12px;
   font-weight: 500;
+}
+
+.sectionLabel,
+.languageTitle {
+  margin-bottom: 8px;
+  color: var(--muted-text);
+  font-size: 11px;
+  font-weight: 600;
 }
 
 .agentGroup {
@@ -284,15 +307,16 @@
   height: 32px;
   padding: 6px 9px;
   color: var(--text-color, #222);
-  background: var(--toolbar-bg, #f7f7f7);
+  background: var(--paper-bg, #fff);
   border: 1px solid var(--editor-border, #ddd);
   border-radius: 4px;
   box-sizing: border-box;
-  font-size: 0.9rem;
+  font-size: 12px;
 
   &:focus {
-    outline: none;
-    border-color: var(--blockquote-text, #666);
+    outline: 2px solid color-mix(in srgb, var(--accent-color) 24%, transparent);
+    outline-offset: 0;
+    border-color: var(--accent-color);
   }
 }
 
@@ -302,18 +326,19 @@
   min-height: 56px;
   padding: 6px 9px;
   color: var(--text-color, #222);
-  background: var(--toolbar-bg, #f7f7f7);
+  background: var(--paper-bg, #fff);
   border: 1px solid var(--editor-border, #ddd);
   border-radius: 4px;
   box-sizing: border-box;
   font-family: inherit;
-  font-size: 0.9rem;
+  font-size: 12px;
   line-height: 1.4;
   resize: vertical;
 
   &:focus {
-    outline: none;
-    border-color: var(--blockquote-text, #666);
+    outline: 2px solid color-mix(in srgb, var(--accent-color) 24%, transparent);
+    outline-offset: 0;
+    border-color: var(--accent-color);
   }
 }
 

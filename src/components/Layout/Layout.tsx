@@ -10,6 +10,13 @@ import styles from './Layout.module.css';
 import CurrentFileName from './components/CurrentFileName';
 import { loadWorkDir, saveWorkDir } from '@/utils/workDirStore';
 import SaveSuccessToast from './components/SaveSuccessToast';
+import ExportSurface, { type ExportMode } from './components/ExportSurface';
+import {
+  exportBaseName,
+  renderElementToPdfBytes,
+  renderElementToPngBytes,
+  writeBinaryFile,
+} from '@/modules/exportDocument';
 import { useI18n } from '@/locales/useI18n';
 import { loadTheme, saveTheme } from '@/utils/themeStore';
 import { loadAgentSettings, saveAgentSettings } from '@/utils/agentSettingsStore';
@@ -17,6 +24,7 @@ import { DEFAULT_AGENT_SETTINGS, type AgentSettings } from '@/types/agent';
 import AgentPanel from '@/components/AgentPanel/AgentPanel';
 import FileExplorer, { type FileExplorerRoot } from '@/components/FileExplorer/FileExplorer';
 import { useAgentSession } from '@/modules/agent/useAgentSession';
+import { useAgentConversations } from '@/modules/agent/useAgentConversations';
 import useDocumentSession from '@/modules/documentSession/useDocumentSession';
 import {
   tauriDocumentStorage,
@@ -92,6 +100,8 @@ const Layout: React.FC = () => {
   const workspaceRestoredRef = useRef(false);
   const [forceEditFileName, setForceEditFileName] = useState(false);
   const [showSaveToast, setShowSaveToast] = useState(false);
+  const [saveToastMessage, setSaveToastMessage] = useState<string | undefined>();
+  const [exportRequest, setExportRequest] = useState<{ mode: ExportMode } | null>(null);
   const [agentSettings, setAgentSettings] = useState<AgentSettings>(DEFAULT_AGENT_SETTINGS);
   const [agentSettingsReady, setAgentSettingsReady] = useState(false);
   const [openTabs, setOpenTabs] = useState<string[]>([]);
@@ -257,6 +267,7 @@ const Layout: React.FC = () => {
       ? currentFilePath === null
       : activeFilePath === currentFilePath &&
         activeViewKind !== 'image' &&
+        activeViewKind !== 'pdf' &&
         activeViewKind !== 'unsupported';
 
   const agentConfigured = Boolean(
@@ -277,15 +288,19 @@ const Layout: React.FC = () => {
   const explorerHasItems = workspaceRoots.length > 0 || recentStandaloneFiles.length > 0;
 
   const agentFileWrittenRef = useRef<(path: string) => void>(() => {});
+  const agentScopeKey = activeWorkspaceDirectory || (activeTextDocument ? currentFilePath : null);
+  const agentScopeKind = activeWorkspaceDirectory ? 'project' : 'file';
+  const agentConversations = useAgentConversations(agentScopeKey);
+  const { syncActiveConversation } = agentConversations;
   const agentSession = useAgentSession({
     getSettings: () => agentSettings,
     getDocument: () => (activeTextDocument ? markdown : ''),
     applyDocument: (content) => {
       if (activeTextDocument) setMarkdown(content);
     },
-    getWorkDir: () => activeWorkspaceDirectory || workDir,
-    // The conversation belongs to the project, not to a single document.
-    sessionKey: activeWorkspaceDirectory || workDir || null,
+    // Directory tools are only available when the current document belongs to an open project.
+    getWorkDir: () => activeWorkspaceDirectory || '',
+    sessionKey: agentConversations.activeSessionKey,
     getCurrentFilePath: () => (activeTextDocument ? currentFilePath : null),
     getFileTree: () => {
       if (!activeWorkspaceDirectory) return null;
@@ -297,9 +312,14 @@ const Layout: React.FC = () => {
     onFileWritten: (path) => agentFileWrittenRef.current(path),
   });
 
-  const showSaveSuccess = () => {
+  useEffect(() => {
+    syncActiveConversation(agentSession.items);
+  }, [agentSession.items, syncActiveConversation]);
+
+  const showSaveSuccess = (message?: string) => {
+    setSaveToastMessage(message);
     setShowSaveToast(true);
-    window.setTimeout(() => setShowSaveToast(false), 1500);
+    window.setTimeout(() => setShowSaveToast(false), 3000);
   };
 
   const handleSave = async () => {
@@ -353,11 +373,43 @@ const Layout: React.FC = () => {
     }
   };
 
+  const handleExportImage = () => {
+    if (activeTextDocument) setExportRequest({ mode: 'png' });
+  };
+
+  const handleExportPdf = () => {
+    if (activeTextDocument) setExportRequest({ mode: 'pdf' });
+  };
+
+  const handleExport = async (element: HTMLElement) => {
+    if (!exportRequest) return;
+    try {
+      const selected = await open({ multiple: false, directory: true });
+      if (!selected || Array.isArray(selected)) return;
+      const extension = exportRequest.mode;
+      const data =
+        extension === 'pdf'
+          ? await renderElementToPdfBytes(element)
+          : await renderElementToPngBytes(element);
+      const separator = selected.includes('\\') ? '\\' : '/';
+      await writeBinaryFile(
+        `${selected}${separator}${exportBaseName(currentFilePath)}.${extension}`,
+        data,
+      );
+      showSaveSuccess(
+        t('export.completed', { path: `${exportBaseName(currentFilePath)}.${extension}` }),
+      );
+      setExportRequest(null);
+    } catch (error) {
+      await showDocumentError(error, 'dialog.exportFailed');
+    }
+  };
+
   const handleOpenDocument = async (path: string) => {
     if (!documentSessionReady) return false;
     const viewKind = getFileViewKind(path);
     if (viewKind === 'unsupported') return false;
-    if (viewKind === 'image') {
+    if (viewKind === 'image' || viewKind === 'pdf') {
       rememberTab(path);
       return true;
     }
@@ -494,6 +546,7 @@ const Layout: React.FC = () => {
         directory: false,
         filters: [
           { name: t('dialog.markdown'), extensions: ['md', 'markdown', 'txt'] },
+          { name: t('dialog.pdf'), extensions: ['pdf'] },
           { name: t('dialog.allFiles'), extensions: ['*'] },
         ],
       });
@@ -887,6 +940,8 @@ const Layout: React.FC = () => {
           onOpenDocument={() => void chooseDocument()}
           onSave={handleSave}
           onSaveAs={handleSaveAs}
+          onExportImage={activeTextDocument ? handleExportImage : undefined}
+          onExportPdf={activeTextDocument ? handleExportPdf : undefined}
           editor={markdownDocument ? editorInstance : null}
           disabled={!documentSessionReady}
           className="toolbar"
@@ -1012,12 +1067,28 @@ const Layout: React.FC = () => {
               onSave={handleSave}
               onSaveAs={handleSaveAs}
             />
-            <SaveSuccessToast show={showSaveToast} />
+            <SaveSuccessToast show={showSaveToast} message={saveToastMessage} />
+            {exportRequest && activeTextDocument && (
+              <ExportSurface
+                content={markdown}
+                filePath={currentFilePath}
+                mode={exportRequest.mode}
+                onExport={handleExport}
+                onClose={() => setExportRequest(null)}
+              />
+            )}
           </div>
         </div>
         {agentPanelRendered && (
           <AgentPanel
             session={agentSession}
+            conversations={agentConversations.conversations}
+            activeConversationId={agentConversations.activeConversationId}
+            scopeKind={agentScopeKind}
+            onCreateConversation={agentConversations.createConversation}
+            onSelectConversation={agentConversations.selectConversation}
+            onRenameConversation={agentConversations.renameConversation}
+            onDeleteConversation={agentConversations.deleteConversation}
             isConfigured={agentConfigured}
             modelName={agentSettings.model}
             onClose={() => setAgentSettings({ ...agentSettings, panelVisible: false })}
