@@ -52,13 +52,14 @@ struct PermissionDecision {
     allow: bool,
 }
 
-static PERMISSION_REQUESTS: OnceLock<
-    Arc<Mutex<HashMap<u64, oneshot::Sender<PermissionDecision>>>>,
-> = OnceLock::new();
+type PermissionSender = oneshot::Sender<PermissionDecision>;
+type PermissionRegistry = Arc<Mutex<HashMap<u64, PermissionSender>>>;
+
+static PERMISSION_REQUESTS: OnceLock<PermissionRegistry> = OnceLock::new();
 
 static NEXT_REQUEST_ID: AtomicU64 = AtomicU64::new(1);
 
-fn permission_registry() -> Arc<Mutex<HashMap<u64, oneshot::Sender<PermissionDecision>>>> {
+fn permission_registry() -> PermissionRegistry {
     PERMISSION_REQUESTS
         .get_or_init(|| Arc::new(Mutex::new(HashMap::new())))
         .clone()
@@ -537,6 +538,8 @@ fn tool_calls_value(tool_calls: &[ToolCall]) -> Value {
         .collect()
 }
 
+// Tauri exposes these as named IPC fields; keeping the command boundary flat preserves that API.
+#[allow(clippy::too_many_arguments)]
 #[tauri::command]
 pub async fn run_agent_turn(
     endpoint: String,
