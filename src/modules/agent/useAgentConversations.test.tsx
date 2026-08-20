@@ -35,6 +35,25 @@ describe('Agent conversations', () => {
     expect(result.current.activeSessionKey).toBe('C:\\notes');
   });
 
+  it('does not overwrite a new chat created while persisted chats are still loading', async () => {
+    let finishLoading: (value: PersistedConversationScope | null) => void = () => undefined;
+    mocks.loadConversationScope.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finishLoading = resolve;
+        }),
+    );
+    const { result } = renderHook(() => useAgentConversations('C:\\notes'));
+
+    act(() => result.current.createConversation());
+    const createdId = result.current.activeConversationId;
+    expect(createdId).not.toBe('legacy');
+
+    await act(async () => finishLoading(null));
+    expect(result.current.activeConversationId).toBe(createdId);
+    expect(result.current.conversations.some((item) => item.id === createdId)).toBe(true);
+  });
+
   it('restores the previously active conversation for a scope', async () => {
     mocks.loadConversationScope.mockResolvedValue({
       activeConversationId: 'second',

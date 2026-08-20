@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { deleteAgentSession } from './agentSessionStore';
 import {
   loadConversationScope,
@@ -60,6 +60,7 @@ function titleFrom(items: AgentItem[]): string {
 export function useAgentConversations(scopeKey: string | null): AgentConversations {
   const [state, setState] = useState<ConversationState>(() => initialState(scopeKey));
   const stateRef = useRef(state);
+  const revisionRef = useRef(0);
 
   const persist = useCallback((next: ConversationState) => {
     void saveConversationScope(next.scopeKey, {
@@ -74,6 +75,7 @@ export function useAgentConversations(scopeKey: string | null): AgentConversatio
 
   const commit = useCallback(
     (next: ConversationState) => {
+      revisionRef.current += 1;
       stateRef.current = next;
       setState(next);
       persist(next);
@@ -81,10 +83,11 @@ export function useAgentConversations(scopeKey: string | null): AgentConversatio
     [persist],
   );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     let active = true;
+    const revision = revisionRef.current;
     void loadConversationScope(scopeKey).then((restored) => {
-      if (!active) return;
+      if (!active || revisionRef.current !== revision) return;
       if (!restored?.conversations.length) {
         setState(initialState(scopeKey));
         return;
