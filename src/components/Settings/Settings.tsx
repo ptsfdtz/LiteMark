@@ -7,10 +7,10 @@ import {
   LuEye,
   LuEyeOff,
   LuFolderOpen,
+  LuMonitor,
   LuMoon,
   LuSettings,
   LuSun,
-  LuSunMoon,
   LuX,
 } from 'react-icons/lu';
 import { useI18n } from '@/locales/useI18n';
@@ -179,7 +179,7 @@ const Settings: React.FC<SettingsProps> = ({
                 title={t('settings.themeSystem')}
                 aria-label={t('settings.themeSystem')}
               >
-                <LuSunMoon />
+                <LuMonitor />
               </button>
               <button
                 className={`${styles.switchButton} ${

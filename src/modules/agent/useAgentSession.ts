@@ -3,7 +3,7 @@ import type { AgentSettings } from '@/types/agent';
 import { cancelAgentTurn, resolveAgentPermission, runAgentTurn } from './agentClient';
 import { loadAgentSession, saveAgentSession } from './agentSessionStore';
 import { diffLines, summarizeDiff } from './diff';
-import type { AgentEvent, AgentItem, AgentStatus, ChatMessage } from './types';
+import type { AgentEvent, AgentItem, AgentStatus, ChatMessage, PersistedAgentRun } from './types';
 
 export interface AgentSessionOptions {
   getSettings: () => AgentSettings;
@@ -24,7 +24,9 @@ export interface AgentSession {
   items: AgentItem[];
   status: AgentStatus;
   error: string | null;
+  activeRun?: PersistedAgentRun;
   send: (text: string) => Promise<void>;
+  resume: () => Promise<void>;
   stop: () => void;
   clear: () => void;
   applyEdit: (id: string) => void;
@@ -52,6 +54,37 @@ function rebuildPendingEdits(items: AgentItem[]): Map<string, string> {
   return pending;
 }
 
+function repairInterruptedHistory(history: ChatMessage[]): ChatMessage[] {
+  const repaired = [...history];
+  const unresolved = new Map<string, string>();
+  for (const message of history) {
+    if (message.role === 'assistant') {
+      for (const call of message.tool_calls ?? []) {
+        unresolved.set(call.id, call.function.name);
+      }
+    } else if (message.role === 'tool') {
+      unresolved.delete(message.tool_call_id);
+    }
+  }
+  for (const [toolCallId, name] of unresolved) {
+    repaired.push({
+      role: 'tool',
+      tool_call_id: toolCallId,
+      name,
+      content: 'Error: tool call interrupted before completion.',
+    });
+  }
+  return repaired;
+}
+
+function repairInterruptedItems(items: AgentItem[]): AgentItem[] {
+  return items.map((item) =>
+    item.role === 'permission' && item.pending
+      ? { ...item, pending: false, decision: 'deny' as const }
+      : item,
+  );
+}
+
 export function useAgentSession({
   getSettings,
   getDocument,
@@ -65,6 +98,7 @@ export function useAgentSession({
   const [items, setItems] = useState<AgentItem[]>([]);
   const [status, setStatus] = useState<AgentStatus>('idle');
   const [error, setError] = useState<string | null>(null);
+  const [checkpointRevision, setCheckpointRevision] = useState(0);
 
   const getSettingsRef = useRef(getSettings);
   const getDocumentRef = useRef(getDocument);
@@ -82,6 +116,7 @@ export function useAgentSession({
   onFileWrittenRef.current = onFileWritten;
 
   const historyRef = useRef<ChatMessage[]>([]);
+  const activeRunRef = useRef<PersistedAgentRun | undefined>(undefined);
   const runningRef = useRef(false);
   const pendingEditsRef = useRef(new Map<string, string>());
   const alwaysAllowRef = useRef(new Set<string>());
@@ -101,6 +136,7 @@ export function useAgentSession({
       void saveAgentSession(previousScope, {
         items: itemsRef.current,
         history: [...historyRef.current],
+        ...(activeRunRef.current ? { activeRun: activeRunRef.current } : {}),
       });
     }
 
@@ -113,6 +149,25 @@ export function useAgentSession({
       if (editRevisionRef.current !== revision) return;
       const session = restored ?? { items: [], history: [] };
       historyRef.current = session.history;
+      activeRunRef.current = session.activeRun;
+      if (
+        activeRunRef.current &&
+        ['running', 'waiting_approval'].includes(activeRunRef.current.status)
+      ) {
+        activeRunRef.current = {
+          ...activeRunRef.current,
+          status: 'interrupted',
+          terminalReason: 'Application closed before the run completed.',
+          updatedAt: Date.now(),
+        };
+        historyRef.current = repairInterruptedHistory(session.history);
+        session.items = repairInterruptedItems(session.items);
+        void saveAgentSession(sessionKey, {
+          items: session.items,
+          history: [...historyRef.current],
+          activeRun: activeRunRef.current,
+        });
+      }
       pendingEditsRef.current = rebuildPendingEdits(session.items);
       setItems(session.items);
       setError(null);
@@ -130,18 +185,32 @@ export function useAgentSession({
       void saveAgentSession(scopeRef.current, {
         items,
         history: [...historyRef.current],
+        ...(activeRunRef.current ? { activeRun: activeRunRef.current } : {}),
       });
     }, 300);
     return () => window.clearTimeout(timeout);
-  }, [items]);
+  }, [items, checkpointRevision]);
 
   const send = useCallback(async (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || runningRef.current) return;
     runningRef.current = true;
+    const runId = nextId('run');
+    const startedAt = Date.now();
+    activeRunRef.current = {
+      id: runId,
+      goal: trimmed,
+      status: 'running',
+      stepCount: 0,
+      retryCount: 0,
+      plan: [],
+      startedAt,
+      updatedAt: startedAt,
+    };
     editRevisionRef.current += 1;
     setError(null);
     setStatus('running');
+    const initialDocument = getDocumentRef.current();
 
     historyRef.current.push({ role: 'user', content: trimmed });
     const userItem: AgentItem = { id: nextId('user'), role: 'user', content: trimmed };
@@ -170,6 +239,15 @@ export function useAgentSession({
           });
           break;
         case 'tool_call_start': {
+          if (activeRunRef.current) {
+            activeRunRef.current = {
+              ...activeRunRef.current,
+              status: 'running',
+              stepCount: activeRunRef.current.stepCount + 1,
+              pendingApprovalId: undefined,
+              updatedAt: Date.now(),
+            };
+          }
           const callId = event.id || nextId('call');
           const toolId = nextId('tool');
           toolItemIdByCallId.set(callId, toolId);
@@ -191,6 +269,13 @@ export function useAgentSession({
           break;
         }
         case 'tool_call_error': {
+          if (activeRunRef.current) {
+            activeRunRef.current = {
+              ...activeRunRef.current,
+              retryCount: activeRunRef.current.retryCount + 1,
+              updatedAt: Date.now(),
+            };
+          }
           const toolId = toolItemIdByCallId.get(event.id);
           historyRef.current.push({
             role: 'tool',
@@ -205,6 +290,14 @@ export function useAgentSession({
           break;
         }
         case 'permission_request': {
+          if (activeRunRef.current) {
+            activeRunRef.current = {
+              ...activeRunRef.current,
+              status: 'waiting_approval',
+              pendingApprovalId: event.id,
+              updatedAt: Date.now(),
+            };
+          }
           const permissionId = nextId('permission');
           if (alwaysAllowRef.current.has(event.name)) {
             void resolveAgentPermission(event.id, true);
@@ -237,8 +330,14 @@ export function useAgentSession({
         case 'edit': {
           const before = getDocumentRef.current();
           const summary = summarizeDiff(before, event.content);
-          const autoApply = getSettingsRef.current().autoApply !== false;
+          const hasVersionConflict = before !== initialDocument;
+          const autoApply = getSettingsRef.current().autoApply !== false && !hasVersionConflict;
           if (autoApply) applyDocumentRef.current(event.content);
+          if (hasVersionConflict) {
+            setError(
+              'The document changed while the agent was running. Review the edit before applying it.',
+            );
+          }
           const editId = nextId('edit');
           pendingEditsRef.current.set(editId, event.content);
           setItems((current) => [
@@ -257,15 +356,34 @@ export function useAgentSession({
         case 'file_written':
           onFileWrittenRef.current?.(event.path);
           break;
+        case 'plan_updated':
+          if (activeRunRef.current) {
+            activeRunRef.current = {
+              ...activeRunRef.current,
+              plan: event.steps,
+              updatedAt: Date.now(),
+            };
+          }
+          setCheckpointRevision((current) => current + 1);
+          break;
         case 'done':
+          if (activeRunRef.current) {
+            activeRunRef.current = {
+              ...activeRunRef.current,
+              status: 'completed',
+              pendingApprovalId: undefined,
+              updatedAt: Date.now(),
+            };
+          }
           break;
       }
     };
 
     try {
       await runAgentTurn({
+        runId,
         settings: getSettingsRef.current(),
-        document: getDocumentRef.current(),
+        document: initialDocument,
         messages: [...historyRef.current],
         workDir: getWorkDirRef.current(),
         currentFilePath: getCurrentFilePathRef.current(),
@@ -276,11 +394,29 @@ export function useAgentSession({
     } catch (reason) {
       const message = reason instanceof Error ? reason.message : String(reason);
       if (!isCancellation(message)) {
+        if (activeRunRef.current) {
+          activeRunRef.current = {
+            ...activeRunRef.current,
+            status: 'failed',
+            terminalReason: message,
+            pendingApprovalId: undefined,
+            updatedAt: Date.now(),
+          };
+        }
         setError(message);
+      } else if (activeRunRef.current) {
+        activeRunRef.current = {
+          ...activeRunRef.current,
+          status: 'cancelled',
+          terminalReason: 'Cancelled by user.',
+          pendingApprovalId: undefined,
+          updatedAt: Date.now(),
+        };
       }
     } finally {
       runningRef.current = false;
       setStatus('idle');
+      setCheckpointRevision((current) => current + 1);
     }
   }, []);
 
@@ -290,12 +426,20 @@ export function useAgentSession({
       void resolveAgentPermission(requestId, false);
     }
     pendingPermissionsRef.current.clear();
-    void cancelAgentTurn();
+    const runId = activeRunRef.current?.id;
+    if (runId) void cancelAgentTurn(runId);
   }, []);
+
+  const resume = useCallback(async () => {
+    const interrupted = activeRunRef.current;
+    if (!interrupted || interrupted.status !== 'interrupted' || runningRef.current) return;
+    await send(`Continue the interrupted task. Original goal: ${interrupted.goal}`);
+  }, [send]);
 
   const clear = useCallback(() => {
     if (runningRef.current) return;
     historyRef.current = [];
+    activeRunRef.current = undefined;
     pendingEditsRef.current.clear();
     setItems([]);
     setError(null);
@@ -321,6 +465,14 @@ export function useAgentSession({
       alwaysAllowRef.current.add(name);
     }
     void resolveAgentPermission(requestId, allow);
+    if (activeRunRef.current) {
+      activeRunRef.current = {
+        ...activeRunRef.current,
+        status: 'running',
+        pendingApprovalId: undefined,
+        updatedAt: Date.now(),
+      };
+    }
     setItems((current) =>
       current.map((item) =>
         item.role === 'permission' && item.requestId === requestId
@@ -330,5 +482,16 @@ export function useAgentSession({
     );
   }, []);
 
-  return { items, status, error, send, stop, clear, applyEdit, respondPermission };
+  return {
+    items,
+    status,
+    error,
+    activeRun: activeRunRef.current,
+    send,
+    resume,
+    stop,
+    clear,
+    applyEdit,
+    respondPermission,
+  };
 }

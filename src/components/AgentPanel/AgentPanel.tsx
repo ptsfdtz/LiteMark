@@ -1,5 +1,21 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { LuPlus, LuSend, LuSquare, LuTrash2, LuX } from 'react-icons/lu';
+import {
+  LuArchive,
+  LuArchiveRestore,
+  LuArrowLeft,
+  LuCheck,
+  LuChevronRight,
+  LuHistory,
+  LuMessageSquare,
+  LuPenLine,
+  LuPlus,
+  LuRotateCcw,
+  LuSend,
+  LuShieldCheck,
+  LuSquare,
+  LuTrash2,
+  LuX,
+} from 'react-icons/lu';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
@@ -19,6 +35,8 @@ interface AgentPanelProps {
   onCreateConversation: () => void;
   onSelectConversation: (id: string) => void;
   onRenameConversation: (id: string, title: string) => void;
+  onArchiveConversation?: (id: string) => void;
+  onRestoreConversation?: (id: string) => void;
   onDeleteConversation: (id: string) => void;
   isConfigured: boolean;
   modelName: string;
@@ -41,9 +59,8 @@ const toolNameKeys: Record<string, TranslationKey> = {
 const SYSTEM_URL_PATTERN = /^(?:https?:\/\/|mailto:|tel:)/i;
 
 const agentMarkdownComponents: Components = {
-  a: ({ node: _node, href, children, ...props }) => (
+  a: ({ href, children }) => (
     <a
-      {...props}
       href={href}
       onClick={(event) => {
         event.preventDefault();
@@ -56,7 +73,7 @@ const agentMarkdownComponents: Components = {
       {children}
     </a>
   ),
-  img: ({ node: _node, alt }) => <span className={styles.imageAlt}>{alt || ''}</span>,
+  img: ({ alt }) => <span className={styles.imageAlt}>{alt || ''}</span>,
 };
 
 const AgentMarkdown: React.FC<{ content: string }> = ({ content }) => (
@@ -69,6 +86,67 @@ const AgentMarkdown: React.FC<{ content: string }> = ({ content }) => (
   </ReactMarkdown>
 );
 
+interface ToolDisclosureProps {
+  name: string;
+  result?: string;
+  error?: string;
+  completedLabel: string;
+  failedLabel: string;
+  runningLabel: string;
+}
+
+const ToolDisclosure: React.FC<ToolDisclosureProps> = ({
+  name,
+  result,
+  error,
+  completedLabel,
+  failedLabel,
+  runningLabel,
+}) => {
+  const [expanded, setExpanded] = useState(false);
+  const finished = error !== undefined || result !== undefined;
+  const stateLabel = error ? failedLabel : finished ? completedLabel : runningLabel;
+
+  return (
+    <div className={styles.toolCard}>
+      {finished ? (
+        <button
+          type="button"
+          className={styles.toolSummary}
+          aria-label={`${name}, ${stateLabel}`}
+          aria-expanded={expanded}
+          onClick={() => setExpanded((current) => !current)}
+        >
+          <span className={styles.toolName}>{name}</span>
+          <span className={`${styles.toolState} ${error ? styles.failed : ''}`}>{stateLabel}</span>
+          <LuChevronRight
+            className={`${styles.toolChevron} ${expanded ? styles.expanded : ''}`}
+            aria-hidden="true"
+          />
+        </button>
+      ) : (
+        <div className={styles.toolSummary}>
+          <span className={styles.toolName}>{name}</span>
+          <span className={styles.toolState}>{stateLabel}</span>
+          <span className={styles.toolPending} aria-hidden="true">
+            …
+          </span>
+        </div>
+      )}
+      {finished && (
+        <div
+          className={`${styles.toolDisclosure} ${expanded ? styles.expanded : ''}`}
+          aria-hidden={!expanded}
+        >
+          <div className={styles.toolDisclosureInner}>
+            <div className={error ? styles.toolError : styles.toolResult}>{error || result}</div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const AgentPanel: React.FC<AgentPanelProps> = ({
   session,
   conversations,
@@ -77,6 +155,8 @@ const AgentPanel: React.FC<AgentPanelProps> = ({
   onCreateConversation,
   onSelectConversation,
   onRenameConversation,
+  onArchiveConversation = () => undefined,
+  onRestoreConversation = () => undefined,
   onDeleteConversation,
   isConfigured,
   modelName,
@@ -86,6 +166,7 @@ const AgentPanel: React.FC<AgentPanelProps> = ({
 }) => {
   const { t } = useI18n();
   const [input, setInput] = useState('');
+  const [view, setView] = useState<'home' | 'conversation' | 'archive'>('home');
   const [editingConversationId, setEditingConversationId] = useState<string | null>(null);
   const [editingConversationTitle, setEditingConversationTitle] = useState('');
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -137,7 +218,8 @@ const AgentPanel: React.FC<AgentPanelProps> = ({
 
   const panelWidth = closing || !entered ? 0 : width;
 
-  const { items, status, error, send, stop, applyEdit, respondPermission } = session;
+  const { items, status, error, activeRun, send, resume, stop, applyEdit, respondPermission } =
+    session;
   const running = status === 'running';
   const panelTitle = isConfigured && modelName.trim() ? modelName.trim() : t('agent.title');
   const scopeLabel = scopeKind === 'project' ? t('agent.scope.project') : t('agent.scope.file');
@@ -187,6 +269,40 @@ const AgentPanel: React.FC<AgentPanelProps> = ({
     setEditingConversationId(null);
   };
 
+  const activeConversation = conversations.find(
+    (conversation) => conversation.id === activeConversationId,
+  );
+  const recentConversations = conversations
+    .filter((conversation) => !conversation.archivedAt && conversation.title.trim())
+    .sort((left, right) => right.updatedAt - left.updatedAt);
+  const archivedConversations = conversations
+    .filter((conversation) => conversation.archivedAt)
+    .sort((left, right) => (right.archivedAt ?? 0) - (left.archivedAt ?? 0));
+
+  const createConversation = () => {
+    if (running) return;
+    onCreateConversation();
+    setView('conversation');
+  };
+
+  const selectConversation = (id: string) => {
+    if (running) return;
+    onSelectConversation(id);
+    setView('conversation');
+  };
+
+  const archiveConversation = (id: string) => {
+    if (running) return;
+    onArchiveConversation(id);
+    setView('home');
+  };
+
+  const restoreConversation = (id: string) => {
+    if (running) return;
+    onRestoreConversation(id);
+    setView('conversation');
+  };
+
   return (
     <aside
       ref={asideRef}
@@ -209,8 +325,26 @@ const AgentPanel: React.FC<AgentPanelProps> = ({
       />
       <div className={styles.header}>
         <div className={styles.titleGroup}>
-          <span className={styles.title} title={panelTitle}>
-            {panelTitle}
+          {view !== 'home' && (
+            <button
+              className={styles.headerButton}
+              onClick={() => setView('home')}
+              title={t('agent.backToChats')}
+              aria-label={t('agent.backToChats')}
+              disabled={running}
+            >
+              <LuArrowLeft />
+            </button>
+          )}
+          <span
+            className={styles.title}
+            title={view === 'conversation' ? activeConversation?.title || panelTitle : undefined}
+          >
+            {view === 'home'
+              ? t('agent.chats')
+              : view === 'archive'
+                ? t('agent.archivedChats')
+                : activeConversation?.title || t('agent.newChat')}
           </span>
           <button
             className={styles.closeTitleButton}
@@ -220,74 +354,165 @@ const AgentPanel: React.FC<AgentPanelProps> = ({
           >
             <LuX />
           </button>
-          <span className={styles.scope}>{scopeLabel}</span>
+          {view === 'conversation' && <span className={styles.scope}>{scopeLabel}</span>}
         </div>
         <div className={styles.headerActions}>
+          {view === 'home' && (
+            <button
+              className={styles.headerButton}
+              onClick={() => setView('archive')}
+              title={t('agent.archivedChats')}
+              aria-label={t('agent.archivedChats')}
+              disabled={running}
+            >
+              <LuHistory />
+            </button>
+          )}
+          {view === 'conversation' && activeConversation && (
+            <button
+              className={styles.headerButton}
+              onClick={() => archiveConversation(activeConversation.id)}
+              title={t('agent.archiveChat')}
+              aria-label={t('agent.archiveChat')}
+              disabled={running}
+            >
+              <LuArchive />
+            </button>
+          )}
           <button
             className={styles.headerButton}
-            onClick={onCreateConversation}
+            onClick={createConversation}
             title={t('agent.newChat')}
             aria-label={t('agent.newChat')}
             disabled={running}
           >
-            <LuPlus />
+            <LuPenLine />
           </button>
         </div>
       </div>
 
-      <div className={styles.conversationSection}>
-        <div className={styles.conversationList} role="list" aria-label={t('agent.chats')}>
-          {conversations.map((conversation) => {
-            const active = conversation.id === activeConversationId;
-            const title = conversation.title || t('agent.newChat');
-            return (
-              <div
-                key={conversation.id}
-                className={`${styles.conversationRow} ${active ? styles.activeConversation : ''}`}
-                role="listitem"
-              >
-                {editingConversationId === conversation.id ? (
-                  <input
-                    ref={conversationTitleInputRef}
-                    className={styles.conversationTitleInput}
-                    value={editingConversationTitle}
-                    onChange={(event) => setEditingConversationTitle(event.target.value)}
-                    onBlur={finishRenameConversation}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter') finishRenameConversation();
-                      if (event.key === 'Escape') setEditingConversationId(null);
-                    }}
-                    aria-label={t('agent.renameChat')}
-                  />
-                ) : (
-                  <button
-                    className={styles.conversationButton}
-                    onClick={() => onSelectConversation(conversation.id)}
-                    onDoubleClick={() => startRenameConversation(conversation.id, title)}
-                    aria-current={active ? 'page' : undefined}
-                    title={title}
-                    disabled={running}
-                  >
-                    {title}
-                  </button>
-                )}
-                <button
-                  className={styles.deleteConversationButton}
-                  onClick={() => onDeleteConversation(conversation.id)}
-                  title={t('agent.deleteChat')}
-                  aria-label={`${t('agent.deleteChat')}: ${title}`}
-                  disabled={running}
-                >
-                  <LuTrash2 />
-                </button>
-              </div>
-            );
-          })}
+      <div className={styles.chatHome} hidden={view === 'conversation'}>
+        <div
+          className={styles.chatHomeList}
+          role="list"
+          aria-label={view === 'archive' ? t('agent.archivedChats') : t('agent.chats')}
+        >
+          {(view === 'archive' ? archivedConversations : recentConversations).map(
+            (conversation) => {
+              const title = conversation.title || t('agent.newChat');
+              return (
+                <div key={conversation.id} className={styles.chatHomeRow} role="listitem">
+                  {editingConversationId === conversation.id ? (
+                    <input
+                      ref={conversationTitleInputRef}
+                      className={styles.conversationTitleInput}
+                      value={editingConversationTitle}
+                      onChange={(event) => setEditingConversationTitle(event.target.value)}
+                      onBlur={finishRenameConversation}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') finishRenameConversation();
+                        if (event.key === 'Escape') setEditingConversationId(null);
+                      }}
+                      aria-label={t('agent.renameChat')}
+                    />
+                  ) : (
+                    <button
+                      className={styles.chatHomeConversation}
+                      onClick={() =>
+                        view === 'archive'
+                          ? restoreConversation(conversation.id)
+                          : selectConversation(conversation.id)
+                      }
+                      onDoubleClick={() => startRenameConversation(conversation.id, title)}
+                      title={title}
+                      disabled={running}
+                    >
+                      <LuMessageSquare aria-hidden="true" />
+                      <span>{title}</span>
+                    </button>
+                  )}
+                  <div className={styles.chatRowActions}>
+                    {view === 'archive' ? (
+                      <>
+                        <button
+                          className={styles.rowIconButton}
+                          onClick={() => restoreConversation(conversation.id)}
+                          title={t('agent.restoreChat')}
+                          aria-label={`${t('agent.restoreChat')}: ${title}`}
+                          disabled={running}
+                        >
+                          <LuArchiveRestore />
+                        </button>
+                        <button
+                          className={styles.rowIconButton}
+                          onClick={() => {
+                            if (window.confirm(t('agent.deleteChatConfirm'))) {
+                              onDeleteConversation(conversation.id);
+                            }
+                          }}
+                          title={t('agent.deleteChat')}
+                          aria-label={`${t('agent.deleteChat')}: ${title}`}
+                          disabled={running}
+                        >
+                          <LuTrash2 />
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        className={styles.rowIconButton}
+                        onClick={() => archiveConversation(conversation.id)}
+                        title={t('agent.archiveChat')}
+                        aria-label={`${t('agent.archiveChat')}: ${title}`}
+                        disabled={running}
+                      >
+                        <LuArchive />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            },
+          )}
+          {(view === 'archive' ? archivedConversations : recentConversations).length === 0 && (
+            <div className={styles.chatHomeEmpty}>
+              <LuMessageSquare aria-hidden="true" />
+              <span>{view === 'archive' ? t('agent.noArchivedChats') : t('agent.noChats')}</span>
+            </div>
+          )}
         </div>
+        {view === 'home' && (
+          <button
+            type="button"
+            className={styles.startChatButton}
+            onClick={createConversation}
+            disabled={running}
+          >
+            <LuPlus aria-hidden="true" />
+            {t('agent.startNewChat')}
+          </button>
+        )}
       </div>
 
-      <div className={styles.messages} ref={listRef}>
+      <div className={styles.messages} hidden={view !== 'conversation'} ref={listRef}>
         {!isConfigured && <div className={styles.notice}>{t('agent.notConfigured')}</div>}
+        {activeRun?.status === 'interrupted' && (
+          <div className={styles.interruptedRun} role="status">
+            <div className={styles.interruptedRunText}>
+              <strong>{t('agent.interruptedTitle')}</strong>
+              <span title={activeRun.goal}>{activeRun.goal}</span>
+            </div>
+            <button
+              type="button"
+              className={styles.resumeButton}
+              onClick={() => void resume()}
+              disabled={running || !isConfigured}
+              title={t('agent.resume')}
+            >
+              <LuRotateCcw aria-hidden="true" />
+              {t('agent.resume')}
+            </button>
+          </div>
+        )}
         {items.map((item) => {
           switch (item.role) {
             case 'user':
@@ -311,16 +536,14 @@ const AgentPanel: React.FC<AgentPanelProps> = ({
             case 'tool':
               return (
                 <div key={item.id} className={styles.toolRow}>
-                  <div className={styles.toolCard}>
-                    <span className={styles.toolName}>{localizeToolName(item.name)}</span>
-                    {item.error ? (
-                      <span className={styles.toolError}>{item.error}</span>
-                    ) : item.result !== undefined ? (
-                      <span className={styles.toolResult}>{item.result}</span>
-                    ) : (
-                      <span className={styles.toolPending}>…</span>
-                    )}
-                  </div>
+                  <ToolDisclosure
+                    name={localizeToolName(item.name)}
+                    result={item.result}
+                    error={item.error}
+                    completedLabel={t('agent.tool.completed')}
+                    failedLabel={t('agent.tool.failed')}
+                    runningLabel={t('agent.tool.running')}
+                  />
                 </div>
               );
             case 'permission':
@@ -328,8 +551,10 @@ const AgentPanel: React.FC<AgentPanelProps> = ({
                 <div key={item.id} className={styles.toolRow}>
                   <div className={styles.permissionCard}>
                     <div className={styles.permissionTitle}>
-                      {t('agent.permissionTitle')}{' '}
-                      <span className={styles.toolName}>{localizeToolName(item.name)}</span>
+                      <span>{t('agent.permissionTitle')}</span>
+                      <span className={styles.permissionToolName}>
+                        {localizeToolName(item.name)}
+                      </span>
                     </div>
                     {item.pending ? (
                       <div className={styles.permissionActions}>
@@ -337,23 +562,26 @@ const AgentPanel: React.FC<AgentPanelProps> = ({
                           className={styles.allowButton}
                           onClick={() => respondPermission(item.requestId, true)}
                         >
+                          <LuCheck aria-hidden="true" />
                           {t('agent.allow')}
                         </button>
                         <button
-                          className={styles.allowButton}
+                          className={styles.alwaysAllowButton}
                           onClick={() => respondPermission(item.requestId, true, true)}
                         >
+                          <LuShieldCheck aria-hidden="true" />
                           {t('agent.alwaysAllow')}
                         </button>
                         <button
                           className={styles.denyButton}
                           onClick={() => respondPermission(item.requestId, false)}
                         >
+                          <LuX aria-hidden="true" />
                           {t('agent.deny')}
                         </button>
                       </div>
                     ) : (
-                      <span className={styles.toolResult}>
+                      <span className={`${styles.toolResult} ${styles.permissionResolution}`}>
                         {item.decision === 'allow' ? t('agent.allow') : t('agent.deny')}
                       </span>
                     )}
@@ -397,9 +625,9 @@ const AgentPanel: React.FC<AgentPanelProps> = ({
         })}
       </div>
 
-      {error && <div className={styles.error}>{error}</div>}
+      {view === 'conversation' && error && <div className={styles.error}>{error}</div>}
 
-      <div className={styles.composer}>
+      <div className={styles.composer} hidden={view !== 'conversation'}>
         <textarea
           ref={inputRef}
           className={styles.input}

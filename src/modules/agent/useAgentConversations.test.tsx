@@ -98,4 +98,62 @@ describe('Agent conversations', () => {
       customTitle: true,
     });
   });
+
+  it('archives without deleting session data and restores the conversation', async () => {
+    mocks.loadConversationScope.mockResolvedValue({
+      activeConversationId: 'first',
+      conversations: [
+        { id: 'first', title: 'First chat', createdAt: 1, updatedAt: 1 },
+        { id: 'second', title: 'Second chat', createdAt: 2, updatedAt: 2 },
+      ],
+    });
+    const { result } = renderHook(() => useAgentConversations('C:\\notes'));
+    await waitFor(() => expect(result.current.activeConversationId).toBe('first'));
+
+    act(() => result.current.archiveConversation('first'));
+    expect(result.current.conversations.find((item) => item.id === 'first')?.archivedAt).toEqual(
+      expect.any(Number),
+    );
+    expect(result.current.activeConversationId).toBe('second');
+    expect(mocks.deleteAgentSession).not.toHaveBeenCalled();
+
+    act(() => result.current.restoreConversation('first'));
+    expect(result.current.activeConversationId).toBe('first');
+    expect(
+      result.current.conversations.find((item) => item.id === 'first')?.archivedAt,
+    ).toBeUndefined();
+  });
+
+  it('permanently deletes an archived conversation and its session', async () => {
+    mocks.loadConversationScope.mockResolvedValue({
+      activeConversationId: 'active',
+      conversations: [
+        { id: 'active', title: 'Active chat', createdAt: 1, updatedAt: 2 },
+        { id: 'old', title: 'Archived chat', createdAt: 1, updatedAt: 1, archivedAt: 2 },
+      ],
+    });
+    const { result } = renderHook(() => useAgentConversations('C:\\notes'));
+    await waitFor(() => expect(result.current.conversations).toHaveLength(2));
+
+    act(() => result.current.deleteConversation('old'));
+    expect(mocks.deleteAgentSession).toHaveBeenCalledWith('C:\\notes::old');
+    expect(result.current.conversations.some((item) => item.id === 'old')).toBe(false);
+  });
+
+  it('creates an active blank chat when every restored conversation is archived', async () => {
+    mocks.loadConversationScope.mockResolvedValue({
+      activeConversationId: 'old',
+      conversations: [
+        { id: 'old', title: 'Archived chat', createdAt: 1, updatedAt: 1, archivedAt: 2 },
+      ],
+    });
+    const { result } = renderHook(() => useAgentConversations('C:\\notes'));
+
+    await waitFor(() => expect(result.current.conversations).toHaveLength(2));
+    const active = result.current.conversations.find(
+      (item) => item.id === result.current.activeConversationId,
+    );
+    expect(active).toMatchObject({ title: '' });
+    expect(active?.archivedAt).toBeUndefined();
+  });
 });

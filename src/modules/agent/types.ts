@@ -19,7 +19,16 @@ export type AgentEvent =
   | { type: 'assistant_message'; content: string; tool_calls: ToolCall[] }
   | { type: 'edit'; content: string }
   | { type: 'file_written'; path: string }
+  | { type: 'plan_updated'; steps: AgentPlanStep[] }
   | { type: 'done' };
+
+export type PlanStepStatus = 'pending' | 'in_progress' | 'completed' | 'failed';
+
+export interface AgentPlanStep {
+  id: string;
+  description: string;
+  status: PlanStepStatus;
+}
 
 export interface DiffSummary {
   added: number;
@@ -53,3 +62,24 @@ export type AgentItem =
     };
 
 export type AgentStatus = 'idle' | 'running';
+
+export type AgentRunStatus =
+  | 'running'
+  | 'waiting_approval'
+  | 'completed'
+  | 'failed'
+  | 'cancelled'
+  | 'interrupted';
+
+export interface PersistedAgentRun {
+  id: string;
+  goal: string;
+  status: AgentRunStatus;
+  stepCount: number;
+  retryCount: number;
+  plan: AgentPlanStep[];
+  pendingApprovalId?: number;
+  terminalReason?: string;
+  startedAt: number;
+  updatedAt: number;
+}

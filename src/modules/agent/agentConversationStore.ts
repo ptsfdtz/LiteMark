@@ -8,6 +8,7 @@ export interface AgentConversationSummary {
   customTitle?: boolean;
   createdAt: number;
   updatedAt: number;
+  archivedAt?: number;
 }
 
 export interface PersistedConversationScope {
@@ -42,7 +43,8 @@ export async function loadConversationScope(
             typeof conversation.id === 'string' &&
             typeof conversation.title === 'string' &&
             typeof conversation.createdAt === 'number' &&
-            typeof conversation.updatedAt === 'number',
+            typeof conversation.updatedAt === 'number' &&
+            (conversation.archivedAt === undefined || typeof conversation.archivedAt === 'number'),
           ),
       ),
       activeConversationId: scope.activeConversationId,

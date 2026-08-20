@@ -29,6 +29,16 @@
   box-sizing: border-box;
 }
 
+.trailingControl {
+  display: flex;
+  flex: none;
+  align-items: center;
+  width: 36px;
+  height: 100%;
+  border-left: 1px solid var(--hairline-color);
+  box-sizing: border-box;
+}
+
 .tabScroller::-webkit-scrollbar {
   display: none;
 }

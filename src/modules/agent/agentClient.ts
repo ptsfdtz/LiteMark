@@ -3,6 +3,7 @@ import type { AgentSettings } from '@/types/agent';
 import type { AgentEvent, ChatMessage } from './types';
 
 export interface RunAgentTurnParams {
+  runId: string;
   settings: AgentSettings;
   document: string;
   messages: ChatMessage[];
@@ -22,10 +23,12 @@ export async function runAgentTurn({
   fileTree,
   confirmWrites,
   onEvent,
+  runId,
 }: RunAgentTurnParams): Promise<void> {
   const channel = new Channel<AgentEvent>();
   channel.onmessage = onEvent;
   await invoke('run_agent_turn', {
+    runId,
     endpoint: settings.endpoint.trim(),
     apiKey: settings.apiKey.trim(),
     model: settings.model.trim(),
@@ -45,6 +48,6 @@ export async function resolveAgentPermission(requestId: number, allow: boolean):
   await invoke('resolve_agent_permission', { requestId, allow });
 }
 
-export async function cancelAgentTurn(): Promise<void> {
-  await invoke('cancel_agent_turn');
+export async function cancelAgentTurn(runId: string): Promise<void> {
+  await invoke('cancel_agent_turn', { runId });
 }

@@ -104,7 +104,8 @@
   min-width: 0;
 }
 
-.showExplorerButton {
+.showExplorerButton,
+.showAgentButton {
   display: flex;
   justify-content: center;
   align-items: center;
@@ -119,12 +120,14 @@
   cursor: pointer;
 }
 
-.showExplorerButton:hover {
+.showExplorerButton:hover,
+.showAgentButton:hover {
   color: var(--heading-color);
   background: var(--control-hover);
 }
 
-.showExplorerButton svg {
+.showExplorerButton svg,
+.showAgentButton svg {
   width: 16px;
   height: 16px;
   stroke-width: 1.8;

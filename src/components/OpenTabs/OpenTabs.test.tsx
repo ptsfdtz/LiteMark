@@ -5,6 +5,25 @@ import { I18nProvider } from '@/locales';
 import OpenTabs from './OpenTabs';
 
 describe('OpenTabs', () => {
+  it('keeps a trailing control available without open files', () => {
+    render(
+      <I18nProvider>
+        <OpenTabs
+          paths={[]}
+          activePath={null}
+          trailingControl={<button type="button">Open Agent sidebar</button>}
+          onActivate={vi.fn()}
+          onClose={vi.fn()}
+          onCloseAll={vi.fn()}
+          onCloseOthers={vi.fn()}
+          onDelete={vi.fn().mockResolvedValue(true)}
+        />
+      </I18nProvider>,
+    );
+
+    expect(screen.getByRole('button', { name: 'Open Agent sidebar' })).toBeInTheDocument();
+  });
+
   it('shows file types, dirty state, and activates or closes a tab', async () => {
     window.localStorage.setItem('litemark.locale', 'en');
     const user = userEvent.setup();

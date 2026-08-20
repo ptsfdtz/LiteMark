@@ -19,6 +19,7 @@ interface OpenTabsProps {
   activePath: string | null;
   dirtyPath?: string | null;
   leadingControl?: React.ReactNode;
+  trailingControl?: React.ReactNode;
   onActivate(path: string): void;
   onClose(path: string): void;
   onCloseAll(): void;
@@ -50,6 +51,7 @@ const OpenTabs: React.FC<OpenTabsProps> = ({
   activePath,
   dirtyPath,
   leadingControl,
+  trailingControl,
   onActivate,
   onClose,
   onCloseAll,
@@ -148,7 +150,7 @@ const OpenTabs: React.FC<OpenTabsProps> = ({
     };
   }, [contextMenu]);
 
-  if (renderedPaths.length === 0 && !leadingControl) return null;
+  if (renderedPaths.length === 0 && !leadingControl && !trailingControl) return null;
 
   return (
     <div className={styles.tabBar}>
@@ -217,6 +219,7 @@ const OpenTabs: React.FC<OpenTabsProps> = ({
           );
         })}
       </div>
+      {trailingControl && <div className={styles.trailingControl}>{trailingControl}</div>}
       <span
         className={styles.scrollThumb}
         aria-hidden="true"

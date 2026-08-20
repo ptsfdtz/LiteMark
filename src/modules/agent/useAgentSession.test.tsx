@@ -125,6 +125,35 @@ describe('Agent Session', () => {
     expect(tools[1]).toMatchObject({ name: 'rewrite_document', error: 'bad args' });
   });
 
+  it('persists explicit plan updates and retry observations', async () => {
+    const { result } = setup();
+    emit(mocks.runAgentTurn, [
+      {
+        type: 'plan_updated',
+        steps: [{ id: 'read', description: 'Read document', status: 'in_progress' }],
+      },
+      { type: 'tool_call_start', id: '1', name: 'read_document' },
+      { type: 'tool_call_error', id: '1', name: 'read_document', error: 'temporary error' },
+      { type: 'done' },
+    ]);
+
+    await act(async () => {
+      await result.current.send('multi-step task');
+    });
+
+    await waitFor(() =>
+      expect(mocks.saveAgentSession).toHaveBeenCalledWith(
+        'C:\\notes',
+        expect.objectContaining({
+          activeRun: expect.objectContaining({
+            retryCount: 1,
+            plan: [{ id: 'read', description: 'Read document', status: 'in_progress' }],
+          }),
+        }),
+      ),
+    );
+  });
+
   it('reconstructs tool calls and tool results into the history', async () => {
     const { result } = setup();
     emit(mocks.runAgentTurn, [
@@ -247,6 +276,23 @@ describe('Agent Session', () => {
     expect(applied).toMatchObject({ applied: true });
   });
 
+  it('does not auto-apply an edit when the document changed during the run', async () => {
+    const { result, applyDocument, getDocument } = setup();
+    getDocument.mockReturnValueOnce('# Original').mockReturnValue('# User edit');
+    emit(mocks.runAgentTurn, [{ type: 'edit', content: '# Agent edit' }, { type: 'done' }]);
+
+    await act(async () => {
+      await result.current.send('rewrite it');
+    });
+
+    expect(applyDocument).not.toHaveBeenCalled();
+    expect(result.current.error).toContain('document changed');
+    expect(result.current.items.find((item) => item.role === 'edit')).toMatchObject({
+      applied: false,
+      content: '# Agent edit',
+    });
+  });
+
   it('surfaces request errors without dropping the streamed text', async () => {
     const { result } = setup();
     mocks.runAgentTurn.mockImplementationOnce(async ({ onEvent }: RunAgentTurnArgs) => {
@@ -261,6 +307,14 @@ describe('Agent Session', () => {
     await waitFor(() => expect(result.current.status).toBe('idle'));
     expect(result.current.error).toBe('network down');
     expect(result.current.items.find((item) => item.role === 'assistant')?.content).toBe('partial');
+    await waitFor(() =>
+      expect(mocks.saveAgentSession).toHaveBeenCalledWith(
+        'C:\\notes',
+        expect.objectContaining({
+          activeRun: expect.objectContaining({ status: 'failed', terminalReason: 'network down' }),
+        }),
+      ),
+    );
   });
 
   it('ignores cancellation as an error', async () => {
@@ -344,6 +398,81 @@ describe('Agent Session', () => {
       { role: 'assistant', content: 'hi there' },
       { role: 'user', content: 'once more' },
     ]);
+  });
+
+  it('marks an unfinished persisted run as interrupted', async () => {
+    mocks.loadAgentSession.mockResolvedValue({
+      items: [
+        {
+          id: 'permission-old',
+          role: 'permission',
+          requestId: 9,
+          name: 'write_file',
+          pending: true,
+        },
+      ],
+      history: [
+        {
+          role: 'assistant',
+          content: '',
+          tool_calls: [
+            {
+              id: 'call-interrupted',
+              type: 'function',
+              function: { name: 'write_file', arguments: '{}' },
+            },
+          ],
+        },
+      ],
+      activeRun: {
+        id: 'run-old',
+        goal: 'rewrite',
+        status: 'running',
+        stepCount: 2,
+        retryCount: 0,
+        plan: [],
+        startedAt: 1,
+        updatedAt: 1,
+      },
+    });
+
+    const { result } = setup();
+
+    await waitFor(() =>
+      expect(mocks.saveAgentSession).toHaveBeenCalledWith(
+        'C:\\notes',
+        expect.objectContaining({
+          activeRun: expect.objectContaining({
+            id: 'run-old',
+            status: 'interrupted',
+          }),
+          history: expect.arrayContaining([
+            expect.objectContaining({
+              role: 'tool',
+              tool_call_id: 'call-interrupted',
+              content: 'Error: tool call interrupted before completion.',
+            }),
+          ]),
+        }),
+      ),
+    );
+    expect(result.current.activeRun?.status).toBe('interrupted');
+    expect(result.current.items[0]).toMatchObject({ pending: false, decision: 'deny' });
+
+    emit(mocks.runAgentTurn, [{ type: 'done' }]);
+    await act(async () => {
+      await result.current.resume();
+    });
+    expect(mocks.runAgentTurn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        messages: expect.arrayContaining([
+          expect.objectContaining({
+            role: 'user',
+            content: 'Continue the interrupted task. Original goal: rewrite',
+          }),
+        ]),
+      }),
+    );
   });
 
   it('persists the conversation after it changes', async () => {

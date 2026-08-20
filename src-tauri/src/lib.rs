@@ -126,9 +126,9 @@ pub fn run() {
             rename_document,
             get_startup_file,
             agent_completion::request_agent_completion,
-            agent::run_agent_turn,
-            agent::cancel_agent_turn,
-            agent::resolve_agent_permission
+            agent::commands::run_agent_turn,
+            agent::commands::cancel_agent_turn,
+            agent::commands::resolve_agent_permission
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

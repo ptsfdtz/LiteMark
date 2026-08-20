@@ -1,11 +1,12 @@
 import { Store } from '@tauri-apps/plugin-store';
-import type { AgentItem, ChatMessage } from './types';
+import type { AgentItem, ChatMessage, PersistedAgentRun } from './types';
 
 const FILE = 'agent-sessions.json';
 
 export interface PersistedSession {
   items: AgentItem[];
   history: ChatMessage[];
+  activeRun?: PersistedAgentRun;
 }
 
 async function getStore(): Promise<Store> {
@@ -14,6 +15,42 @@ async function getStore(): Promise<Store> {
 
 function keyFor(documentPath: string | null): string {
   return documentPath && documentPath.trim() ? documentPath.trim() : '__untitled__';
+}
+
+function parseAgentRun(value: unknown): PersistedAgentRun | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const run = value as Partial<PersistedAgentRun>;
+  const statuses: PersistedAgentRun['status'][] = [
+    'running',
+    'waiting_approval',
+    'completed',
+    'failed',
+    'cancelled',
+    'interrupted',
+  ];
+  if (
+    typeof run.id !== 'string' ||
+    typeof run.goal !== 'string' ||
+    !statuses.includes(run.status as PersistedAgentRun['status']) ||
+    typeof run.startedAt !== 'number' ||
+    typeof run.updatedAt !== 'number'
+  ) {
+    return undefined;
+  }
+  return {
+    id: run.id,
+    goal: run.goal,
+    status: run.status as PersistedAgentRun['status'],
+    stepCount: typeof run.stepCount === 'number' ? run.stepCount : 0,
+    retryCount: typeof run.retryCount === 'number' ? run.retryCount : 0,
+    plan: Array.isArray(run.plan) ? run.plan : [],
+    ...(typeof run.pendingApprovalId === 'number'
+      ? { pendingApprovalId: run.pendingApprovalId }
+      : {}),
+    ...(typeof run.terminalReason === 'string' ? { terminalReason: run.terminalReason } : {}),
+    startedAt: run.startedAt,
+    updatedAt: run.updatedAt,
+  };
 }
 
 export async function loadAgentSession(
@@ -31,6 +68,7 @@ export async function loadAgentSession(
     return {
       items: Array.isArray(session.items) ? session.items : [],
       history: Array.isArray(session.history) ? session.history : [],
+      activeRun: parseAgentRun(session.activeRun),
     };
   } catch {
     return null;

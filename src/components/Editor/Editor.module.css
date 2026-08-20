@@ -163,15 +163,28 @@
 .prose ul[data-type='taskList'] li {
   display: flex;
   align-items: flex-start;
-  gap: 0.55em;
+  gap: 4px;
 }
 
 .prose ul[data-type='taskList'] li > label {
-  margin-top: 0.32em;
+  display: flex;
+  flex: none;
+  align-items: center;
+  height: 1.85em;
+}
+
+.prose ul[data-type='taskList'] li > label input[type='checkbox'] {
+  display: block;
+  margin: 0;
 }
 
 .prose ul[data-type='taskList'] li > div {
   flex: 1;
+  min-width: 0;
+}
+
+.prose ul[data-type='taskList'] li > div > p {
+  margin: 0;
 }
 
 .prose [class~='is-editor-empty']:first-child::before {

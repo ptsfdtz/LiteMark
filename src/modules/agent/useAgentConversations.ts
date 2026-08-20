@@ -19,6 +19,8 @@ export interface AgentConversations {
   createConversation: () => void;
   selectConversation: (id: string) => void;
   renameConversation: (id: string, title: string) => void;
+  archiveConversation: (id: string) => void;
+  restoreConversation: (id: string) => void;
   deleteConversation: (id: string) => void;
   syncActiveConversation: (items: AgentItem[]) => void;
 }
@@ -87,12 +89,16 @@ export function useAgentConversations(scopeKey: string | null): AgentConversatio
         setState(initialState(scopeKey));
         return;
       }
-      const activeConversationId = restored.conversations.some(
-        (conversation) => conversation.id === restored.activeConversationId,
+      const conversations = restored.conversations.some((conversation) => !conversation.archivedAt)
+        ? restored.conversations
+        : [emptyConversation(nextId()), ...restored.conversations];
+      const activeConversationId = conversations.some(
+        (conversation) =>
+          conversation.id === restored.activeConversationId && !conversation.archivedAt,
       )
         ? restored.activeConversationId
-        : restored.conversations[0].id;
-      setState({ scopeKey, conversations: restored.conversations, activeConversationId });
+        : conversations.find((conversation) => !conversation.archivedAt)!.id;
+      setState({ scopeKey, conversations, activeConversationId });
     });
     return () => {
       active = false;
@@ -102,7 +108,12 @@ export function useAgentConversations(scopeKey: string | null): AgentConversatio
   const selectConversation = useCallback(
     (id: string) => {
       const current = stateRef.current;
-      if (!current.conversations.some((conversation) => conversation.id === id)) return;
+      if (
+        !current.conversations.some(
+          (conversation) => conversation.id === id && !conversation.archivedAt,
+        )
+      )
+        return;
       const next = { ...current, activeConversationId: id };
       commit(next);
     },
@@ -156,6 +167,46 @@ export function useAgentConversations(scopeKey: string | null): AgentConversatio
     [commit],
   );
 
+  const archiveConversation = useCallback(
+    (id: string) => {
+      const current = stateRef.current;
+      const conversation = current.conversations.find((item) => item.id === id);
+      if (!conversation || conversation.archivedAt) return;
+      const archived = { ...conversation, archivedAt: Date.now(), updatedAt: Date.now() };
+      let conversations = current.conversations.map((item) => (item.id === id ? archived : item));
+      let activeConversationId = current.activeConversationId;
+      if (activeConversationId === id) {
+        const nextActive = conversations.find((item) => !item.archivedAt && item.id !== id);
+        if (nextActive) {
+          activeConversationId = nextActive.id;
+        } else {
+          const replacement = emptyConversation(nextId());
+          conversations = [replacement, ...conversations];
+          activeConversationId = replacement.id;
+        }
+      }
+      commit({ ...current, conversations, activeConversationId });
+    },
+    [commit],
+  );
+
+  const restoreConversation = useCallback(
+    (id: string) => {
+      const current = stateRef.current;
+      const conversation = current.conversations.find((item) => item.id === id);
+      if (!conversation?.archivedAt) return;
+      const restored = { ...conversation, archivedAt: undefined, updatedAt: Date.now() };
+      commit({
+        ...current,
+        conversations: current.conversations
+          .map((item) => (item.id === id ? restored : item))
+          .sort((left, right) => right.updatedAt - left.updatedAt),
+        activeConversationId: id,
+      });
+    },
+    [commit],
+  );
+
   const syncActiveConversation = useCallback(
     (items: AgentItem[]) => {
       const current = stateRef.current;
@@ -163,6 +214,7 @@ export function useAgentConversations(scopeKey: string | null): AgentConversatio
         (conversation) => conversation.id === current.activeConversationId,
       );
       if (!active) return;
+      if (active.archivedAt) return;
       if (active.customTitle) return;
       const title = titleFrom(items);
       if (active.title === title) return;
@@ -190,6 +242,8 @@ export function useAgentConversations(scopeKey: string | null): AgentConversatio
     createConversation,
     selectConversation,
     renameConversation,
+    archiveConversation,
+    restoreConversation,
     deleteConversation,
     syncActiveConversation,
   };

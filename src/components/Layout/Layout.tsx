@@ -48,7 +48,7 @@ import {
 import { getFileViewKind, type FileTreeNode } from '@/types/fileTree';
 import { loadWorkspaceDirectories, saveWorkspaceDirectories } from '@/utils/workspaceStore';
 import OpenTabs from '@/components/OpenTabs/OpenTabs';
-import { LuPanelLeftOpen } from 'react-icons/lu';
+import { LuPanelLeftOpen, LuPanelRightOpen } from 'react-icons/lu';
 
 function normalizePath(path: string): string {
   return path
@@ -1079,6 +1079,19 @@ const Layout: React.FC = () => {
                 </button>
               ) : undefined
             }
+            trailingControl={
+              !agentSettings.panelVisible ? (
+                <button
+                  type="button"
+                  className={styles.showAgentButton}
+                  onClick={() => setAgentSettings({ ...agentSettings, panelVisible: true })}
+                  title={t('agent.open')}
+                  aria-label={t('agent.open')}
+                >
+                  <LuPanelRightOpen aria-hidden="true" />
+                </button>
+              ) : undefined
+            }
             onActivate={(path) => void handleActivateTab(path)}
             onClose={(path) => void handleCloseTab(path)}
             onCloseAll={() => void handleCloseAllTabs()}
@@ -1118,6 +1131,8 @@ const Layout: React.FC = () => {
             onCreateConversation={agentConversations.createConversation}
             onSelectConversation={agentConversations.selectConversation}
             onRenameConversation={agentConversations.renameConversation}
+            onArchiveConversation={agentConversations.archiveConversation}
+            onRestoreConversation={agentConversations.restoreConversation}
             onDeleteConversation={agentConversations.deleteConversation}
             isConfigured={agentConfigured}
             modelName={agentSettings.model}
