@@ -1,5 +1,9 @@
 import { PhysicalPosition, PhysicalSize } from '@tauri-apps/api/dpi';
-import { currentMonitor, type Window as TauriWindow } from '@tauri-apps/api/window';
+import {
+  availableMonitors,
+  currentMonitor,
+  type Window as TauriWindow,
+} from '@tauri-apps/api/window';
 
 const STORAGE_KEY = 'litemark.windowState';
 const MIN_WIDTH = 600;
@@ -15,7 +19,7 @@ interface WindowState {
 
 type StatefulWindow = Pick<
   TauriWindow,
-  'isMaximized' | 'maximize' | 'outerPosition' | 'outerSize' | 'setPosition' | 'setSize'
+  'center' | 'isMaximized' | 'maximize' | 'outerPosition' | 'outerSize' | 'setPosition' | 'setSize'
 >;
 
 type ExpandableWindow = Pick<TauriWindow, 'isMaximized' | 'outerSize' | 'scaleFactor' | 'setSize'>;
@@ -58,12 +62,31 @@ function saveStoredState(state: WindowState): void {
   }
 }
 
+function isVisibleOnCurrentDisplays(
+  state: WindowState,
+  monitors: Awaited<ReturnType<typeof availableMonitors>>,
+): boolean {
+  return monitors.some((monitor) => {
+    const workArea = monitor.workArea;
+    const left = Math.max(state.x, workArea.position.x);
+    const top = Math.max(state.y, workArea.position.y);
+    const right = Math.min(state.x + state.width, workArea.position.x + workArea.size.width);
+    const bottom = Math.min(state.y + state.height, workArea.position.y + workArea.size.height);
+    return right - left >= 120 && bottom - top >= 48;
+  });
+}
+
 export async function restoreWindowState(appWindow: StatefulWindow): Promise<void> {
   const state = loadStoredState();
   if (!state) return;
 
   await appWindow.setSize(new PhysicalSize(state.width, state.height));
-  await appWindow.setPosition(new PhysicalPosition(state.x, state.y));
+  const monitors = await availableMonitors();
+  if (isVisibleOnCurrentDisplays(state, monitors)) {
+    await appWindow.setPosition(new PhysicalPosition(state.x, state.y));
+  } else {
+    await appWindow.center();
+  }
   if (state.maximized) await appWindow.maximize();
 }
 

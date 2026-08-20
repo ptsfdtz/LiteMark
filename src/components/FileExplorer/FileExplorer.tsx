@@ -30,6 +30,7 @@ import styles from './FileExplorer.module.css';
 export interface FileExplorerRoot {
   path: string;
   nodes: FileTreeNode[];
+  truncated?: boolean;
 }
 
 export interface FileExplorerStandaloneFile {
@@ -44,6 +45,7 @@ interface FileExplorerProps {
   onOpenFile: (path: string) => boolean | void | Promise<boolean | void>;
   onChooseDirectory: () => void | Promise<void>;
   onRefresh: () => void | Promise<void>;
+  onLoadDirectory?: (path: string) => Promise<void>;
   onRemoveDirectory: (path: string) => void;
   onReorderDirectory: (
     sourcePath: string,
@@ -182,6 +184,8 @@ interface TreeItemProps {
   onShowContextMenu: (file: Omit<FileContextMenu, 'relativePath'>) => void;
   onShowFolderContextMenu: (folder: Omit<FolderContextMenu, 'relativePath'>) => void;
   onOpenFile: (path: string) => boolean | void | Promise<boolean | void>;
+  onLoadDirectory: (path: string) => Promise<void>;
+  loadingPaths: Set<string>;
   unsupportedLabel: string;
 }
 
@@ -196,8 +200,11 @@ const TreeItem: React.FC<TreeItemProps> = ({
   onShowContextMenu,
   onShowFolderContextMenu,
   onOpenFile,
+  onLoadDirectory,
+  loadingPaths,
   unsupportedLabel,
 }) => {
+  const { t } = useI18n();
   const expanded = node.is_directory && expandedPaths.has(node.path);
   const supported = node.is_directory || getFileViewKind(node.path) !== 'unsupported';
   const active = node.path === currentPath;
@@ -216,8 +223,12 @@ const TreeItem: React.FC<TreeItemProps> = ({
         }`}
         style={{ paddingLeft: `${10 + depth * 16}px` }}
         onClick={() => {
-          if (node.is_directory) onToggle(node.path);
-          else {
+          if (node.is_directory) {
+            onToggle(node.path);
+            if (!expanded && !node.children_loaded && !loadingPaths.has(node.path)) {
+              void onLoadDirectory(node.path);
+            }
+          } else {
             onSelectFile({ path: node.path, name: node.name, supported });
             if (supported) void onOpenFile(node.path);
           }
@@ -242,7 +253,14 @@ const TreeItem: React.FC<TreeItemProps> = ({
         title={supported ? node.name : `${node.name} - ${unsupportedLabel}`}
       >
         <span className={styles.chevron} aria-hidden="true">
-          {node.is_directory && (expanded ? <LuChevronDown /> : <LuChevronRight />)}
+          {node.is_directory &&
+            (loadingPaths.has(node.path) ? (
+              <LuRefreshCw className={styles.loadingIcon} />
+            ) : expanded ? (
+              <LuChevronDown />
+            ) : (
+              <LuChevronRight />
+            ))}
         </span>
         <span className={styles.itemIcon} aria-hidden="true">
           {node.is_directory ? (
@@ -257,7 +275,7 @@ const TreeItem: React.FC<TreeItemProps> = ({
         </span>
         <span className={styles.itemName}>{node.name}</span>
       </button>
-      {node.is_directory && node.children.length > 0 && (
+      {node.is_directory && expanded && (
         <div
           className={`${styles.groupWrapper} ${expanded ? styles.groupOpen : ''}`}
           aria-hidden={!expanded}
@@ -276,9 +294,19 @@ const TreeItem: React.FC<TreeItemProps> = ({
                 onShowContextMenu={onShowContextMenu}
                 onShowFolderContextMenu={onShowFolderContextMenu}
                 onOpenFile={onOpenFile}
+                onLoadDirectory={onLoadDirectory}
+                loadingPaths={loadingPaths}
                 unsupportedLabel={unsupportedLabel}
               />
             ))}
+            {node.children_loaded && node.children.length === 0 && (
+              <li className={styles.empty}>
+                {node.truncated ? t('explorer.truncated') : t('explorer.empty')}
+              </li>
+            )}
+            {node.truncated && node.children.length > 0 && (
+              <li className={styles.treeNotice}>{t('explorer.truncated')}</li>
+            )}
           </ul>
         </div>
       )}
@@ -293,6 +321,7 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
   onOpenFile,
   onChooseDirectory,
   onRefresh,
+  onLoadDirectory,
   onRemoveDirectory,
   onReorderDirectory,
   onDeleteFile,
@@ -309,6 +338,7 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
   const [entered, setEntered] = useState(false);
   const closeCompleteRef = useRef(false);
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(() => new Set());
+  const [loadingPaths, setLoadingPaths] = useState<Set<string>>(() => new Set());
   const [collapsedRoots, setCollapsedRoots] = useState<Set<string>>(() => new Set());
   const [confirmingRoot, setConfirmingRoot] = useState<string | null>(null);
   const [draggedRoot, setDraggedRoot] = useState<string | null>(null);
@@ -388,6 +418,19 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
       else next.add(path);
       return next;
     });
+  };
+
+  const loadDirectory = async (path: string) => {
+    setLoadingPaths((current) => new Set(current).add(path));
+    try {
+      await onLoadDirectory?.(path);
+    } finally {
+      setLoadingPaths((current) => {
+        const next = new Set(current);
+        next.delete(path);
+        return next;
+      });
+    }
   };
 
   const toggleRoot = (path: string) => {
@@ -620,53 +663,57 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
                   </div>
                 </div>
               )}
-              <div
-                className={`${styles.groupWrapper} ${!collapsed ? styles.groupOpen : ''}`}
-                aria-hidden={collapsed}
-              >
-                {root.nodes.length === 0 ? (
-                  <div className={styles.empty}>{t('explorer.empty')}</div>
-                ) : (
-                  <ul role="tree" className={styles.tree} aria-label={rootName}>
-                    {root.nodes.map((node) => (
-                      <TreeItem
-                        key={node.path}
-                        node={node}
-                        depth={0}
-                        currentPath={currentPath}
-                        expandedPaths={visibleExpandedPaths}
-                        selectedFilePath={selectedFile?.path ?? null}
-                        onToggle={togglePath}
-                        onSelectFile={setSelectedFile}
-                        onShowContextMenu={(file) => {
-                          const x = Math.max(8, Math.min(file.x, window.innerWidth - 232));
-                          const y = Math.max(8, Math.min(file.y, window.innerHeight - 208));
-                          setFolderContextMenu(null);
-                          setContextMenu({
-                            ...file,
-                            x,
-                            y,
-                            relativePath: getWorkspaceRelativePath(file.path, roots),
-                          });
-                        }}
-                        onShowFolderContextMenu={(folder) => {
-                          const x = Math.max(8, Math.min(folder.x, window.innerWidth - 232));
-                          const y = Math.max(8, Math.min(folder.y, window.innerHeight - 208));
-                          setContextMenu(null);
-                          setFolderContextMenu({
-                            ...folder,
-                            x,
-                            y,
-                            relativePath: getWorkspaceRelativePath(folder.path, roots),
-                          });
-                        }}
-                        onOpenFile={onOpenFile}
-                        unsupportedLabel={t('explorer.unsupported')}
-                      />
-                    ))}
-                  </ul>
-                )}
-              </div>
+              {!collapsed && (
+                <div className={`${styles.groupWrapper} ${styles.groupOpen}`}>
+                  {root.nodes.length === 0 ? (
+                    <div className={styles.empty}>{t('explorer.empty')}</div>
+                  ) : (
+                    <ul role="tree" className={styles.tree} aria-label={rootName}>
+                      {root.nodes.map((node) => (
+                        <TreeItem
+                          key={node.path}
+                          node={node}
+                          depth={0}
+                          currentPath={currentPath}
+                          expandedPaths={visibleExpandedPaths}
+                          selectedFilePath={selectedFile?.path ?? null}
+                          onToggle={togglePath}
+                          onSelectFile={setSelectedFile}
+                          onShowContextMenu={(file) => {
+                            const x = Math.max(8, Math.min(file.x, window.innerWidth - 232));
+                            const y = Math.max(8, Math.min(file.y, window.innerHeight - 208));
+                            setFolderContextMenu(null);
+                            setContextMenu({
+                              ...file,
+                              x,
+                              y,
+                              relativePath: getWorkspaceRelativePath(file.path, roots),
+                            });
+                          }}
+                          onShowFolderContextMenu={(folder) => {
+                            const x = Math.max(8, Math.min(folder.x, window.innerWidth - 232));
+                            const y = Math.max(8, Math.min(folder.y, window.innerHeight - 208));
+                            setContextMenu(null);
+                            setFolderContextMenu({
+                              ...folder,
+                              x,
+                              y,
+                              relativePath: getWorkspaceRelativePath(folder.path, roots),
+                            });
+                          }}
+                          onOpenFile={onOpenFile}
+                          onLoadDirectory={loadDirectory}
+                          loadingPaths={loadingPaths}
+                          unsupportedLabel={t('explorer.unsupported')}
+                        />
+                      ))}
+                      {root.truncated && (
+                        <li className={styles.treeNotice}>{t('explorer.truncated')}</li>
+                      )}
+                    </ul>
+                  )}
+                </div>
+              )}
             </section>
           );
         })}

@@ -12,6 +12,31 @@
   box-sizing: border-box;
 }
 
+.largeDocument {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--paper-bg);
+}
+
+.largeDocumentNotice {
+  flex: none;
+  min-height: 30px;
+  padding: 6px 18px;
+  color: var(--muted-text);
+  background: color-mix(in srgb, var(--control-hover) 58%, var(--paper-bg));
+  border-bottom: 1px solid var(--hairline-color);
+  box-sizing: border-box;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.largeDocumentEditor {
+  flex: 1;
+}
+
 .paper {
   width: min(100%, 1020px);
   min-height: 100%;

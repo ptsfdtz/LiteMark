@@ -43,7 +43,7 @@ import {
 import {
   deleteWorkspaceDirectory,
   deleteWorkspaceFile,
-  listDirectoryTree,
+  listDirectoryEntries,
 } from '@/modules/directoryTree';
 import { getFileViewKind, type FileTreeNode } from '@/types/fileTree';
 import { loadWorkspaceDirectories, saveWorkspaceDirectories } from '@/utils/workspaceStore';
@@ -64,6 +64,24 @@ function pathBelongsToDirectory(path: string | null, directory: string): boolean
   return (
     normalizedPath === normalizedDirectory || normalizedPath.startsWith(`${normalizedDirectory}/`)
   );
+}
+
+function replaceDirectoryChildren(
+  nodes: FileTreeNode[],
+  directory: string,
+  children: FileTreeNode[],
+  truncated: boolean,
+): FileTreeNode[] {
+  return nodes.map((node) => {
+    if (normalizePath(node.path) === normalizePath(directory)) {
+      return { ...node, children, children_loaded: true, truncated };
+    }
+    if (node.children.length === 0) return node;
+    return {
+      ...node,
+      children: replaceDirectoryChildren(node.children, directory, children, truncated),
+    };
+  });
 }
 
 const AGENT_FILE_TREE_LINE_LIMIT = 200;
@@ -98,6 +116,7 @@ const Layout: React.FC = () => {
   const [explorerRendered, setExplorerRendered] = useState(false);
   const [agentPanelRendered, setAgentPanelRendered] = useState(false);
   const workspaceRestoredRef = useRef(false);
+  const directoryLoadVersionsRef = useRef(new Map<string, number>());
   const [forceEditFileName, setForceEditFileName] = useState(false);
   const [showSaveToast, setShowSaveToast] = useState(false);
   const [saveToastMessage, setSaveToastMessage] = useState<string | undefined>();
@@ -447,14 +466,15 @@ const Layout: React.FC = () => {
   const handleOpenDirectory = async (directory: string) => {
     if (!documentSessionReady) return;
     try {
-      const tree = await listDirectoryTree(directory);
+      const result = await listDirectoryEntries(directory);
       setWorkspaceRoots((current) => {
         const existingIndex = current.findIndex(
           (root) => normalizePath(root.path) === normalizePath(directory),
         );
         const next = [...current];
-        if (existingIndex >= 0) next[existingIndex] = { path: directory, nodes: tree };
-        else next.push({ path: directory, nodes: tree });
+        const root = { path: directory, nodes: result.entries, truncated: result.truncated };
+        if (existingIndex >= 0) next[existingIndex] = root;
+        else next.push(root);
         void saveWorkspaceDirectories(next.map((root) => root.path)).catch((error) => {
           void showDocumentError(error, 'dialog.settingsSaveFailed');
         });
@@ -470,11 +490,39 @@ const Layout: React.FC = () => {
   const refreshWorkspaceTree = useCallback(
     async (directory: string) => {
       try {
-        const tree = await listDirectoryTree(directory);
+        const result = await listDirectoryEntries(directory);
         setWorkspaceRoots((current) =>
           current.map((root) =>
-            normalizePath(root.path) === normalizePath(directory) ? { ...root, nodes: tree } : root,
+            normalizePath(root.path) === normalizePath(directory)
+              ? { ...root, nodes: result.entries, truncated: result.truncated }
+              : root,
           ),
+        );
+      } catch (error) {
+        await showDocumentError(error, 'dialog.openFolderFailed');
+      }
+    },
+    [showDocumentError],
+  );
+
+  const loadWorkspaceDirectory = useCallback(
+    async (directory: string) => {
+      const normalized = normalizePath(directory);
+      const version = (directoryLoadVersionsRef.current.get(normalized) ?? 0) + 1;
+      directoryLoadVersionsRef.current.set(normalized, version);
+      try {
+        const result = await listDirectoryEntries(directory);
+        if (directoryLoadVersionsRef.current.get(normalized) !== version) return;
+        setWorkspaceRoots((current) =>
+          current.map((root) => ({
+            ...root,
+            nodes: replaceDirectoryChildren(
+              root.nodes,
+              directory,
+              result.entries,
+              result.truncated,
+            ),
+          })),
         );
       } catch (error) {
         await showDocumentError(error, 'dialog.openFolderFailed');
@@ -839,9 +887,10 @@ const Layout: React.FC = () => {
       if (directories.length === 0 || !active) return;
       const restored = (
         await Promise.all(
-          directories.map(async (directory) => {
+          directories.map(async (directory): Promise<FileExplorerRoot | null> => {
             try {
-              return { path: directory, nodes: await listDirectoryTree(directory) };
+              const result = await listDirectoryEntries(directory);
+              return { path: directory, nodes: result.entries, truncated: result.truncated };
             } catch {
               return null;
             }
@@ -1044,6 +1093,7 @@ const Layout: React.FC = () => {
             onOpenFile={handleOpenDocument}
             onChooseDirectory={chooseDirectory}
             onRefresh={refreshAllWorkspaceTrees}
+            onLoadDirectory={loadWorkspaceDirectory}
             onRemoveDirectory={removeWorkspaceDirectory}
             onReorderDirectory={reorderWorkspaceDirectory}
             onDeleteFile={handleDeleteWorkspaceFile}

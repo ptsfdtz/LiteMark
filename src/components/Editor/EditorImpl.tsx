@@ -1,4 +1,4 @@
-import React, { useEffect, useImperativeHandle } from 'react';
+import React, { useEffect, useImperativeHandle, useRef } from 'react';
 import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { Markdown } from '@tiptap/markdown';
@@ -22,10 +22,17 @@ import {
 } from '@/modules/markdownEditing/markdownInputRules';
 
 const lowlight = createLowlight(common);
+const DEFER_SERIALIZATION_CHARS = 256 * 1024;
+const SERIALIZATION_DELAY_MS = 120;
 
 const EditorImpl = React.forwardRef<WysiwygEditor, EditorProps>(
   ({ value, onChange, className, readOnly = false, onSave, onSaveAs }, ref) => {
     const { t } = useI18n();
+    const serializationTimerRef = useRef<number | null>(null);
+    const onChangeRef = useRef(onChange);
+    useEffect(() => {
+      onChangeRef.current = onChange;
+    }, [onChange]);
     const editor = useEditor({
       extensions: [
         StarterKit.configure({ link: false, codeBlock: false }),
@@ -60,7 +67,17 @@ const EditorImpl = React.forwardRef<WysiwygEditor, EditorProps>(
       },
       onUpdate: ({ editor: currentEditor }) => {
         if (applyTypedMarkdownPrefix(currentEditor)) return;
-        onChange(currentEditor.getMarkdown());
+        if (currentEditor.state.doc.content.size < DEFER_SERIALIZATION_CHARS) {
+          onChangeRef.current(currentEditor.getMarkdown());
+          return;
+        }
+        if (serializationTimerRef.current !== null) {
+          window.clearTimeout(serializationTimerRef.current);
+        }
+        serializationTimerRef.current = window.setTimeout(() => {
+          serializationTimerRef.current = null;
+          onChangeRef.current(currentEditor.getMarkdown());
+        }, SERIALIZATION_DELAY_MS);
       },
     });
 
@@ -75,9 +92,26 @@ const EditorImpl = React.forwardRef<WysiwygEditor, EditorProps>(
       editor.commands.setContent(value, { contentType: 'markdown', emitUpdate: false });
     }, [editor, value]);
 
+    useEffect(
+      () => () => {
+        if (serializationTimerRef.current !== null) {
+          window.clearTimeout(serializationTimerRef.current);
+        }
+      },
+      [],
+    );
+
+    const flushContent = () => {
+      if (!editor || serializationTimerRef.current === null) return;
+      window.clearTimeout(serializationTimerRef.current);
+      serializationTimerRef.current = null;
+      onChangeRef.current(editor.getMarkdown());
+    };
+
     const handleKeyDown = (event: React.KeyboardEvent) => {
       if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 's') return;
       event.preventDefault();
+      flushContent();
       if (event.shiftKey) onSaveAs?.();
       else onSave?.();
     };

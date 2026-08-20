@@ -197,10 +197,39 @@
   min-width: 0;
 }
 
+.tree > li,
+.treeGroup > li {
+  content-visibility: auto;
+  contain-intrinsic-block-size: 29px;
+}
+
 .empty {
   padding: 8px 14px 12px 42px;
   color: var(--muted-text);
   font-size: 12px;
+}
+
+.treeNotice {
+  padding: 7px 12px 7px 42px;
+  color: var(--muted-text);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.loadingIcon {
+  animation: tree-spin 0.8s linear infinite;
+}
+
+@keyframes tree-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loadingIcon {
+    animation: none;
+  }
 }
 
 .rootSection + .rootSection {

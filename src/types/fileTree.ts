@@ -4,6 +4,13 @@ export interface FileTreeNode {
   is_directory: boolean;
   extension: string | null;
   children: FileTreeNode[];
+  children_loaded?: boolean;
+  truncated?: boolean;
+}
+
+export interface DirectoryEntries {
+  entries: FileTreeNode[];
+  truncated: boolean;
 }
 
 export type FileViewKind = 'markdown' | 'code' | 'image' | 'pdf' | 'unsupported';
