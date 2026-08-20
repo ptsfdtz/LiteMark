@@ -68,10 +68,12 @@
   border-right: 1px solid var(--hairline-color);
   box-sizing: border-box;
   transition:
-    max-width 0.18s ease,
-    min-width 0.18s ease,
-    opacity 0.15s ease;
-  animation: tab-in 0.16s ease;
+    flex-basis 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    min-width 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    max-width 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.14s ease-out,
+    transform 0.18s ease-out;
+  animation: tab-in 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 @keyframes tab-in {
@@ -82,11 +84,13 @@
 }
 
 .tab.closing {
+  flex-basis: 0;
   min-width: 0;
   max-width: 0;
   overflow: hidden;
   opacity: 0;
   pointer-events: none;
+  transform: translateY(-2px) scale(0.98);
   border-right-color: transparent;
 }
 
@@ -229,6 +233,16 @@
 .contextMenuItem:focus-visible {
   background: var(--control-hover);
   outline: none;
+}
+
+.contextMenuItem:disabled {
+  color: var(--muted-text);
+  cursor: default;
+  opacity: 0.52;
+}
+
+.contextMenuItem:disabled:hover {
+  background: transparent;
 }
 
 .contextMenuItem svg {

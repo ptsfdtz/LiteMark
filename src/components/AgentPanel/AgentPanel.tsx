@@ -1,5 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { LuPlus, LuSend, LuSquare, LuTrash2, LuX } from 'react-icons/lu';
+import ReactMarkdown, { type Components } from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeHighlight from 'rehype-highlight';
+import { openUrl } from '@tauri-apps/plugin-opener';
 import styles from './AgentPanel.module.css';
 import type { AgentSession } from '@/modules/agent/useAgentSession';
 import type { AgentConversationSummary } from '@/modules/agent/agentConversationStore';
@@ -33,6 +37,37 @@ const toolNameKeys: Record<string, TranslationKey> = {
   read_file: 'agent.tool.readFile',
   write_file: 'agent.tool.writeFile',
 };
+
+const SYSTEM_URL_PATTERN = /^(?:https?:\/\/|mailto:|tel:)/i;
+
+const agentMarkdownComponents: Components = {
+  a: ({ node: _node, href, children, ...props }) => (
+    <a
+      {...props}
+      href={href}
+      onClick={(event) => {
+        event.preventDefault();
+        if (!href || !SYSTEM_URL_PATTERN.test(href)) return;
+        void openUrl(href).catch((error: unknown) => {
+          console.error('Failed to open agent link:', error);
+        });
+      }}
+    >
+      {children}
+    </a>
+  ),
+  img: ({ node: _node, alt }) => <span className={styles.imageAlt}>{alt || ''}</span>,
+};
+
+const AgentMarkdown: React.FC<{ content: string }> = ({ content }) => (
+  <ReactMarkdown
+    remarkPlugins={[remarkGfm]}
+    rehypePlugins={[rehypeHighlight]}
+    components={agentMarkdownComponents}
+  >
+    {content}
+  </ReactMarkdown>
+);
 
 const AgentPanel: React.FC<AgentPanelProps> = ({
   session,
@@ -265,7 +300,11 @@ const AgentPanel: React.FC<AgentPanelProps> = ({
               return (
                 <div key={item.id} className={styles.assistantRow}>
                   <div className={styles.assistantBubble}>
-                    {item.content || (running && <span className={styles.typing}>…</span>)}
+                    {item.content ? (
+                      <AgentMarkdown content={item.content} />
+                    ) : (
+                      running && <span className={styles.typing}>…</span>
+                    )}
                   </div>
                 </div>
               );

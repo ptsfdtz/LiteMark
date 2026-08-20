@@ -21,6 +21,8 @@ interface OpenTabsProps {
   leadingControl?: React.ReactNode;
   onActivate(path: string): void;
   onClose(path: string): void;
+  onCloseAll(): void;
+  onCloseOthers(path: string): void;
   onDelete(path: string): Promise<boolean>;
 }
 
@@ -50,12 +52,15 @@ const OpenTabs: React.FC<OpenTabsProps> = ({
   leadingControl,
   onActivate,
   onClose,
+  onCloseAll,
+  onCloseOthers,
   onDelete,
 }) => {
   const { t } = useI18n();
   const tabScrollerRef = React.useRef<HTMLDivElement>(null);
   const dragRef = React.useRef<{ clientX: number; scrollLeft: number } | null>(null);
-  // Tabs that disappeared from `paths` stay rendered briefly to animate out.
+  // Keep removed tabs at their original positions until their exit transition finishes.
+  const [renderedPaths, setRenderedPaths] = React.useState(paths);
   const [closingPaths, setClosingPaths] = React.useState<string[]>([]);
   const [contextMenu, setContextMenu] = React.useState<{
     path: string;
@@ -66,7 +71,7 @@ const OpenTabs: React.FC<OpenTabsProps> = ({
   const contextMenuRef = React.useRef<HTMLDivElement>(null);
   const prevPathsRef = React.useRef(paths);
 
-  React.useEffect(() => {
+  React.useLayoutEffect(() => {
     const previous = prevPathsRef.current;
     prevPathsRef.current = paths;
     if (previous === paths) return;
@@ -78,23 +83,26 @@ const OpenTabs: React.FC<OpenTabsProps> = ({
         ...current,
         ...removed.filter((path) => !current.includes(path)),
       ]);
+      setRenderedPaths((current) => {
+        const retained = current.filter(
+          (path) => paths.includes(path) || removed.includes(path) || closingPaths.includes(path),
+        );
+        return [...retained, ...paths.filter((path) => !retained.includes(path))];
+      });
+    } else {
+      setClosingPaths([]);
+      setRenderedPaths(paths);
     }
-  }, [paths]);
+  }, [closingPaths, paths]);
 
   React.useEffect(() => {
     if (closingPaths.length === 0) return;
-    const timeout = window.setTimeout(() => setClosingPaths([]), 220);
+    const timeout = window.setTimeout(() => {
+      setClosingPaths([]);
+      setRenderedPaths(paths);
+    }, 220);
     return () => window.clearTimeout(timeout);
-  }, [closingPaths]);
-
-  const displayPaths = React.useMemo(() => {
-    if (closingPaths.length === 0) return paths;
-    const merged = [...paths];
-    for (const path of closingPaths) {
-      if (!merged.includes(path)) merged.push(path);
-    }
-    return merged;
-  }, [paths, closingPaths]);
+  }, [closingPaths, paths]);
 
   React.useEffect(() => {
     const scroller = tabScrollerRef.current;
@@ -122,7 +130,7 @@ const OpenTabs: React.FC<OpenTabsProps> = ({
       scroller.removeEventListener('scroll', updateThumb);
       resizeObserver?.disconnect();
     };
-  }, [displayPaths]);
+  }, [renderedPaths]);
 
   React.useEffect(() => {
     if (!contextMenu) return;
@@ -140,7 +148,7 @@ const OpenTabs: React.FC<OpenTabsProps> = ({
     };
   }, [contextMenu]);
 
-  if (displayPaths.length === 0 && !leadingControl) return null;
+  if (renderedPaths.length === 0 && !leadingControl) return null;
 
   return (
     <div className={styles.tabBar}>
@@ -151,7 +159,7 @@ const OpenTabs: React.FC<OpenTabsProps> = ({
         role="tablist"
         aria-label={t('tabs.openFiles')}
       >
-        {displayPaths.map((path) => {
+        {renderedPaths.map((path) => {
           const active = path === activePath;
           const dirty = path === dirtyPath;
           const closing = closingPaths.includes(path);
@@ -185,7 +193,7 @@ const OpenTabs: React.FC<OpenTabsProps> = ({
                   setContextMenu({
                     path,
                     x: Math.max(8, Math.min(event.clientX, window.innerWidth - 232)),
-                    y: Math.max(8, Math.min(event.clientY, window.innerHeight - 244)),
+                    y: Math.max(8, Math.min(event.clientY, window.innerHeight - 356)),
                   });
                 }}
               >
@@ -258,6 +266,33 @@ const OpenTabs: React.FC<OpenTabsProps> = ({
             <span>{t('tabs.closeTab')}</span>
             <kbd aria-hidden="true">Ctrl+W</kbd>
           </button>
+          <button
+            type="button"
+            className={styles.contextMenuItem}
+            role="menuitem"
+            disabled={paths.length <= 1}
+            onClick={() => {
+              const { path } = contextMenu;
+              setContextMenu(null);
+              onCloseOthers(path);
+            }}
+          >
+            <LuX aria-hidden="true" />
+            <span>{t('tabs.closeOthers')}</span>
+          </button>
+          <button
+            type="button"
+            className={styles.contextMenuItem}
+            role="menuitem"
+            onClick={() => {
+              setContextMenu(null);
+              onCloseAll();
+            }}
+          >
+            <LuX aria-hidden="true" />
+            <span>{t('tabs.closeAll')}</span>
+          </button>
+          <div className={styles.contextMenuDivider} role="separator" />
           <button
             type="button"
             className={styles.contextMenuItem}

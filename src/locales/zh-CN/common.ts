@@ -122,6 +122,8 @@ const common = {
   'tabs.openFiles': '已打开的文件',
   'tabs.actions': '{name} 的操作',
   'tabs.closeTab': '关闭标签',
+  'tabs.closeAll': '关闭全部标签',
+  'tabs.closeOthers': '关闭其他标签',
   'tabs.close': '关闭 {name}',
   'preview.enterEditMode': '进入编辑模式',
   'preview.enterPreviewMode': '进入预览模式',

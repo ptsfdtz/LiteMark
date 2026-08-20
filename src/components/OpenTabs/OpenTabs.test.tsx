@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '@/locales';
@@ -10,6 +10,8 @@ describe('OpenTabs', () => {
     const user = userEvent.setup();
     const onActivate = vi.fn();
     const onClose = vi.fn();
+    const onCloseAll = vi.fn();
+    const onCloseOthers = vi.fn();
     const onDelete = vi.fn().mockResolvedValue(true);
     const markdownPath = 'C:\\notes\\a-very-long-document-name-that-needs-ellipsis.md';
     const imagePath = 'C:\\notes\\diagram.png';
@@ -22,6 +24,8 @@ describe('OpenTabs', () => {
           dirtyPath={markdownPath}
           onActivate={onActivate}
           onClose={onClose}
+          onCloseAll={onCloseAll}
+          onCloseOthers={onCloseOthers}
           onDelete={onDelete}
         />
       </I18nProvider>,
@@ -44,5 +48,49 @@ describe('OpenTabs', () => {
     });
     await user.click(within(menu).getByRole('menuitem', { name: 'Close Tab' }));
     expect(onClose).toHaveBeenCalledWith(markdownPath);
+
+    fireEvent.contextMenu(screen.getByTitle(imagePath), { clientX: 32, clientY: 32 });
+    const secondMenu = screen.getByRole('menu', { name: 'Actions for diagram.png' });
+    await user.click(within(secondMenu).getByRole('menuitem', { name: 'Close Other Tabs' }));
+    expect(onCloseOthers).toHaveBeenCalledWith(imagePath);
+
+    fireEvent.contextMenu(screen.getByTitle(imagePath), { clientX: 32, clientY: 32 });
+    const thirdMenu = screen.getByRole('menu', { name: 'Actions for diagram.png' });
+    await user.click(within(thirdMenu).getByRole('menuitem', { name: 'Close All Tabs' }));
+    expect(onCloseAll).toHaveBeenCalledOnce();
+  });
+
+  it('keeps closing tabs in place until their exit animation completes', () => {
+    vi.useFakeTimers();
+    const firstPath = 'C:\\notes\\first.md';
+    const secondPath = 'C:\\notes\\second.md';
+    const props = {
+      activePath: secondPath,
+      onActivate: vi.fn(),
+      onClose: vi.fn(),
+      onCloseAll: vi.fn(),
+      onCloseOthers: vi.fn(),
+      onDelete: vi.fn().mockResolvedValue(true),
+    };
+    const { container, rerender } = render(
+      <I18nProvider>
+        <OpenTabs paths={[firstPath, secondPath]} {...props} />
+      </I18nProvider>,
+    );
+
+    rerender(
+      <I18nProvider>
+        <OpenTabs paths={[secondPath]} {...props} />
+      </I18nProvider>,
+    );
+
+    const tabsDuringExit = container.querySelectorAll('[role="tab"]');
+    expect(tabsDuringExit).toHaveLength(2);
+    expect(tabsDuringExit[0]).toHaveAttribute('aria-hidden', 'true');
+    expect(tabsDuringExit[0]).toHaveTextContent('first.md');
+
+    act(() => vi.advanceTimersByTime(220));
+    expect(container.querySelectorAll('[role="tab"]')).toHaveLength(1);
+    vi.useRealTimers();
   });
 });

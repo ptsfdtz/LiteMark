@@ -456,6 +456,32 @@ fn apply_stream_data(
     }
 }
 
+fn find_sse_separator(buffer: &[u8]) -> Option<(usize, usize)> {
+    let line_feed = buffer.windows(2).position(|window| window == b"\n\n");
+    let crlf = buffer
+        .windows(4)
+        .position(|window| window == b"\r\n\r\n");
+
+    match (line_feed, crlf) {
+        (Some(left), Some(right)) if left <= right => Some((left, 2)),
+        (Some(_), Some(right)) => Some((right, 4)),
+        (Some(index), None) => Some((index, 2)),
+        (None, Some(index)) => Some((index, 4)),
+        (None, None) => None,
+    }
+}
+
+fn take_sse_block(buffer: &mut Vec<u8>) -> Result<Option<String>, String> {
+    let Some((separator, separator_length)) = find_sse_separator(buffer) else {
+        return Ok(None);
+    };
+    let block = buffer.drain(..separator).collect::<Vec<_>>();
+    buffer.drain(..separator_length);
+    String::from_utf8(block)
+        .map(Some)
+        .map_err(|error| format!("AI stream returned invalid UTF-8: {error}"))
+}
+
 async fn stream_completion(
     endpoint: &Url,
     api_key: &str,
@@ -493,17 +519,15 @@ async fn stream_completion(
     }
 
     let mut completion = StreamedCompletion::default();
-    let mut buffer = String::new();
+    let mut buffer = Vec::new();
     let mut stream = response.bytes_stream();
     while let Some(chunk) = stream.next().await {
         if cancellation_requested() {
             return Err("cancelled".to_string());
         }
         let chunk = chunk.map_err(|error| format!("Failed to read the AI stream: {error}"))?;
-        buffer.push_str(&String::from_utf8_lossy(&chunk));
-        while let Some(separator) = buffer.find("\n\n") {
-            let block = buffer[..separator].to_string();
-            buffer.drain(..separator + 2);
+        buffer.extend_from_slice(&chunk);
+        while let Some(block) = take_sse_block(&mut buffer)? {
             for line in block.lines() {
                 if let Some(data) = line.trim().strip_prefix("data:") {
                     apply_stream_data(data.trim(), &mut completion, on_event);
@@ -511,8 +535,10 @@ async fn stream_completion(
             }
         }
     }
-    if !buffer.trim().is_empty() {
-        for line in buffer.lines() {
+    if !buffer.is_empty() {
+        let remainder = String::from_utf8(buffer)
+            .map_err(|error| format!("AI stream returned invalid UTF-8: {error}"))?;
+        for line in remainder.lines() {
             if let Some(data) = line.trim().strip_prefix("data:") {
                 apply_stream_data(data.trim(), &mut completion, on_event);
             }
@@ -777,7 +803,7 @@ pub fn resolve_agent_permission(request_id: u64, allow: bool) -> Result<(), Stri
 mod tests {
     use super::{
         execute_tool, register_permission_request, resolve_agent_permission, ChatMessage,
-        FunctionCall, ToolCall, MAX_READ_CHARS,
+        take_sse_block, FunctionCall, ToolCall, MAX_READ_CHARS,
     };
     use serde_json::json;
     use std::fs;
@@ -1014,6 +1040,28 @@ mod tests {
         let value = serde_json::to_value(&call).unwrap();
         assert_eq!(value["type"], "function");
         assert_eq!(value["function"]["name"], "read_document");
+    }
+
+    #[test]
+    fn preserves_utf8_characters_split_across_network_chunks() {
+        let payload = concat!(
+            "data: {\"choices\":[{\"delta\":{\"content\":\"",
+            "\u{4f60}\u{597d} \u{1f60a}",
+            "\"}}]}\n\n"
+        );
+        let emoji_start = payload.find('\u{1f60a}').expect("emoji in payload");
+        let split_inside_emoji = emoji_start + 1;
+        let mut buffer = payload.as_bytes()[..split_inside_emoji].to_vec();
+
+        assert_eq!(take_sse_block(&mut buffer).expect("partial block"), None);
+
+        buffer.extend_from_slice(&payload.as_bytes()[split_inside_emoji..]);
+        let block = take_sse_block(&mut buffer)
+            .expect("valid UTF-8 block")
+            .expect("complete SSE block");
+
+        assert!(block.contains("\u{4f60}\u{597d} \u{1f60a}"));
+        assert!(buffer.is_empty());
     }
 
     #[test]

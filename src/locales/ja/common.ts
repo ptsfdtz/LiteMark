@@ -123,6 +123,8 @@ const common = {
   'tabs.openFiles': '開いているファイル',
   'tabs.actions': '{name} の操作',
   'tabs.closeTab': 'タブを閉じる',
+  'tabs.closeAll': 'すべてのタブを閉じる',
+  'tabs.closeOthers': '他のタブを閉じる',
   'tabs.close': '{name} を閉じる',
   'preview.enterEditMode': '編集モードへ',
   'preview.enterPreviewMode': 'プレビューモードへ',

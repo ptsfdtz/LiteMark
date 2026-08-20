@@ -62,4 +62,64 @@ describe('AgentPanel conversations', () => {
     await user.type(renameInput, 'Project plan{Enter}');
     expect(onRenameConversation).toHaveBeenCalledWith('second', 'Project plan');
   });
+
+  it('renders assistant responses as safe GitHub-flavored Markdown', () => {
+    const markdownSession: AgentSession = {
+      ...session,
+      items: [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          content: [
+            '## Result',
+            '',
+            '**Ready** with `inline code`:',
+            '',
+            '- First item',
+            '- Second item',
+            '',
+            '| File | Status |',
+            '| --- | --- |',
+            '| note.md | Updated |',
+            '',
+            '```ts',
+            'const answer = 42;',
+            '```',
+            '',
+            '[Open docs](https://example.com)',
+            '',
+            '<script>alert("unsafe")</script>',
+          ].join('\n'),
+        },
+      ],
+    };
+
+    const { container } = render(
+      <I18nProvider>
+        <AgentPanel
+          session={markdownSession}
+          conversations={[]}
+          activeConversationId="first"
+          scopeKind="project"
+          onCreateConversation={vi.fn()}
+          onSelectConversation={vi.fn()}
+          onRenameConversation={vi.fn()}
+          onDeleteConversation={vi.fn()}
+          isConfigured
+          modelName="gpt-4o-mini"
+          onClose={vi.fn()}
+        />
+      </I18nProvider>,
+    );
+
+    expect(screen.getByRole('heading', { name: 'Result' })).toBeInTheDocument();
+    expect(screen.getByRole('list')).toHaveTextContent('First item');
+    expect(screen.getByRole('table')).toHaveTextContent('note.md');
+    expect(screen.getByRole('link', { name: 'Open docs' })).toHaveAttribute(
+      'href',
+      'https://example.com',
+    );
+    expect(container.querySelector('code.language-ts')).toHaveTextContent('const answer = 42;');
+    expect(container.querySelector('script')).not.toBeInTheDocument();
+  });
 });

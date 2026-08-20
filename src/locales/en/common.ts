@@ -123,6 +123,8 @@ const common = {
   'tabs.openFiles': 'Open files',
   'tabs.actions': 'Actions for {name}',
   'tabs.closeTab': 'Close Tab',
+  'tabs.closeAll': 'Close All Tabs',
+  'tabs.closeOthers': 'Close Other Tabs',
   'tabs.close': 'Close {name}',
   'preview.enterEditMode': 'Enter edit mode',
   'preview.enterPreviewMode': 'Enter preview mode',

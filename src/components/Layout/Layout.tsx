@@ -630,6 +630,34 @@ const Layout: React.FC = () => {
     else if (path === currentFilePath) documentSession.closeDocument();
   };
 
+  const handleCloseTabs = async (pathsToClose: string[]) => {
+    const tabsToClose = openTabs.filter((path) => pathsToClose.includes(path));
+    if (tabsToClose.length === 0) return;
+
+    const closesCurrentDocument = currentFilePath !== null && tabsToClose.includes(currentFilePath);
+    if (closesCurrentDocument && isDirty) {
+      if (!(await confirmDiscard())) return;
+      documentSession.discardChanges();
+    }
+
+    const closingIndex = activeFilePath ? openTabs.indexOf(activeFilePath) : -1;
+    const closesActiveTab = activeFilePath !== null && tabsToClose.includes(activeFilePath);
+    const nextTabs = openTabs.filter((path) => !tabsToClose.includes(path));
+    setOpenTabs(nextTabs);
+
+    if (!closesActiveTab) return;
+
+    const nextPath = nextTabs[Math.min(closingIndex, nextTabs.length - 1)] ?? null;
+    setActiveFilePath(null);
+    if (nextPath) await handleActivateTab(nextPath);
+    else if (closesCurrentDocument) documentSession.closeDocument();
+  };
+
+  const handleCloseAllTabs = () => handleCloseTabs(openTabs);
+
+  const handleCloseOtherTabs = (path: string) =>
+    handleCloseTabs(openTabs.filter((tabPath) => tabPath !== path));
+
   const handleDeleteWorkspaceFile = async (path: string) => {
     const deletingCurrentDocument = path === currentFilePath;
     if (deletingCurrentDocument && isDirty && !(await confirmDiscard())) return false;
@@ -1053,6 +1081,8 @@ const Layout: React.FC = () => {
             }
             onActivate={(path) => void handleActivateTab(path)}
             onClose={(path) => void handleCloseTab(path)}
+            onCloseAll={() => void handleCloseAllTabs()}
+            onCloseOthers={(path) => void handleCloseOtherTabs(path)}
             onDelete={handleDeleteWorkspaceFile}
           />
           <div className={styles.editorCanvas}>
