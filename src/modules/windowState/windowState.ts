@@ -1,11 +1,9 @@
 import { PhysicalPosition, PhysicalSize } from '@tauri-apps/api/dpi';
-import {
-  availableMonitors,
-  currentMonitor,
-  type Window as TauriWindow,
-} from '@tauri-apps/api/window';
+import { availableMonitors, type Window as TauriWindow } from '@tauri-apps/api/window';
 
-const STORAGE_KEY = 'litemark.windowState';
+// Keep this suffix aligned with tauri.conf.json so a changed default is not
+// immediately overwritten by geometry saved for an older default.
+const STORAGE_KEY = 'litemark.windowState.900x1200';
 const MIN_WIDTH = 600;
 const MIN_HEIGHT = 600;
 
@@ -21,8 +19,6 @@ type StatefulWindow = Pick<
   TauriWindow,
   'center' | 'isMaximized' | 'maximize' | 'outerPosition' | 'outerSize' | 'setPosition' | 'setSize'
 >;
-
-type ExpandableWindow = Pick<TauriWindow, 'isMaximized' | 'outerSize' | 'scaleFactor' | 'setSize'>;
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
@@ -106,24 +102,4 @@ export async function persistWindowState(appWindow: StatefulWindow): Promise<voi
     y: position.y,
     maximized: false,
   });
-}
-
-export async function expandWindowForDocumentWidth(
-  appWindow: ExpandableWindow,
-  currentDocumentWidth: number,
-  minimumDocumentWidth: number,
-): Promise<void> {
-  if (currentDocumentWidth >= minimumDocumentWidth || (await appWindow.isMaximized())) return;
-
-  const [size, scaleFactor, monitor] = await Promise.all([
-    appWindow.outerSize(),
-    appWindow.scaleFactor(),
-    currentMonitor(),
-  ]);
-  const requiredExtraWidth = Math.ceil((minimumDocumentWidth - currentDocumentWidth) * scaleFactor);
-  const monitorWidth = monitor?.workArea.size.width ?? Number.POSITIVE_INFINITY;
-  const nextWidth = Math.min(size.width + requiredExtraWidth, monitorWidth);
-  if (nextWidth <= size.width) return;
-
-  await appWindow.setSize(new PhysicalSize(nextWidth, size.height));
 }

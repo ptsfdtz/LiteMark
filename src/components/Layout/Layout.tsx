@@ -35,12 +35,9 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { isTauri } from '@tauri-apps/api/core';
 import type { WysiwygEditor } from '@/types/editor';
 import { registerWindowCloseGuard } from '@/modules/windowCloseGuard/registerWindowCloseGuard';
+import { persistWindowState, restoreWindowState } from '@/modules/windowState/windowState';
 import {
-  expandWindowForDocumentWidth,
-  persistWindowState,
-  restoreWindowState,
-} from '@/modules/windowState/windowState';
-import {
+  createWorkspaceDirectory,
   deleteWorkspaceDirectory,
   deleteWorkspaceFile,
   listDirectoryEntries,
@@ -49,6 +46,8 @@ import { getFileViewKind, type FileTreeNode } from '@/types/fileTree';
 import { loadWorkspaceDirectories, saveWorkspaceDirectories } from '@/utils/workspaceStore';
 import OpenTabs from '@/components/OpenTabs/OpenTabs';
 import { LuPanelLeftOpen, LuPanelRightOpen } from 'react-icons/lu';
+import { LuFolderTree, LuMessageSquare, LuSettings } from 'react-icons/lu';
+import ContextMenu from '@/components/ContextMenu/ContextMenu';
 
 function normalizePath(path: string): string {
   return path
@@ -111,6 +110,7 @@ const Layout: React.FC = () => {
   // Document Session owns document content, persistence, and Recent Documents.
   const [workDir, setWorkDirState] = useState('');
   const [workspaceRoots, setWorkspaceRoots] = useState<FileExplorerRoot[]>([]);
+  const [titleBarMenu, setTitleBarMenu] = useState<{ x: number; y: number } | null>(null);
   const [explorerVisible, setExplorerVisible] = useState(false);
   // Keep panels mounted while their close animation plays out.
   const [explorerRendered, setExplorerRendered] = useState(false);
@@ -125,9 +125,7 @@ const Layout: React.FC = () => {
   const [agentSettingsReady, setAgentSettingsReady] = useState(false);
   const [openTabs, setOpenTabs] = useState<string[]>([]);
   const [activeFilePath, setActiveFilePath] = useState<string | null>(null);
-  const [windowStateReady, setWindowStateReady] = useState(false);
   const pendingSessionActivationRef = useRef(false);
-  const documentAreaRef = useRef<HTMLDivElement | null>(null);
 
   // 加载个人工作文件夹
   useEffect(() => {
@@ -144,20 +142,6 @@ const Layout: React.FC = () => {
   useEffect(() => {
     if (agentSettings.panelVisible) setAgentPanelRendered(true);
   }, [agentSettings.panelVisible]);
-
-  useEffect(() => {
-    if (!isTauri() || !windowStateReady || (!explorerVisible && !agentSettings.panelVisible)) {
-      return;
-    }
-    const frame = window.requestAnimationFrame(() => {
-      const documentWidth = documentAreaRef.current?.getBoundingClientRect().width;
-      if (documentWidth === undefined) return;
-      void expandWindowForDocumentWidth(getCurrentWindow(), documentWidth, 760).catch((error) =>
-        console.error('Failed to expand the window for side panels:', error),
-      );
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, [agentSettings.panelVisible, explorerVisible, windowStateReady]);
 
   // 启动时加载主题设置
   useEffect(() => {
@@ -746,6 +730,20 @@ const Layout: React.FC = () => {
     return true;
   };
 
+  const handleCreateWorkspaceDirectory = async (directory: string) => {
+    try {
+      await createWorkspaceDirectory(directory, t('explorer.untitledFolderName'));
+      const root = workspaceRoots.find((candidate) =>
+        pathBelongsToDirectory(directory, candidate.path),
+      );
+      if (root) await refreshWorkspaceTree(root.path);
+      return true;
+    } catch (error) {
+      await showDocumentError(error, 'dialog.createDirectoryFailed');
+      return false;
+    }
+  };
+
   const handleDeleteWorkspaceDirectory = async (directory: string) => {
     const deletingCurrentDocument = pathBelongsToDirectory(currentFilePath, directory);
     if (deletingCurrentDocument && isDirty && !(await confirmDiscard())) return false;
@@ -949,8 +947,6 @@ const Layout: React.FC = () => {
         else unlisten.push(...listeners);
       } catch (error) {
         console.error('Failed to restore window state:', error);
-      } finally {
-        if (!disposed) setWindowStateReady(true);
       }
     })();
 
@@ -1011,7 +1007,15 @@ const Layout: React.FC = () => {
 
   return (
     <div className={styles.container}>
-      <div className={styles.titleBar} data-tauri-drag-region="true">
+      <div
+        className={styles.titleBar}
+        data-tauri-drag-region="true"
+        onContextMenu={(event) => {
+          if ((event.target as HTMLElement).closest('button, input, [role="menu"]')) return;
+          event.preventDefault();
+          setTitleBarMenu({ x: event.clientX, y: event.clientY });
+        }}
+      >
         <Toolbar
           onOpenFolder={() => void chooseDirectory()}
           onOpenDocument={() => void chooseDocument()}
@@ -1062,6 +1066,39 @@ const Layout: React.FC = () => {
           />
           <WindowControls />
         </div>
+        {titleBarMenu && (
+          <ContextMenu
+            x={titleBarMenu.x}
+            y={titleBarMenu.y}
+            label={t('app.layoutActions')}
+            onClose={() => setTitleBarMenu(null)}
+            items={[
+              {
+                id: 'explorer',
+                label: t(explorerVisible ? 'explorer.hide' : 'explorer.show'),
+                icon: <LuFolderTree />,
+                disabled: !explorerHasItems,
+                onSelect: () => setExplorerVisible((visible) => !visible),
+              },
+              {
+                id: 'agent',
+                label: t(agentSettings.panelVisible ? 'agent.close' : 'agent.open'),
+                icon: <LuMessageSquare />,
+                onSelect: () =>
+                  setAgentSettings({ ...agentSettings, panelVisible: !agentSettings.panelVisible }),
+              },
+              {
+                id: 'settings',
+                label: t('settings.title'),
+                icon: <LuSettings />,
+                onSelect: () => {
+                  setShowSettings(true);
+                  setSettingsClosing(false);
+                },
+              },
+            ]}
+          />
+        )}
       </div>
       <RecentFilesSidebar
         files={directoryDocuments ?? recentDocuments}
@@ -1083,6 +1120,7 @@ const Layout: React.FC = () => {
             await showDocumentError(error, 'dialog.recentSaveFailed');
           }
         }}
+        onDeleteDocument={handleDeleteWorkspaceFile}
       />
       <div className={styles.mainArea}>
         {explorerHasItems && explorerRendered && (
@@ -1098,6 +1136,7 @@ const Layout: React.FC = () => {
             onReorderDirectory={reorderWorkspaceDirectory}
             onDeleteFile={handleDeleteWorkspaceFile}
             onCreateFile={handleCreateWorkspaceFile}
+            onCreateDirectory={handleCreateWorkspaceDirectory}
             onDeleteDirectory={handleDeleteWorkspaceDirectory}
             onRemoveStandaloneFile={async (path) => {
               try {
@@ -1111,7 +1150,7 @@ const Layout: React.FC = () => {
             onCloseComplete={() => setExplorerRendered(false)}
           />
         )}
-        <div className={styles.documentArea} ref={documentAreaRef}>
+        <div className={styles.documentArea}>
           <OpenTabs
             paths={openTabs}
             activePath={activeFilePath}
@@ -1147,6 +1186,8 @@ const Layout: React.FC = () => {
             onCloseAll={() => void handleCloseAllTabs()}
             onCloseOthers={(path) => void handleCloseOtherTabs(path)}
             onDelete={handleDeleteWorkspaceFile}
+            onCreate={() => void createDocument()}
+            onReopen={(path) => void handleOpenDocument(path)}
           />
           <div className={styles.editorCanvas}>
             <Editor
@@ -1184,6 +1225,13 @@ const Layout: React.FC = () => {
             onArchiveConversation={agentConversations.archiveConversation}
             onRestoreConversation={agentConversations.restoreConversation}
             onDeleteConversation={agentConversations.deleteConversation}
+            onInsertCode={(code) => {
+              editorInstance
+                ?.chain()
+                .focus()
+                .insertContent({ type: 'codeBlock', content: [{ type: 'text', text: code }] })
+                .run();
+            }}
             isConfigured={agentConfigured}
             modelName={agentSettings.model}
             onClose={() => setAgentSettings({ ...agentSettings, panelVisible: false })}

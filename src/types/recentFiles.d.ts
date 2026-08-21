@@ -10,5 +10,6 @@ export interface RecentFilesSidebarProps {
   onRequestClose: () => void;
   onCloseComplete?: () => void;
   onRemoveRecentDocument?: (path: string) => void | Promise<void>;
+  onDeleteDocument?: (path: string) => boolean | Promise<boolean>;
   canRemoveDocuments?: boolean;
 }

@@ -53,6 +53,7 @@ describe('FileExplorer', () => {
     const onReorderDirectory = vi.fn();
     const onDeleteFile = vi.fn().mockResolvedValue(true);
     const onCreateFile = vi.fn().mockResolvedValue(true);
+    const onCreateDirectory = vi.fn().mockResolvedValue(true);
     const onDeleteDirectory = vi.fn().mockResolvedValue(true);
     const onRemoveStandaloneFile = vi.fn().mockResolvedValue(undefined);
     const standaloneFile = { path: 'C:\\scratch\\draft.md', name: 'draft.md' };
@@ -74,6 +75,7 @@ describe('FileExplorer', () => {
           onReorderDirectory={onReorderDirectory}
           onDeleteFile={onDeleteFile}
           onCreateFile={onCreateFile}
+          onCreateDirectory={onCreateDirectory}
           onDeleteDirectory={onDeleteDirectory}
           onRemoveStandaloneFile={onRemoveStandaloneFile}
           onClose={vi.fn()}
@@ -103,6 +105,19 @@ describe('FileExplorer', () => {
     expect(screen.queryByRole('button', { name: 'readme.md' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'notes' }));
     expect(screen.getByRole('button', { name: 'readme.md' })).toBeInTheDocument();
+
+    const docsButton = screen.getByRole('button', { name: 'docs' });
+    const docsGroup = docsButton.nextElementSibling as HTMLDivElement;
+    const notesRootButton = screen.getByRole('button', { name: 'notes' });
+    const notesRootGroup = notesRootButton.parentElement?.parentElement?.querySelector(
+      `:scope > div[aria-hidden]`,
+    ) as HTMLDivElement;
+    await user.click(screen.getByRole('button', { name: 'Collapse all folders' }));
+    expect(docsGroup).toHaveAttribute('aria-hidden', 'true');
+    expect(notesRootButton).toHaveAttribute('aria-expanded', 'false');
+    expect(notesRootGroup).toHaveAttribute('aria-hidden', 'true');
+    await user.click(screen.getByRole('button', { name: 'workspace' }));
+    await user.click(screen.getByRole('button', { name: 'docs' }));
 
     const workspaceButton = screen.getByRole('button', { name: 'workspace' });
     const notesButton = screen.getByRole('button', { name: 'notes' });
@@ -147,10 +162,18 @@ describe('FileExplorer', () => {
     });
     const folderMenu = screen.getByRole('menu', { name: 'Actions for docs' });
     expect(within(folderMenu).getByRole('menuitem', { name: 'New File' })).toBeInTheDocument();
+    await user.click(within(folderMenu).getByRole('menuitem', { name: 'New Folder' }));
+    expect(onCreateDirectory).toHaveBeenCalledWith('C:\\workspace\\docs');
+
+    fireEvent.contextMenu(screen.getByRole('button', { name: 'docs' }), {
+      clientX: 32,
+      clientY: 32,
+    });
+    const reopenedFolderMenu = screen.getByRole('menu', { name: 'Actions for docs' });
     expect(
-      within(folderMenu).getByRole('menuitem', { name: 'Copy Absolute Path' }),
+      within(reopenedFolderMenu).getByRole('menuitem', { name: 'Copy Absolute Path' }),
     ).toBeInTheDocument();
-    await user.click(within(folderMenu).getByRole('menuitem', { name: 'Delete Folder' }));
+    await user.click(within(reopenedFolderMenu).getByRole('menuitem', { name: 'Delete Folder' }));
     const deleteFolderDialog = screen.getByRole('alertdialog', { name: 'Delete folder?' });
     await user.click(within(deleteFolderDialog).getByRole('button', { name: 'Delete' }));
     expect(onDeleteDirectory).toHaveBeenCalledWith('C:\\workspace\\docs');

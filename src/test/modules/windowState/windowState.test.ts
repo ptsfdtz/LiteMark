@@ -14,7 +14,7 @@ import { restoreWindowState } from '@/modules/windowState/windowState';
 
 function storedWindow(overrides: Partial<Record<string, number | boolean>> = {}) {
   window.localStorage.setItem(
-    'litemark.windowState',
+    'litemark.windowState.900x1200',
     JSON.stringify({ width: 900, height: 700, x: 100, y: 80, maximized: false, ...overrides }),
   );
 }
@@ -64,5 +64,18 @@ describe('window state restoration', () => {
 
     expect(appWindow.setPosition).not.toHaveBeenCalled();
     expect(appWindow.center).toHaveBeenCalledOnce();
+  });
+
+  it('does not restore geometry saved by the previous window-state format', async () => {
+    window.localStorage.setItem(
+      'litemark.windowState',
+      JSON.stringify({ width: 1500, height: 700, x: 0, y: 0, maximized: false }),
+    );
+    const appWindow = mockWindow();
+
+    await restoreWindowState(appWindow);
+
+    expect(appWindow.setSize).not.toHaveBeenCalled();
+    expect(appWindow.setPosition).not.toHaveBeenCalled();
   });
 });

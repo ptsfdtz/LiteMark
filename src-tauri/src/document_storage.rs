@@ -368,6 +368,36 @@ pub fn create_untitled_file(directory: &Path, content: &str) -> StorageResult<Pa
     unreachable!("the untitled suffix space is exhausted")
 }
 
+pub fn create_untitled_directory(parent: &Path, name: &str) -> StorageResult<PathBuf> {
+    let metadata = fs::symlink_metadata(parent)?;
+    let mut components = Path::new(name).components();
+    let valid_name = matches!(components.next(), Some(std::path::Component::Normal(_)))
+        && components.next().is_none()
+        && name == name.trim();
+    if !metadata.file_type().is_dir() || !valid_name {
+        return Err(StorageError::new(StorageErrorCategory::InvalidPath));
+    }
+
+    for suffix in 0_u64.. {
+        let directory_name = if suffix == 0 {
+            name.to_owned()
+        } else {
+            format!("{name}-{suffix}")
+        };
+        let candidate = parent.join(directory_name);
+        match fs::create_dir(&candidate) {
+            Ok(()) => {
+                sync_directory(parent)?;
+                return Ok(candidate);
+            }
+            Err(error) if error.kind() == io::ErrorKind::AlreadyExists => continue,
+            Err(error) => return Err(error.into()),
+        }
+    }
+
+    unreachable!("the untitled directory suffix space is exhausted")
+}
+
 pub fn atomic_write_text_file(path: &Path, content: &str) -> StorageResult<()> {
     let write_path = match fs::symlink_metadata(path) {
         Ok(metadata) if metadata.file_type().is_symlink() => fs::canonicalize(path)?,

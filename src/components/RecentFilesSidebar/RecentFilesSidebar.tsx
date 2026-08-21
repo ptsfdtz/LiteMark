@@ -1,8 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import styles from './RecentFilesSidebar.module.css';
 import { RecentFilesSidebarProps } from '@/types/recentFiles';
-import { LuCheck, LuFile, LuFilePlus2, LuFolderOpen, LuTrash2, LuX } from 'react-icons/lu';
+import { LuCheck, LuCopy, LuFile, LuFilePlus2, LuFolderOpen, LuTrash2, LuX } from 'react-icons/lu';
 import { useI18n } from '@/locales/useI18n';
+import { revealItemInDir } from '@tauri-apps/plugin-opener';
+import ContextMenu from '@/components/ContextMenu/ContextMenu';
 
 const RecentFilesSidebar: React.FC<RecentFilesSidebarProps> = ({
   files,
@@ -15,6 +17,7 @@ const RecentFilesSidebar: React.FC<RecentFilesSidebarProps> = ({
   onCloseComplete,
   onRemoveRecentDocument,
   canRemoveDocuments = true,
+  onDeleteDocument,
 }) => {
   const { locale, t } = useI18n();
   const sidebarRef = useRef<HTMLDivElement | null>(null);
@@ -22,6 +25,9 @@ const RecentFilesSidebar: React.FC<RecentFilesSidebarProps> = ({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   // 记录当前显示确认/取消按钮的文件路径
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ path: string; x: number; y: number } | null>(
+    null,
+  );
 
   const requestClose = useCallback(() => {
     setConfirmingId(null);
@@ -135,6 +141,10 @@ const RecentFilesSidebar: React.FC<RecentFilesSidebarProps> = ({
               <div
                 key={file.path}
                 className={`${styles.fileItem} ${deletingId === file.path ? styles.deleting : ''}`}
+                onContextMenu={(event) => {
+                  event.preventDefault();
+                  setContextMenu({ path: file.path, x: event.clientX, y: event.clientY });
+                }}
               >
                 <button
                   type="button"
@@ -198,6 +208,55 @@ const RecentFilesSidebar: React.FC<RecentFilesSidebarProps> = ({
           })
         )}
       </div>
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          label={t('recent.fileActions')}
+          onClose={() => setContextMenu(null)}
+          items={[
+            {
+              id: 'open',
+              label: t('explorer.openFile'),
+              icon: <LuFile />,
+              onSelect: () => void onOpenDocument(contextMenu.path),
+            },
+            {
+              id: 'reveal',
+              label: t('explorer.revealInFileExplorer'),
+              icon: <LuFolderOpen />,
+              onSelect: () => void revealItemInDir(contextMenu.path),
+            },
+            {
+              id: 'copy',
+              label: t('explorer.copyAbsolutePath'),
+              icon: <LuCopy />,
+              onSelect: () => void navigator.clipboard.writeText(contextMenu.path),
+            },
+            { id: 'separator', separator: true },
+            {
+              id: 'remove',
+              label: t('recent.delete'),
+              icon: <LuX />,
+              disabled: !canRemoveDocuments,
+              onSelect: () => void onRemoveRecentDocument?.(contextMenu.path),
+            },
+            {
+              id: 'delete',
+              label: t('explorer.deleteFile'),
+              icon: <LuTrash2 />,
+              danger: true,
+              disabled: !onDeleteDocument,
+              onSelect: () => {
+                const name = contextMenu.path.split(/[/\\]/).pop() || contextMenu.path;
+                if (window.confirm(t('explorer.confirmDeleteDescription', { name }))) {
+                  void onDeleteDocument?.(contextMenu.path);
+                }
+              },
+            },
+          ]}
+        />
+      )}
       {/* 删除确认弹窗已移除，直接在列表项内显示确认/取消按钮 */}
     </div>
   );

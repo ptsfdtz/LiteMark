@@ -10,7 +10,7 @@ import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import rehypeKatex from 'rehype-katex';
 import rehypeSlug from 'rehype-slug';
 import { slug } from 'github-slugger';
-import { openUrl } from '@tauri-apps/plugin-opener';
+import { openUrl, revealItemInDir } from '@tauri-apps/plugin-opener';
 import './Preview.css';
 import 'highlight.js/styles/github.css';
 import 'katex/dist/katex.min.css';
@@ -19,6 +19,16 @@ import { FaCheck, FaCopy, FaEdit, FaExpand, FaLink, FaTimes, FaUnlink } from 're
 import { PreviewProps } from '@/types/preview';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { useI18n } from '@/locales/useI18n';
+import {
+  LuSquareCheck,
+  LuCopy,
+  LuExternalLink,
+  LuFileCode2,
+  LuImage,
+  LuLocateFixed,
+  LuLink,
+} from 'react-icons/lu';
+import ContextMenu from '@/components/ContextMenu/ContextMenu';
 
 const previewSanitizeSchema = {
   ...defaultSchema,
@@ -413,6 +423,25 @@ const resolveImageSrc = (src: string | undefined, filePath?: string | null) => {
   return `${convertFileSrc(resolvedPath)}${suffix}`;
 };
 
+const resolveLocalImagePath = (src: string | undefined, filePath?: string | null) => {
+  if (!src || !filePath || isRemoteSrc(src)) return undefined;
+  const { path: rawPath } = splitSrc(src);
+  const windows = isWindowsPath(filePath);
+  if (windows && (/^[a-zA-Z]:[\\/]/.test(rawPath) || rawPath.startsWith('\\\\'))) {
+    return rawPath.replace(/\//g, '\\');
+  }
+  if (!windows && rawPath.startsWith('/')) return rawPath;
+  const separator = windows ? '\\' : '/';
+  const baseDir = filePath.replace(/[/\\][^/\\]+$/, '');
+  const parts = `${baseDir}${separator}${rawPath}`.split(/[/\\]/);
+  const normalized: string[] = [];
+  for (const part of parts) {
+    if (part === '..') normalized.pop();
+    else if (part && part !== '.') normalized.push(part);
+  }
+  return windows ? normalized.join('\\') : `/${normalized.join('/')}`;
+};
+
 const Preview = React.forwardRef<HTMLDivElement, PreviewProps>(
   (
     {
@@ -429,6 +458,16 @@ const Preview = React.forwardRef<HTMLDivElement, PreviewProps>(
     ref,
   ) => {
     const { t } = useI18n();
+    const [contextMenu, setContextMenu] = useState<{
+      x: number;
+      y: number;
+      selectedText: string;
+      sourceLine?: number;
+      link?: string;
+      image?: string;
+      code?: string;
+      task?: { line: number; checked: boolean };
+    } | null>(null);
     const { preprocessMathChinese } = useMathPreprocess();
     const processedContent = preprocessMathChinese(
       processSpecialEmojis(escapeUnclosedFencedCodeBlocks(content)),
@@ -439,7 +478,32 @@ const Preview = React.forwardRef<HTMLDivElement, PreviewProps>(
     }`;
 
     return (
-      <div ref={ref} className="preview-container">
+      <div
+        ref={ref}
+        className="preview-container"
+        onContextMenu={(event) => {
+          event.preventDefault();
+          const target = event.target as HTMLElement;
+          const sourceElement = target.closest<HTMLElement>('[data-source-line]');
+          const link = target.closest<HTMLAnchorElement>('a');
+          const image = target.closest<HTMLImageElement>('img');
+          const code = target.closest<HTMLElement>('.code-block');
+          const task = target.closest<HTMLInputElement>('input[type="checkbox"]');
+          setContextMenu({
+            x: event.clientX,
+            y: event.clientY,
+            selectedText: window.getSelection()?.toString() || '',
+            sourceLine: Number(sourceElement?.dataset.sourceLine) || undefined,
+            link: link?.href,
+            image: image?.dataset.originalSrc || image?.src,
+            code: code?.querySelector('code')?.textContent || undefined,
+            task:
+              task && sourceElement
+                ? { line: Number(sourceElement.dataset.sourceLine), checked: task.checked }
+                : undefined,
+          });
+        }}
+      >
         {!isPreviewOnly && onEnterPreviewMode && (
           <button
             className="previewModeButton previewOnly"
@@ -502,6 +566,7 @@ const Preview = React.forwardRef<HTMLDivElement, PreviewProps>(
                     <img
                       {...props}
                       data-source-line={sourceLine}
+                      data-original-src={props.src}
                       src={resolveImageSrc(props.src, filePath)}
                       style={{ maxWidth: '100%', height: 'auto' }}
                       alt={props.alt || t('preview.imageAlt')}
@@ -527,6 +592,130 @@ const Preview = React.forwardRef<HTMLDivElement, PreviewProps>(
           >
             {scrollSyncEnabled ? <FaLink /> : <FaUnlink />}
           </button>
+        )}
+        {contextMenu && (
+          <ContextMenu
+            x={contextMenu.x}
+            y={contextMenu.y}
+            label={t('preview.contextActions')}
+            onClose={() => setContextMenu(null)}
+            items={[
+              {
+                id: 'copy-selection',
+                label: t('preview.copySelection'),
+                icon: <LuCopy />,
+                disabled: !contextMenu.selectedText,
+                onSelect: () => void navigator.clipboard.writeText(contextMenu.selectedText),
+              },
+              {
+                id: 'copy-markdown',
+                label: t('preview.copySourceLine'),
+                icon: <LuFileCode2 />,
+                disabled: !contextMenu.sourceLine,
+                onSelect: () =>
+                  contextMenu.sourceLine &&
+                  void navigator.clipboard.writeText(sourceLines[contextMenu.sourceLine - 1] || ''),
+              },
+              {
+                id: 'locate',
+                label: t('preview.locateInEditor'),
+                icon: <LuLocateFixed />,
+                disabled: !contextMenu.sourceLine || !onEnterEditorMode,
+                onSelect: onEnterEditorMode,
+              },
+              ...(contextMenu.link
+                ? [
+                    {
+                      id: 'open-link',
+                      label: t('preview.openLink'),
+                      icon: <LuExternalLink />,
+                      onSelect: () => void openUrl(contextMenu.link!),
+                    },
+                    {
+                      id: 'copy-link',
+                      label: t('preview.copyLink'),
+                      icon: <LuLink />,
+                      onSelect: () => void navigator.clipboard.writeText(contextMenu.link!),
+                    },
+                    {
+                      id: 'edit-link',
+                      label: t('preview.editLink'),
+                      icon: <LuLink />,
+                      disabled: !onEnterEditorMode,
+                      onSelect: onEnterEditorMode,
+                    },
+                  ]
+                : []),
+              ...(contextMenu.image
+                ? [
+                    {
+                      id: 'copy-image',
+                      label: t('image.copyImage'),
+                      icon: <LuImage />,
+                      onSelect: () => {
+                        const url = resolveImageSrc(contextMenu.image, filePath);
+                        void fetch(url)
+                          .then((response) => response.blob())
+                          .then((blob) =>
+                            navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]),
+                          );
+                      },
+                    },
+                    {
+                      id: 'copy-image-address',
+                      label: t('preview.copyImageAddress'),
+                      icon: <LuImage />,
+                      onSelect: () => void navigator.clipboard.writeText(contextMenu.image!),
+                    },
+                    {
+                      id: 'reveal-image',
+                      label: t('explorer.revealInFileExplorer'),
+                      icon: <LuImage />,
+                      disabled: !resolveLocalImagePath(contextMenu.image, filePath),
+                      onSelect: () => {
+                        const path = resolveLocalImagePath(contextMenu.image, filePath);
+                        if (path) void revealItemInDir(path);
+                      },
+                    },
+                  ]
+                : []),
+              ...(contextMenu.code
+                ? [
+                    {
+                      id: 'copy-code',
+                      label: t('preview.copyCode'),
+                      icon: <LuCopy />,
+                      onSelect: () => void navigator.clipboard.writeText(contextMenu.code!),
+                    },
+                  ]
+                : []),
+              ...(contextMenu.task
+                ? [
+                    {
+                      id: 'toggle-task',
+                      label: t(
+                        contextMenu.task.checked
+                          ? 'preview.markTaskIncomplete'
+                          : 'preview.markTaskComplete',
+                      ),
+                      icon: <LuSquareCheck />,
+                      onSelect: () =>
+                        onTaskToggle?.(contextMenu.task!.line, !contextMenu.task!.checked),
+                    },
+                    {
+                      id: 'copy-task',
+                      label: t('preview.copyTaskText'),
+                      icon: <LuCopy />,
+                      onSelect: () =>
+                        contextMenu.sourceLine &&
+                        void navigator.clipboard.writeText(
+                          sourceLines[contextMenu.sourceLine - 1] || '',
+                        ),
+                    },
+                  ]
+                : []),
+            ]}
+          />
         )}
       </div>
     );

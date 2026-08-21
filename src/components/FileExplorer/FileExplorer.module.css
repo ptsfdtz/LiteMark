@@ -183,11 +183,31 @@
 .groupWrapper > * {
   min-height: 0;
   overflow: hidden;
+  opacity: 0;
+  transform: translateY(-3px);
+  transition:
+    opacity 0.14s ease,
+    transform 0.18s ease;
+}
+
+.groupWrapper.groupOpen > * {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.chevronIcon {
+  transition: transform 0.18s ease;
+}
+
+.chevronIcon.chevronOpen {
+  transform: rotate(90deg);
 }
 
 @media (prefers-reduced-motion: reduce) {
   .groupWrapper,
-  .groupWrapper.groupOpen {
+  .groupWrapper.groupOpen,
+  .groupWrapper > *,
+  .chevronIcon {
     transition: none;
   }
 }

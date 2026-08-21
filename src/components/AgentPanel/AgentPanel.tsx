@@ -4,6 +4,8 @@ import {
   LuArchiveRestore,
   LuArrowLeft,
   LuCheck,
+  LuCopy,
+  LuCode,
   LuChevronRight,
   LuHistory,
   LuMessageSquare,
@@ -26,6 +28,7 @@ import type { AgentConversationSummary } from '@/modules/agent/agentConversation
 import { useI18n } from '@/locales/useI18n';
 import type { TranslationKey } from '@/locales/config';
 import { useResizablePanel } from '@/hooks/useResizablePanel';
+import ContextMenu from '@/components/ContextMenu/ContextMenu';
 
 interface AgentPanelProps {
   session: AgentSession;
@@ -38,6 +41,7 @@ interface AgentPanelProps {
   onArchiveConversation?: (id: string) => void;
   onRestoreConversation?: (id: string) => void;
   onDeleteConversation: (id: string) => void;
+  onInsertCode?: (code: string) => void;
   isConfigured: boolean;
   modelName: string;
   onClose: () => void;
@@ -158,6 +162,7 @@ const AgentPanel: React.FC<AgentPanelProps> = ({
   onArchiveConversation = () => undefined,
   onRestoreConversation = () => undefined,
   onDeleteConversation,
+  onInsertCode,
   isConfigured,
   modelName,
   onClose,
@@ -169,6 +174,19 @@ const AgentPanel: React.FC<AgentPanelProps> = ({
   const [view, setView] = useState<'home' | 'conversation' | 'archive'>('home');
   const [editingConversationId, setEditingConversationId] = useState<string | null>(null);
   const [editingConversationTitle, setEditingConversationTitle] = useState('');
+  const [conversationMenu, setConversationMenu] = useState<{
+    id: string;
+    title: string;
+    archived: boolean;
+    x: number;
+    y: number;
+  } | null>(null);
+  const [messageMenu, setMessageMenu] = useState<{
+    content: string;
+    role: 'user' | 'assistant';
+    x: number;
+    y: number;
+  } | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const conversationTitleInputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -424,6 +442,16 @@ const AgentPanel: React.FC<AgentPanelProps> = ({
                           : selectConversation(conversation.id)
                       }
                       onDoubleClick={() => startRenameConversation(conversation.id, title)}
+                      onContextMenu={(event) => {
+                        event.preventDefault();
+                        setConversationMenu({
+                          id: conversation.id,
+                          title,
+                          archived: view === 'archive',
+                          x: event.clientX,
+                          y: event.clientY,
+                        });
+                      }}
                       title={title}
                       disabled={running}
                     >
@@ -518,13 +546,37 @@ const AgentPanel: React.FC<AgentPanelProps> = ({
             case 'user':
               return (
                 <div key={item.id} className={styles.userRow}>
-                  <div className={styles.userBubble}>{item.content}</div>
+                  <div
+                    className={styles.userBubble}
+                    onContextMenu={(event) => {
+                      event.preventDefault();
+                      setMessageMenu({
+                        content: item.content,
+                        role: 'user',
+                        x: event.clientX,
+                        y: event.clientY,
+                      });
+                    }}
+                  >
+                    {item.content}
+                  </div>
                 </div>
               );
             case 'assistant':
               return (
                 <div key={item.id} className={styles.assistantRow}>
-                  <div className={styles.assistantBubble}>
+                  <div
+                    className={styles.assistantBubble}
+                    onContextMenu={(event) => {
+                      event.preventDefault();
+                      setMessageMenu({
+                        content: item.content,
+                        role: 'assistant',
+                        x: event.clientX,
+                        y: event.clientY,
+                      });
+                    }}
+                  >
                     {item.content ? (
                       <AgentMarkdown content={item.content} />
                     ) : (
@@ -624,6 +676,95 @@ const AgentPanel: React.FC<AgentPanelProps> = ({
           }
         })}
       </div>
+
+      {conversationMenu && (
+        <ContextMenu
+          x={conversationMenu.x}
+          y={conversationMenu.y}
+          label={t('agent.chatActions')}
+          onClose={() => setConversationMenu(null)}
+          items={[
+            {
+              id: 'open',
+              label: t(conversationMenu.archived ? 'agent.restoreChat' : 'agent.openChat'),
+              icon: conversationMenu.archived ? <LuArchiveRestore /> : <LuMessageSquare />,
+              disabled: running,
+              onSelect: () =>
+                conversationMenu.archived
+                  ? restoreConversation(conversationMenu.id)
+                  : selectConversation(conversationMenu.id),
+            },
+            {
+              id: 'rename',
+              label: t('agent.renameChat'),
+              icon: <LuPenLine />,
+              disabled: running,
+              onSelect: () => startRenameConversation(conversationMenu.id, conversationMenu.title),
+            },
+            {
+              id: 'archive',
+              label: t(conversationMenu.archived ? 'agent.restoreChat' : 'agent.archiveChat'),
+              icon: conversationMenu.archived ? <LuArchiveRestore /> : <LuArchive />,
+              disabled: running,
+              onSelect: () =>
+                conversationMenu.archived
+                  ? restoreConversation(conversationMenu.id)
+                  : archiveConversation(conversationMenu.id),
+            },
+            { id: 'separator', separator: true },
+            {
+              id: 'delete',
+              label: t('agent.deleteChat'),
+              icon: <LuTrash2 />,
+              danger: true,
+              disabled: running,
+              onSelect: () => {
+                if (window.confirm(t('agent.deleteChatConfirm')))
+                  onDeleteConversation(conversationMenu.id);
+              },
+            },
+          ]}
+        />
+      )}
+      {messageMenu && (
+        <ContextMenu
+          x={messageMenu.x}
+          y={messageMenu.y}
+          label={t('agent.messageActions')}
+          onClose={() => setMessageMenu(null)}
+          items={[
+            {
+              id: 'copy',
+              label: t('agent.copyMessage'),
+              icon: <LuCopy />,
+              onSelect: () => void navigator.clipboard.writeText(messageMenu.content),
+            },
+            {
+              id: 'copy-markdown',
+              label: t('agent.copyAsMarkdown'),
+              icon: <LuCopy />,
+              onSelect: () => void navigator.clipboard.writeText(messageMenu.content),
+            },
+            {
+              id: 'resend',
+              label: t('agent.resendMessage'),
+              icon: <LuRotateCcw />,
+              disabled: messageMenu.role !== 'user' || running,
+              onSelect: () => setInput(messageMenu.content),
+            },
+            {
+              id: 'insert-code',
+              label: t('agent.insertCode'),
+              icon: <LuCode />,
+              disabled: !onInsertCode || !/```[^\n]*\n[\s\S]*?```/.test(messageMenu.content),
+              onSelect: () => {
+                const code = messageMenu.content.match(/```[^\n]*\n([\s\S]*?)```/)?.[1];
+                if (code) onInsertCode?.(code.replace(/\n$/, ''));
+              },
+            },
+          ]}
+        />
+      )}
 
       {view === 'conversation' && error && <div className={styles.error}>{error}</div>}
 

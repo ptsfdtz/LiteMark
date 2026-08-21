@@ -1,12 +1,13 @@
 use super::atomic_write_text_file;
+use super::create_untitled_directory;
 use super::create_untitled_file;
 use super::delete_directory;
 use super::delete_file;
 use super::document_parent;
 use super::is_image_extension;
 use super::is_pdf_extension;
-use super::list_directory_tree;
 use super::list_directory_entries;
+use super::list_directory_tree;
 use super::read_text_file;
 use super::rename_document;
 use super::StorageErrorCategory;
@@ -53,6 +54,31 @@ fn creating_an_untitled_document_writes_content_and_preserves_existing_files() {
         fs::read_to_string(created_path).expect("read new document"),
         "# New document\n"
     );
+}
+
+#[test]
+fn creating_an_untitled_directory_preserves_existing_entries() {
+    let directory = tempfile::tempdir().expect("temporary directory");
+    let existing_path = directory.path().join("New Folder");
+    fs::create_dir(&existing_path).expect("seed existing directory");
+
+    let created_path =
+        create_untitled_directory(directory.path(), "New Folder").expect("create directory");
+
+    assert_eq!(created_path, directory.path().join("New Folder-1"));
+    assert!(existing_path.is_dir());
+    assert!(created_path.is_dir());
+}
+
+#[test]
+fn creating_an_untitled_directory_rejects_nested_names() {
+    let directory = tempfile::tempdir().expect("temporary directory");
+
+    let error = create_untitled_directory(directory.path(), "../outside")
+        .expect_err("nested names must be rejected");
+
+    assert_eq!(error.category, StorageErrorCategory::InvalidPath);
+    assert!(!directory.path().join("outside").exists());
 }
 
 #[test]
@@ -132,6 +158,32 @@ fn directory_entries_are_lazy_and_report_truncation() {
     assert_eq!(result.entries.len(), 1);
     assert_eq!(result.entries[0].name, "docs");
     assert!(result.entries[0].children.is_empty());
+}
+
+#[test]
+#[ignore = "explicit 100k-file performance test"]
+fn scans_a_hundred_thousand_file_directory_with_a_bounded_result() {
+    use std::time::Instant;
+
+    const FILE_COUNT: usize = 100_000;
+    let directory = tempfile::tempdir().expect("temporary directory");
+    let creation_started = Instant::now();
+    for index in 0..FILE_COUNT {
+        fs::File::create(directory.path().join(format!("file-{index:06}.md")))
+            .expect("create benchmark file");
+    }
+    let creation_elapsed = creation_started.elapsed();
+
+    let scan_started = Instant::now();
+    let result = list_directory_entries(directory.path()).expect("scan large directory");
+    let scan_elapsed = scan_started.elapsed();
+
+    assert!(result.truncated);
+    assert_eq!(result.entries.len(), 2_000);
+    eprintln!(
+        "100k directory: create={creation_elapsed:?}, scan={scan_elapsed:?}, returned={}",
+        result.entries.len()
+    );
 }
 
 #[test]

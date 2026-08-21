@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { LuImageOff, LuMaximize2, LuZoomIn, LuZoomOut } from 'react-icons/lu';
+import { LuCopy, LuFolderOpen, LuImageOff, LuMaximize2, LuZoomIn, LuZoomOut } from 'react-icons/lu';
 import { useI18n } from '@/locales/useI18n';
 import { getImagePreviewSource } from '@/modules/imagePreview';
 import styles from './ImagePreview.module.css';
+import ContextMenu from '@/components/ContextMenu/ContextMenu';
+import { revealItemInDir } from '@tauri-apps/plugin-opener';
 
 interface ImagePreviewProps {
   filePath: string;
@@ -19,6 +21,7 @@ const ImagePreviewContent: React.FC<ImagePreviewProps> = ({ filePath, className 
   const [fit, setFit] = useState(true);
   const [zoom, setZoom] = useState(1);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const fileName = filePath.split(/[/\\]/).pop() || filePath;
 
   useEffect(() => {
@@ -44,7 +47,14 @@ const ImagePreviewContent: React.FC<ImagePreviewProps> = ({ filePath, className 
   };
 
   return (
-    <div className={`${styles.preview} ${className ?? ''}`} data-tour="editor">
+    <div
+      className={`${styles.preview} ${className ?? ''}`}
+      data-tour="editor"
+      onContextMenu={(event) => {
+        event.preventDefault();
+        setContextMenu({ x: event.clientX, y: event.clientY });
+      }}
+    >
       <div className={styles.previewBar}>
         <div className={styles.imageMeta}>
           <span className={styles.fileName} title={filePath}>
@@ -125,6 +135,61 @@ const ImagePreviewContent: React.FC<ImagePreviewProps> = ({ filePath, className 
           )
         )}
       </div>
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          label={t('image.contextActions')}
+          onClose={() => setContextMenu(null)}
+          items={[
+            {
+              id: 'zoom-out',
+              label: t('image.zoomOut'),
+              icon: <LuZoomOut />,
+              disabled: zoom <= 0.1 && !fit,
+              onSelect: () => changeZoom(-ZOOM_STEP),
+            },
+            {
+              id: 'zoom-in',
+              label: t('image.zoomIn'),
+              icon: <LuZoomIn />,
+              disabled: zoom >= 4 && !fit,
+              onSelect: () => changeZoom(ZOOM_STEP),
+            },
+            {
+              id: 'fit',
+              label: t('image.fitWindow'),
+              icon: <LuMaximize2 />,
+              onSelect: () => setFit(true),
+            },
+            { id: 'separator', separator: true },
+            {
+              id: 'copy-image',
+              label: t('image.copyImage'),
+              icon: <LuCopy />,
+              disabled: !source,
+              onSelect: () =>
+                void fetch(source)
+                  .then((response) => response.blob())
+                  .then((blob) =>
+                    navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]),
+                  ),
+            },
+            {
+              id: 'copy-path',
+              label: t('explorer.copyAbsolutePath'),
+              icon: <LuCopy />,
+              onSelect: () => void navigator.clipboard.writeText(filePath),
+            },
+            {
+              id: 'reveal',
+              label: t('explorer.revealInFileExplorer'),
+              icon: <LuFolderOpen />,
+              onSelect: () => void revealItemInDir(filePath),
+            },
+          ]}
+        />
+      )}
     </div>
   );
 };

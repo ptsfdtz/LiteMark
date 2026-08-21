@@ -3,6 +3,9 @@ import React from 'react';
 import styles from '@/components/Layout/Layout.module.css';
 import { message } from '@tauri-apps/plugin-dialog';
 import { useI18n } from '@/locales/useI18n';
+import { revealItemInDir } from '@tauri-apps/plugin-opener';
+import { LuCopy, LuFolderOpen, LuPenLine } from 'react-icons/lu';
+import ContextMenu from '@/components/ContextMenu/ContextMenu';
 
 interface CurrentFileNameProps {
   filePath: string;
@@ -23,6 +26,8 @@ const CurrentFileName: React.FC<CurrentFileNameProps> = ({
   const [editing, setEditing] = React.useState(false);
   const [value, setValue] = React.useState(filePath.split(/[/\\\\]/).pop() || '');
   const inputRef = React.useRef<HTMLInputElement>(null);
+  const [menu, setMenu] = React.useState<{ x: number; y: number } | null>(null);
+  const fileName = filePath.split(/[/\\]/).pop() || '';
 
   React.useEffect(() => {
     setValue(filePath.split(/[/\\\\]/).pop() || '');
@@ -93,18 +98,59 @@ const CurrentFileName: React.FC<CurrentFileNameProps> = ({
       }}
     />
   ) : (
-    <button
-      type="button"
-      className={styles.currentFileName}
-      title={isDirty ? t('file.unsaved') : t('file.renameHint')}
-      onDoubleClick={() => setEditing(true)}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter' || event.key === 'F2') setEditing(true);
-      }}
-    >
-      {filePath.split(/[/\\\\]/).pop()}
-      {isDirty ? ' *' : ''}
-    </button>
+    <>
+      <button
+        type="button"
+        className={styles.currentFileName}
+        title={isDirty ? t('file.unsaved') : t('file.renameHint')}
+        onDoubleClick={() => setEditing(true)}
+        onContextMenu={(event) => {
+          event.preventDefault();
+          setMenu({ x: event.clientX, y: event.clientY });
+        }}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === 'F2') setEditing(true);
+        }}
+      >
+        {fileName}
+        {isDirty ? ' *' : ''}
+      </button>
+      {menu && (
+        <ContextMenu
+          x={menu.x}
+          y={menu.y}
+          label={t('file.actions')}
+          onClose={() => setMenu(null)}
+          items={[
+            {
+              id: 'rename',
+              label: t('file.rename'),
+              icon: <LuPenLine />,
+              shortcut: 'F2',
+              onSelect: () => setEditing(true),
+            },
+            {
+              id: 'copy-name',
+              label: t('file.copyName'),
+              icon: <LuCopy />,
+              onSelect: () => void navigator.clipboard.writeText(fileName),
+            },
+            {
+              id: 'copy-path',
+              label: t('explorer.copyAbsolutePath'),
+              icon: <LuCopy />,
+              onSelect: () => void navigator.clipboard.writeText(filePath),
+            },
+            {
+              id: 'reveal',
+              label: t('explorer.revealInFileExplorer'),
+              icon: <LuFolderOpen />,
+              onSelect: () => void revealItemInDir(filePath),
+            },
+          ]}
+        />
+      )}
+    </>
   );
 };
 

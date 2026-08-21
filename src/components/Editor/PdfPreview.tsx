@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   LuChevronLeft,
   LuChevronRight,
+  LuCopy,
+  LuFolderOpen,
   LuFileX2,
   LuMaximize2,
   LuZoomIn,
@@ -10,6 +12,8 @@ import {
 import { useI18n } from '@/locales/useI18n';
 import { loadPdfDocument, type PdfDocumentHandle, type PdfPageSize } from '@/modules/pdfPreview';
 import styles from './PdfPreview.module.css';
+import ContextMenu from '@/components/ContextMenu/ContextMenu';
+import { revealItemInDir } from '@tauri-apps/plugin-opener';
 
 interface PdfPreviewProps {
   filePath: string;
@@ -31,6 +35,7 @@ const PdfPreviewContent: React.FC<PdfPreviewProps> = ({ filePath, className }) =
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<PdfPageSize | null>(null);
   const [viewportSize, setViewportSize] = useState<PdfPageSize>({ width: 0, height: 0 });
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileName = filePath.split(/[/\\]/).pop() || filePath;
@@ -116,7 +121,14 @@ const PdfPreviewContent: React.FC<PdfPreviewProps> = ({ filePath, className }) =
   };
 
   return (
-    <div className={`${styles.preview} ${className ?? ''}`} data-tour="editor">
+    <div
+      className={`${styles.preview} ${className ?? ''}`}
+      data-tour="editor"
+      onContextMenu={(event) => {
+        event.preventDefault();
+        setContextMenu({ x: event.clientX, y: event.clientY });
+      }}
+    >
       <div className={styles.previewBar}>
         <div className={styles.documentMeta}>
           <span className={styles.fileName} title={filePath}>
@@ -193,6 +205,61 @@ const PdfPreviewContent: React.FC<PdfPreviewProps> = ({ filePath, className }) =
           )
         )}
       </div>
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          label={t('pdf.contextActions')}
+          onClose={() => setContextMenu(null)}
+          items={[
+            {
+              id: 'previous',
+              label: t('pdf.previousPage'),
+              icon: <LuChevronLeft />,
+              disabled: !pdfDocument || page <= 1,
+              onSelect: () => changePage(-1),
+            },
+            {
+              id: 'next',
+              label: t('pdf.nextPage'),
+              icon: <LuChevronRight />,
+              disabled: !pdfDocument || page >= pdfDocument.pageCount,
+              onSelect: () => changePage(1),
+            },
+            {
+              id: 'zoom-out',
+              label: t('pdf.zoomOut'),
+              icon: <LuZoomOut />,
+              onSelect: () => changeZoom(-ZOOM_STEP),
+            },
+            {
+              id: 'zoom-in',
+              label: t('pdf.zoomIn'),
+              icon: <LuZoomIn />,
+              onSelect: () => changeZoom(ZOOM_STEP),
+            },
+            {
+              id: 'fit',
+              label: t('pdf.fitWindow'),
+              icon: <LuMaximize2 />,
+              onSelect: () => setFit(true),
+            },
+            { id: 'separator', separator: true },
+            {
+              id: 'copy-path',
+              label: t('explorer.copyAbsolutePath'),
+              icon: <LuCopy />,
+              onSelect: () => void navigator.clipboard.writeText(filePath),
+            },
+            {
+              id: 'reveal',
+              label: t('explorer.revealInFileExplorer'),
+              icon: <LuFolderOpen />,
+              onSelect: () => void revealItemInDir(filePath),
+            },
+          ]}
+        />
+      )}
     </div>
   );
 };

@@ -13,6 +13,8 @@ import {
 import { useI18n } from '@/locales/useI18n';
 import { getFileViewKind } from '@/types/fileTree';
 import styles from './OpenTabs.module.css';
+import ContextMenu from '@/components/ContextMenu/ContextMenu';
+import { LuFilePlus2, LuRotateCcw } from 'react-icons/lu';
 
 interface OpenTabsProps {
   paths: string[];
@@ -25,6 +27,8 @@ interface OpenTabsProps {
   onCloseAll(): void;
   onCloseOthers(path: string): void;
   onDelete(path: string): Promise<boolean>;
+  onCreate?: () => void;
+  onReopen?: (path: string) => void;
 }
 
 function fileName(path: string): string {
@@ -57,6 +61,8 @@ const OpenTabs: React.FC<OpenTabsProps> = ({
   onCloseAll,
   onCloseOthers,
   onDelete,
+  onCreate,
+  onReopen,
 }) => {
   const { t } = useI18n();
   const tabScrollerRef = React.useRef<HTMLDivElement>(null);
@@ -70,6 +76,8 @@ const OpenTabs: React.FC<OpenTabsProps> = ({
     y: number;
   } | null>(null);
   const [confirmingDelete, setConfirmingDelete] = React.useState<string | null>(null);
+  const [barMenu, setBarMenu] = React.useState<{ x: number; y: number } | null>(null);
+  const [lastClosedPath, setLastClosedPath] = React.useState<string | null>(null);
   const contextMenuRef = React.useRef<HTMLDivElement>(null);
   const prevPathsRef = React.useRef(paths);
 
@@ -79,6 +87,9 @@ const OpenTabs: React.FC<OpenTabsProps> = ({
     if (previous === paths) return;
     const removed = previous.filter((path) => !paths.includes(path));
     const added = paths.filter((path) => !previous.includes(path));
+    if (removed.length > 0 && added.length === 0) {
+      setLastClosedPath(removed[removed.length - 1]);
+    }
     // Renames and "save as" swap one path for another; only animate real closes.
     if (removed.length > 0 && added.length === 0) {
       setClosingPaths((current) => [
@@ -153,7 +164,14 @@ const OpenTabs: React.FC<OpenTabsProps> = ({
   if (renderedPaths.length === 0 && !leadingControl && !trailingControl) return null;
 
   return (
-    <div className={styles.tabBar}>
+    <div
+      className={styles.tabBar}
+      onContextMenu={(event) => {
+        if ((event.target as HTMLElement).closest(`.${styles.tab}`)) return;
+        event.preventDefault();
+        setBarMenu({ x: event.clientX, y: event.clientY });
+      }}
+    >
       {leadingControl && <div className={styles.leadingControl}>{leadingControl}</div>}
       <div
         className={styles.tabScroller}
@@ -337,6 +355,37 @@ const OpenTabs: React.FC<OpenTabsProps> = ({
             <span>{t('explorer.deleteFile')}</span>
           </button>
         </div>
+      )}
+      {barMenu && (
+        <ContextMenu
+          x={barMenu.x}
+          y={barMenu.y}
+          label={t('tabs.barActions')}
+          onClose={() => setBarMenu(null)}
+          items={[
+            {
+              id: 'new',
+              label: t('explorer.newFile'),
+              icon: <LuFilePlus2 />,
+              disabled: !onCreate,
+              onSelect: onCreate,
+            },
+            {
+              id: 'reopen',
+              label: t('tabs.reopenClosed'),
+              icon: <LuRotateCcw />,
+              disabled: !lastClosedPath || !onReopen,
+              onSelect: () => lastClosedPath && onReopen?.(lastClosedPath),
+            },
+            {
+              id: 'close-all',
+              label: t('tabs.closeAll'),
+              icon: <LuX />,
+              disabled: paths.length === 0,
+              onSelect: onCloseAll,
+            },
+          ]}
+        />
       )}
       {confirmingDelete && (
         <div className={styles.deleteDialogBackdrop} role="presentation">

@@ -76,6 +76,17 @@ async fn create_untitled_file(dir_path: String, content: String) -> StorageResul
     .map_err(|_| document_storage::StorageError::io())?
 }
 
+/// Create a uniquely named child directory without replacing an existing entry.
+#[tauri::command]
+async fn create_untitled_directory(parent_path: String, name: String) -> StorageResult<String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        document_storage::create_untitled_directory(Path::new(&parent_path), &name)
+            .map(|path| path.to_string_lossy().into_owned())
+    })
+    .await
+    .map_err(|_| document_storage::StorageError::io())?
+}
+
 /// List markdown/text files in a directory (non-recursive), sorted by modified time desc.
 #[tauri::command]
 async fn list_text_files(dir_path: String) -> StorageResult<Vec<FileInfo>> {
@@ -173,6 +184,7 @@ pub fn run() {
             delete_file,
             delete_directory,
             create_untitled_file,
+            create_untitled_directory,
             list_text_files,
             list_directory_tree,
             list_directory_entries,
