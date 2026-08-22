@@ -37,6 +37,7 @@ import {
   applyTypedMarkdownPrefix,
   default as MarkdownInputRules,
 } from '@/modules/markdownEditing/markdownInputRules';
+import { resolveImageSrc } from '@/modules/localImagePath';
 
 const lowlight = createLowlight(common);
 const alignAttribute = {
@@ -58,8 +59,60 @@ const AlignableTableHeader = TableHeader.extend({
 const DEFER_SERIALIZATION_CHARS = 256 * 1024;
 const SERIALIZATION_DELAY_MS = 120;
 
+class ImagePathContext {
+  constructor(private filePath?: string | null) {}
+
+  setFilePath(filePath?: string | null) {
+    this.filePath = filePath;
+  }
+
+  resolve(source: string) {
+    return resolveImageSrc(source, this.filePath);
+  }
+}
+
+const createResolvedImage = (imageViews: Set<() => void>, imageContext: ImagePathContext) =>
+  Image.extend({
+    addNodeView() {
+      return ({ node }) => {
+        const image = document.createElement('img');
+        image.draggable = true;
+        let currentNode = node;
+
+        const render = (attributes: Record<string, unknown>) => {
+          const source = typeof attributes.src === 'string' ? attributes.src : '';
+          image.dataset.originalSrc = source;
+          image.src = imageContext.resolve(source);
+          for (const attribute of ['alt', 'title', 'width', 'height'] as const) {
+            const value = attributes[attribute];
+            if (value === null || value === undefined || value === '') {
+              image.removeAttribute(attribute);
+            } else {
+              image.setAttribute(attribute, String(value));
+            }
+          }
+        };
+
+        const refresh = () => render(currentNode.attrs);
+        imageViews.add(refresh);
+        refresh();
+        return {
+          dom: image,
+          update: (updatedNode) => {
+            if (updatedNode.type !== node.type) return false;
+            currentNode = updatedNode;
+            refresh();
+            return true;
+          },
+          destroy: () => imageViews.delete(refresh),
+          ignoreMutation: () => true,
+        };
+      };
+    },
+  }).configure({ inline: true, allowBase64: true });
+
 const EditorImpl = React.forwardRef<WysiwygEditor, EditorProps>(
-  ({ value, onChange, className, readOnly = false, onSave, onSaveAs }, ref) => {
+  ({ value, onChange, filePath, className, readOnly = false, onSave, onSaveAs }, ref) => {
     const { t } = useI18n();
     const serializationTimerRef = useRef<number | null>(null);
     const [contextMenu, setContextMenu] = useState<{
@@ -69,6 +122,8 @@ const EditorImpl = React.forwardRef<WysiwygEditor, EditorProps>(
       inTable: boolean;
     } | null>(null);
     const onChangeRef = useRef(onChange);
+    const [imageViews] = useState(() => new Set<() => void>());
+    const [imageContext] = useState(() => new ImagePathContext(filePath));
     useEffect(() => {
       onChangeRef.current = onChange;
     }, [onChange]);
@@ -81,7 +136,7 @@ const EditorImpl = React.forwardRef<WysiwygEditor, EditorProps>(
         Placeholder.configure({ placeholder: t('editor.placeholder') }),
         TaskList,
         TaskItem.configure({ nested: true }),
-        Image.configure({ inline: false, allowBase64: true }),
+        createResolvedImage(imageViews, imageContext),
         Table.configure({ resizable: true }),
         TableRow,
         AlignableTableHeader,
@@ -127,6 +182,11 @@ const EditorImpl = React.forwardRef<WysiwygEditor, EditorProps>(
     }, [editor, readOnly]);
 
     useEffect(() => {
+      imageContext.setFilePath(filePath);
+      imageViews.forEach((refresh) => refresh());
+    }, [filePath, imageContext, imageViews]);
+
+    useEffect(() => {
       if (!editor || editor.getMarkdown() === value) return;
       editor.commands.setContent(value, { contentType: 'markdown', emitUpdate: false });
     }, [editor, value]);
@@ -159,6 +219,7 @@ const EditorImpl = React.forwardRef<WysiwygEditor, EditorProps>(
       <div
         className={`${styles.editor} ${className ?? ''}`}
         data-tour="editor"
+        data-editor-file-path={filePath ?? ''}
         onKeyDownCapture={handleKeyDown}
         onContextMenu={(event) => {
           if (!editor || readOnly) return;

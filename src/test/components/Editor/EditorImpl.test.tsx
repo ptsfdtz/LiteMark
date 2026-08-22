@@ -5,7 +5,69 @@ import { I18nProvider } from '@/locales';
 import EditorImpl from '@/components/Editor/EditorImpl';
 import type { WysiwygEditor } from '@/types/editor';
 
+vi.mock('@tauri-apps/api/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@tauri-apps/api/core')>()),
+  convertFileSrc: (path: string) => `asset://localhost/${path.replace(/\\/g, '/')}`,
+}));
+
 describe('EditorImpl', () => {
+  it('renders HTML images inside Markdown table cells', async () => {
+    window.localStorage.setItem('litemark.locale', 'en');
+    const onChange = vi.fn();
+    const markdown = [
+      '| Light | Dark |',
+      '| :---: | :---: |',
+      '| <img src="assets/preview-light.png" width="480"> | <img src="assets/preview-dark.png" width="480"> |',
+    ].join('\n');
+    const { container, rerender } = render(
+      <I18nProvider>
+        <EditorImpl
+          value={markdown}
+          filePath={'C:\\workspace\\LiteMark\\README.md'}
+          onChange={onChange}
+        />
+      </I18nProvider>,
+    );
+
+    await screen.findByLabelText('Markdown WYSIWYG editor');
+    const tableImages = container.querySelectorAll('td img:not(.ProseMirror-separator)');
+    expect(tableImages).toHaveLength(2);
+    expect(tableImages[0]).toHaveAttribute(
+      'src',
+      expect.stringContaining('C:/workspace/LiteMark/assets/preview-light.png'),
+    );
+    expect(tableImages[0]).toHaveAttribute('data-original-src', 'assets/preview-light.png');
+    expect(tableImages[1]).toHaveAttribute(
+      'src',
+      expect.stringContaining('C:/workspace/LiteMark/assets/preview-dark.png'),
+    );
+    expect(tableImages[1]).toHaveAttribute('data-original-src', 'assets/preview-dark.png');
+    expect(onChange).not.toHaveBeenCalled();
+
+    rerender(
+      <I18nProvider>
+        <EditorImpl value={markdown} filePath={'D:\\documents\\README.md'} onChange={onChange} />
+      </I18nProvider>,
+    );
+
+    await waitFor(() =>
+      expect(container.querySelector('td img:not(.ProseMirror-separator)')).toHaveAttribute(
+        'src',
+        expect.stringContaining('D:/documents/assets/preview-light.png'),
+      ),
+    );
+    expect(onChange).not.toHaveBeenCalled();
+
+    rerender(
+      <I18nProvider>
+        <EditorImpl value="" filePath={null} onChange={onChange} />
+      </I18nProvider>,
+    );
+
+    expect(await screen.findByLabelText('Markdown WYSIWYG editor')).toBeInTheDocument();
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
   it('highlights fenced code blocks in the Markdown editor', async () => {
     window.localStorage.setItem('litemark.locale', 'en');
     const { container } = render(
