@@ -264,22 +264,37 @@
   display: flex;
   align-items: center;
   min-width: 0;
+  height: 34px;
+  padding-right: 8px;
 }
 
 .standaloneRow .treeRow {
   flex: 1;
+  height: 34px;
+  padding: 0 6px 0 12px;
 }
 
-.standaloneRemoveButton {
-  flex: none;
-  width: 28px;
-  height: 28px;
-  margin-right: 8px;
-  opacity: 0;
+.standaloneRow:hover,
+.standaloneRow:focus-within {
+  background: color-mix(in srgb, var(--control-hover) 66%, transparent);
 }
 
-.standaloneRow:hover .standaloneRemoveButton,
-.standaloneRemoveButton:focus-visible {
+.standaloneRow.standaloneActive {
+  background: color-mix(in srgb, var(--accent-color) 10%, transparent);
+}
+
+.standaloneRow.standaloneSelected:not(.standaloneActive) {
+  background: color-mix(in srgb, var(--accent-color) 6%, transparent);
+}
+
+.standaloneRow .treeRow:hover,
+.standaloneRow .treeRow.active,
+.standaloneRow .treeRow.selected:not(.active) {
+  background: transparent;
+}
+
+.standaloneRow:hover .itemRemoveButton,
+.itemRemoveButton:focus-visible {
   opacity: 1;
 }
 
@@ -314,20 +329,29 @@
   color: var(--muted-text);
 }
 
-.removeButton {
+.itemRemoveButton {
   width: 28px;
   height: 28px;
   opacity: 0;
+  transition:
+    color 0.14s ease,
+    opacity 0.14s ease;
 }
 
-.rootHeader:hover .removeButton,
-.removeButton:focus-visible {
+.rootHeader:hover .itemRemoveButton,
+.itemRemoveButton:focus-visible {
   opacity: 1;
 }
 
-.rootHeader .removeButton:hover {
+.itemRemoveButton:hover {
   color: var(--heading-color);
   background: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .itemRemoveButton {
+    transition: none;
+  }
 }
 
 .removeConfirmation {

@@ -731,7 +731,7 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
                 </button>
                 <button
                   type="button"
-                  className={`${styles.headerButton} ${styles.removeButton}`}
+                  className={`${styles.headerButton} ${styles.itemRemoveButton}`}
                   onClick={() => setConfirmingRoot(root.path)}
                   title={t('explorer.removeFolder', { name: rootName })}
                   aria-label={t('explorer.removeFolder', { name: rootName })}
@@ -841,7 +841,13 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
                 const active = currentPath === file.path;
                 const extension = file.name.split('.').pop()?.toLowerCase() ?? null;
                 return (
-                  <li key={file.path} className={styles.standaloneRow} role="treeitem">
+                  <li
+                    key={file.path}
+                    className={`${styles.standaloneRow} ${
+                      active ? styles.standaloneActive : selected ? styles.standaloneSelected : ''
+                    }`}
+                    role="treeitem"
+                  >
                     <button
                       type="button"
                       className={`${styles.treeRow} ${active ? styles.active : ''} ${
@@ -879,7 +885,7 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
                     </button>
                     <button
                       type="button"
-                      className={`${styles.headerButton} ${styles.standaloneRemoveButton}`}
+                      className={`${styles.headerButton} ${styles.itemRemoveButton}`}
                       onClick={() => void onRemoveStandaloneFile(file.path)}
                       title={t('explorer.removeStandaloneFile', { name: file.name })}
                       aria-label={t('explorer.removeStandaloneFile', { name: file.name })}
