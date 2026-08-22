@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
-import { registerWindowCloseGuard, type CloseRequestWindow } from '@/modules/windowCloseGuard/registerWindowCloseGuard';
+import {
+  registerWindowCloseGuard,
+  type CloseRequestWindow,
+} from '@/modules/windowCloseGuard/registerWindowCloseGuard';
 
 function deferred<T>() {
   let resolve!: (value: T) => void;

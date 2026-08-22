@@ -540,6 +540,28 @@ pub fn rename_document(current_path: &Path, new_name: &str) -> StorageResult<Pat
     Ok(renamed_path)
 }
 
+pub fn rename_directory(current_path: &Path, new_name: &str) -> StorageResult<PathBuf> {
+    if new_name.trim().is_empty()
+        || matches!(new_name, "." | "..")
+        || new_name.contains(['/', '\\', '\0'])
+    {
+        return Err(StorageError::new(StorageErrorCategory::InvalidName));
+    }
+
+    let metadata = fs::symlink_metadata(current_path)?;
+    if !metadata.file_type().is_dir() {
+        return Err(StorageError::new(StorageErrorCategory::InvalidPath));
+    }
+    let parent = document_parent(current_path)?;
+    let renamed_path = parent.join(new_name);
+    if renamed_path.exists() {
+        return Err(StorageError::new(StorageErrorCategory::AlreadyExists));
+    }
+    fs::rename(current_path, &renamed_path)?;
+    sync_directory(parent)?;
+    Ok(renamed_path)
+}
+
 #[cfg(test)]
 #[path = "../test/document_storage.rs"]
 mod tests;

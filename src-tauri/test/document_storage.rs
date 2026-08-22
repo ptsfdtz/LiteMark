@@ -9,6 +9,7 @@ use super::is_pdf_extension;
 use super::list_directory_entries;
 use super::list_directory_tree;
 use super::read_text_file;
+use super::rename_directory;
 use super::rename_document;
 use super::StorageErrorCategory;
 use std::fs;
@@ -79,6 +80,25 @@ fn creating_an_untitled_directory_rejects_nested_names() {
 
     assert_eq!(error.category, StorageErrorCategory::InvalidPath);
     assert!(!directory.path().join("outside").exists());
+}
+
+#[test]
+fn renaming_a_directory_never_overwrites_existing_entries() {
+    let directory = tempfile::tempdir().expect("temporary directory");
+    let source = directory.path().join("source");
+    let existing = directory.path().join("existing");
+    fs::create_dir(&source).expect("create source directory");
+    fs::create_dir(&existing).expect("create existing directory");
+
+    let error = rename_directory(&source, "existing").expect_err("must not overwrite");
+    assert_eq!(error.category, StorageErrorCategory::AlreadyExists);
+    assert!(source.is_dir());
+    assert!(existing.is_dir());
+
+    let renamed = rename_directory(&source, "renamed").expect("rename directory");
+    assert_eq!(renamed, directory.path().join("renamed"));
+    assert!(renamed.is_dir());
+    assert!(!source.exists());
 }
 
 #[test]

@@ -11,7 +11,7 @@ export interface AgentSettings {
 }
 
 export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
-  panelVisible: true,
+  panelVisible: false,
   enabled: false,
   endpoint: 'https://api.openai.com/v1/chat/completions',
   model: 'gpt-4o-mini',

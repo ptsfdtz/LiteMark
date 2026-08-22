@@ -15,6 +15,7 @@ import {
   LuImage,
   LuFolderPlus,
   LuPanelLeftClose,
+  LuPenLine,
   LuRefreshCw,
   LuTrash2,
   LuX,
@@ -53,7 +54,8 @@ interface FileExplorerProps {
   ) => void;
   onDeleteFile: (path: string) => Promise<boolean>;
   onCreateFile: (directory: string) => Promise<boolean>;
-  onCreateDirectory: (directory: string) => Promise<boolean>;
+  onCreateDirectory: (directory: string) => Promise<string | null>;
+  onRenameDirectory: (path: string, newName: string) => Promise<string | null>;
   onDeleteDirectory: (path: string) => Promise<boolean>;
   onRemoveStandaloneFile: (path: string) => void | Promise<void>;
   onClose: () => void;
@@ -109,6 +111,12 @@ const copyText = async (text: string): Promise<boolean> => {
   textarea.remove();
   return copied;
 };
+
+const normalizeExplorerPath = (path: string) =>
+  path
+    .replace(/[\\/]+$/, '')
+    .replace(/\\/g, '/')
+    .toLocaleLowerCase();
 
 const getWorkspaceRelativePath = (path: string, roots: FileExplorerRoot[]): string => {
   const normalizedPath = path
@@ -187,7 +195,60 @@ interface TreeItemProps {
   onLoadDirectory: (path: string) => Promise<void>;
   loadingPaths: Set<string>;
   unsupportedLabel: string;
+  renamingFolderPath: string | null;
+  onRenameFolder: (path: string, newName: string) => Promise<boolean>;
+  onCancelRenameFolder: () => void;
 }
+
+const FolderNameInput: React.FC<{
+  name: string;
+  onSubmit: (name: string) => Promise<boolean>;
+  onCancel: () => void;
+}> = ({ name, onSubmit, onCancel }) => {
+  const [value, setValue] = useState(name);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const finishedRef = useRef(false);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  }, []);
+
+  const submit = async () => {
+    if (finishedRef.current) return;
+    const nextName = value.trim();
+    if (!nextName || nextName === name) {
+      finishedRef.current = true;
+      onCancel();
+      return;
+    }
+    finishedRef.current = true;
+    if (!(await onSubmit(nextName))) {
+      finishedRef.current = false;
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    }
+  };
+
+  return (
+    <input
+      ref={inputRef}
+      className={styles.folderNameInput}
+      value={value}
+      aria-label={name}
+      onChange={(event) => setValue(event.target.value)}
+      onBlur={() => void submit()}
+      onKeyDown={(event) => {
+        event.stopPropagation();
+        if (event.key === 'Enter') void submit();
+        if (event.key === 'Escape') {
+          finishedRef.current = true;
+          onCancel();
+        }
+      }}
+    />
+  );
+};
 
 const TreeItem: React.FC<TreeItemProps> = ({
   node,
@@ -203,12 +264,16 @@ const TreeItem: React.FC<TreeItemProps> = ({
   onLoadDirectory,
   loadingPaths,
   unsupportedLabel,
+  renamingFolderPath,
+  onRenameFolder,
+  onCancelRenameFolder,
 }) => {
   const { t } = useI18n();
   const expanded = node.is_directory && expandedPaths.has(node.path);
   const supported = node.is_directory || getFileViewKind(node.path) !== 'unsupported';
   const active = node.path === currentPath;
   const selected = !node.is_directory && node.path === selectedFilePath;
+  const renaming = node.is_directory && node.path === renamingFolderPath;
 
   return (
     <li
@@ -216,65 +281,83 @@ const TreeItem: React.FC<TreeItemProps> = ({
       aria-expanded={node.is_directory ? expanded : undefined}
       aria-selected={!node.is_directory ? selected : undefined}
     >
-      <button
-        type="button"
-        className={`${styles.treeRow} ${active ? styles.active : ''} ${selected ? styles.selected : ''} ${
-          supported ? '' : styles.unsupported
-        }`}
-        style={{ paddingLeft: `${10 + depth * 16}px` }}
-        onClick={() => {
-          if (node.is_directory) {
-            onToggle(node.path);
-            if (!expanded && !node.children_loaded && !loadingPaths.has(node.path)) {
-              void onLoadDirectory(node.path);
+      {renaming ? (
+        <div className={styles.treeRow} style={{ paddingLeft: `${10 + depth * 16}px` }}>
+          <span className={styles.chevron} aria-hidden="true">
+            <LuChevronRight
+              className={`${styles.chevronIcon} ${expanded ? styles.chevronOpen : ''}`}
+            />
+          </span>
+          <span className={styles.itemIcon} aria-hidden="true">
+            {expanded ? <LuFolderOpen /> : <LuFolder />}
+          </span>
+          <FolderNameInput
+            name={node.name}
+            onSubmit={(name) => onRenameFolder(node.path, name)}
+            onCancel={onCancelRenameFolder}
+          />
+        </div>
+      ) : (
+        <button
+          type="button"
+          className={`${styles.treeRow} ${active ? styles.active : ''} ${selected ? styles.selected : ''} ${
+            supported ? '' : styles.unsupported
+          }`}
+          style={{ paddingLeft: `${10 + depth * 16}px` }}
+          onClick={() => {
+            if (node.is_directory) {
+              onToggle(node.path);
+              if (!expanded && !node.children_loaded && !loadingPaths.has(node.path)) {
+                void onLoadDirectory(node.path);
+              }
+            } else {
+              onSelectFile({ path: node.path, name: node.name, supported });
+              if (supported) void onOpenFile(node.path);
             }
-          } else {
-            onSelectFile({ path: node.path, name: node.name, supported });
-            if (supported) void onOpenFile(node.path);
-          }
-        }}
-        onContextMenu={(event) => {
-          event.preventDefault();
-          if (node.is_directory) {
-            onShowFolderContextMenu({
-              path: node.path,
-              name: node.name,
-              x: event.clientX,
-              y: event.clientY,
-            });
-            return;
-          }
-          const file = { path: node.path, name: node.name, supported };
-          onSelectFile(file);
-          onShowContextMenu({ ...file, x: event.clientX, y: event.clientY });
-        }}
-        aria-current={active ? 'page' : undefined}
-        aria-disabled={!supported}
-        title={supported ? node.name : `${node.name} - ${unsupportedLabel}`}
-      >
-        <span className={styles.chevron} aria-hidden="true">
-          {node.is_directory &&
-            (loadingPaths.has(node.path) ? (
-              <LuRefreshCw className={styles.loadingIcon} />
+          }}
+          onContextMenu={(event) => {
+            event.preventDefault();
+            if (node.is_directory) {
+              onShowFolderContextMenu({
+                path: node.path,
+                name: node.name,
+                x: event.clientX,
+                y: event.clientY,
+              });
+              return;
+            }
+            const file = { path: node.path, name: node.name, supported };
+            onSelectFile(file);
+            onShowContextMenu({ ...file, x: event.clientX, y: event.clientY });
+          }}
+          aria-current={active ? 'page' : undefined}
+          aria-disabled={!supported}
+          title={supported ? node.name : `${node.name} - ${unsupportedLabel}`}
+        >
+          <span className={styles.chevron} aria-hidden="true">
+            {node.is_directory &&
+              (loadingPaths.has(node.path) ? (
+                <LuRefreshCw className={styles.loadingIcon} />
+              ) : (
+                <LuChevronRight
+                  className={`${styles.chevronIcon} ${expanded ? styles.chevronOpen : ''}`}
+                />
+              ))}
+          </span>
+          <span className={styles.itemIcon} aria-hidden="true">
+            {node.is_directory ? (
+              expanded ? (
+                <LuFolderOpen />
+              ) : (
+                <LuFolder />
+              )
             ) : (
-              <LuChevronRight
-                className={`${styles.chevronIcon} ${expanded ? styles.chevronOpen : ''}`}
-              />
-            ))}
-        </span>
-        <span className={styles.itemIcon} aria-hidden="true">
-          {node.is_directory ? (
-            expanded ? (
-              <LuFolderOpen />
-            ) : (
-              <LuFolder />
-            )
-          ) : (
-            <FileIcon extension={node.extension} />
-          )}
-        </span>
-        <span className={styles.itemName}>{node.name}</span>
-      </button>
+              <FileIcon extension={node.extension} />
+            )}
+          </span>
+          <span className={styles.itemName}>{node.name}</span>
+        </button>
+      )}
       {node.is_directory && (
         <div
           className={`${styles.groupWrapper} ${expanded ? styles.groupOpen : ''}`}
@@ -297,6 +380,9 @@ const TreeItem: React.FC<TreeItemProps> = ({
                 onLoadDirectory={onLoadDirectory}
                 loadingPaths={loadingPaths}
                 unsupportedLabel={unsupportedLabel}
+                renamingFolderPath={renamingFolderPath}
+                onRenameFolder={onRenameFolder}
+                onCancelRenameFolder={onCancelRenameFolder}
               />
             ))}
             {node.children_loaded && node.children.length === 0 && (
@@ -327,6 +413,7 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
   onDeleteFile,
   onCreateFile,
   onCreateDirectory,
+  onRenameDirectory,
   onDeleteDirectory,
   onRemoveStandaloneFile,
   onClose,
@@ -352,6 +439,7 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
   const [folderContextMenu, setFolderContextMenu] = useState<FolderContextMenu | null>(null);
   const [confirmingFile, setConfirmingFile] = useState<FileActionTarget | null>(null);
   const [confirmingFolder, setConfirmingFolder] = useState<FolderActionTarget | null>(null);
+  const [renamingFolderPath, setRenamingFolderPath] = useState<string | null>(null);
   const contextMenuRef = useRef<HTMLDivElement | null>(null);
   const { width, resizing, onResizeStart, onResizeKeyDown } = useResizablePanel({
     storageKey: 'litemark.explorerWidth',
@@ -725,6 +813,14 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
                         onLoadDirectory={loadDirectory}
                         loadingPaths={loadingPaths}
                         unsupportedLabel={t('explorer.unsupported')}
+                        renamingFolderPath={renamingFolderPath}
+                        onRenameFolder={async (path, name) => {
+                          const renamedPath = await onRenameDirectory(path, name);
+                          if (!renamedPath) return false;
+                          setRenamingFolderPath(null);
+                          return true;
+                        }}
+                        onCancelRenameFolder={() => setRenamingFolderPath(null)}
                       />
                     ))}
                     {root.truncated && (
@@ -898,11 +994,36 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
             onClick={() => {
               const folder = folderContextMenu;
               setFolderContextMenu(null);
-              void onCreateDirectory(folder.path);
+              void onCreateDirectory(folder.path).then((createdPath) => {
+                if (!createdPath) return;
+                setExpandedPaths((current) => new Set(current).add(folder.path));
+                setCollapsedRoots((current) => {
+                  const next = new Set(current);
+                  next.delete(folder.path);
+                  return next;
+                });
+                setRenamingFolderPath(createdPath);
+              });
             }}
           >
             <LuFolderPlus aria-hidden="true" />
             <span>{t('explorer.newFolder')}</span>
+          </button>
+          <button
+            type="button"
+            className={styles.contextMenuItem}
+            role="menuitem"
+            disabled={roots.some(
+              (root) =>
+                normalizeExplorerPath(root.path) === normalizeExplorerPath(folderContextMenu.path),
+            )}
+            onClick={() => {
+              setRenamingFolderPath(folderContextMenu.path);
+              setFolderContextMenu(null);
+            }}
+          >
+            <LuPenLine aria-hidden="true" />
+            <span>{t('explorer.renameFolder')}</span>
           </button>
           <button
             type="button"

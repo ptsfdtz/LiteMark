@@ -27,3 +27,7 @@ export async function deleteWorkspaceDirectory(path: string): Promise<void> {
 export async function createWorkspaceDirectory(parentPath: string, name: string): Promise<string> {
   return invoke<string>('create_untitled_directory', { parentPath, name });
 }
+
+export async function renameWorkspaceDirectory(path: string, newName: string): Promise<string> {
+  return invoke<string>('rename_directory', { path, newName });
+}

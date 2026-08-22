@@ -157,6 +157,16 @@ async fn rename_document(path: String, new_name: String) -> StorageResult<String
     .map_err(|_| document_storage::StorageError::io())?
 }
 
+#[tauri::command]
+async fn rename_directory(path: String, new_name: String) -> StorageResult<String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        document_storage::rename_directory(Path::new(&path), &new_name)
+            .map(|path| path.to_string_lossy().into_owned())
+    })
+    .await
+    .map_err(|_| document_storage::StorageError::io())?
+}
+
 /// Return the first CLI argument that looks like a markdown/text file path.
 #[tauri::command]
 fn get_startup_file() -> Option<String> {
@@ -192,6 +202,7 @@ pub fn run() {
             read_pdf_file,
             write_binary_file,
             rename_document,
+            rename_directory,
             get_startup_file,
             agent_completion::request_agent_completion,
             agent::commands::run_agent_turn,

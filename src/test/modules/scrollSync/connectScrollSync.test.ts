@@ -2,7 +2,10 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { MarkdownEditor } from '@/types/editor';
 
-import { connectScrollSync, type ScrollSyncFrameScheduler } from '@/modules/scrollSync/connectScrollSync';
+import {
+  connectScrollSync,
+  type ScrollSyncFrameScheduler,
+} from '@/modules/scrollSync/connectScrollSync';
 
 interface EditorScrollEvent {
   scrollTop: number;

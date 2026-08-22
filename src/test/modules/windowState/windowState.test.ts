@@ -3,14 +3,16 @@ import { PhysicalPosition, PhysicalSize } from '@tauri-apps/api/dpi';
 
 const mocks = vi.hoisted(() => ({
   availableMonitors: vi.fn(),
+  currentMonitor: vi.fn(),
 }));
 
 vi.mock('@tauri-apps/api/window', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@tauri-apps/api/window')>()),
   availableMonitors: mocks.availableMonitors,
+  currentMonitor: mocks.currentMonitor,
 }));
 
-import { restoreWindowState } from '@/modules/windowState/windowState';
+import { expandWindowForPanel, restoreWindowState } from '@/modules/windowState/windowState';
 
 function storedWindow(overrides: Partial<Record<string, number | boolean>> = {}) {
   window.localStorage.setItem(
@@ -26,6 +28,7 @@ function mockWindow() {
     maximize: vi.fn(async () => undefined),
     outerPosition: vi.fn(async () => new PhysicalPosition(0, 0)),
     outerSize: vi.fn(async () => new PhysicalSize(900, 700)),
+    scaleFactor: vi.fn(async () => 1),
     setPosition: vi.fn(async () => undefined),
     setSize: vi.fn(async () => undefined),
   };
@@ -44,6 +47,9 @@ describe('window state restoration', () => {
         scaleFactor: 1,
       },
     ]);
+    mocks.currentMonitor.mockResolvedValue({
+      workArea: { position: { x: 0, y: 0 }, size: { width: 1920, height: 1040 } },
+    });
   });
 
   it('restores a saved position that remains visible', async () => {
@@ -77,5 +83,25 @@ describe('window state restoration', () => {
 
     expect(appWindow.setSize).not.toHaveBeenCalled();
     expect(appWindow.setPosition).not.toHaveBeenCalled();
+  });
+
+  it('expands a normal window by the requested logical panel width', async () => {
+    const appWindow = mockWindow();
+    appWindow.outerSize.mockResolvedValue(new PhysicalSize(900, 700));
+    appWindow.scaleFactor.mockResolvedValue(1.5);
+
+    await expandWindowForPanel(appWindow, 252);
+
+    expect(appWindow.setSize).toHaveBeenCalledWith(new PhysicalSize(1278, 700));
+  });
+
+  it('does not resize a maximized window', async () => {
+    const appWindow = mockWindow();
+    appWindow.isMaximized.mockResolvedValue(true);
+    appWindow.scaleFactor.mockResolvedValue(1.5);
+
+    await expandWindowForPanel(appWindow, 360);
+
+    expect(appWindow.setSize).not.toHaveBeenCalled();
   });
 });

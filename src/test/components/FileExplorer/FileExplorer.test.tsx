@@ -53,7 +53,8 @@ describe('FileExplorer', () => {
     const onReorderDirectory = vi.fn();
     const onDeleteFile = vi.fn().mockResolvedValue(true);
     const onCreateFile = vi.fn().mockResolvedValue(true);
-    const onCreateDirectory = vi.fn().mockResolvedValue(true);
+    const onCreateDirectory = vi.fn().mockResolvedValue('C:\\workspace\\docs\\New Folder');
+    const onRenameDirectory = vi.fn().mockResolvedValue('C:\\workspace\\renamed');
     const onDeleteDirectory = vi.fn().mockResolvedValue(true);
     const onRemoveStandaloneFile = vi.fn().mockResolvedValue(undefined);
     const standaloneFile = { path: 'C:\\scratch\\draft.md', name: 'draft.md' };
@@ -76,6 +77,7 @@ describe('FileExplorer', () => {
           onDeleteFile={onDeleteFile}
           onCreateFile={onCreateFile}
           onCreateDirectory={onCreateDirectory}
+          onRenameDirectory={onRenameDirectory}
           onDeleteDirectory={onDeleteDirectory}
           onRemoveStandaloneFile={onRemoveStandaloneFile}
           onClose={vi.fn()}
@@ -173,7 +175,21 @@ describe('FileExplorer', () => {
     expect(
       within(reopenedFolderMenu).getByRole('menuitem', { name: 'Copy Absolute Path' }),
     ).toBeInTheDocument();
-    await user.click(within(reopenedFolderMenu).getByRole('menuitem', { name: 'Delete Folder' }));
+    await user.click(within(reopenedFolderMenu).getByRole('menuitem', { name: 'Rename Folder' }));
+    const folderNameInput = screen.getByRole('textbox', { name: 'docs' });
+    await user.clear(folderNameInput);
+    await user.type(folderNameInput, 'renamed{Enter}');
+    expect(onRenameDirectory).toHaveBeenCalledWith('C:\\workspace\\docs', 'renamed');
+
+    fireEvent.contextMenu(screen.getByRole('button', { name: 'docs' }), {
+      clientX: 32,
+      clientY: 32,
+    });
+    await user.click(
+      within(screen.getByRole('menu', { name: 'Actions for docs' })).getByRole('menuitem', {
+        name: 'Delete Folder',
+      }),
+    );
     const deleteFolderDialog = screen.getByRole('alertdialog', { name: 'Delete folder?' });
     await user.click(within(deleteFolderDialog).getByRole('button', { name: 'Delete' }));
     expect(onDeleteDirectory).toHaveBeenCalledWith('C:\\workspace\\docs');

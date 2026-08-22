@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { editor as Monaco } from 'monaco-editor';
 
-import { setTaskListItemChecked, setTaskListItemCheckedInEditor } from '@/modules/markdownEditing/taskList';
+import {
+  setTaskListItemChecked,
+  setTaskListItemCheckedInEditor,
+} from '@/modules/markdownEditing/taskList';
 
 describe('setTaskListItemChecked', () => {
   it('updates only the requested task marker and preserves CRLF line endings', () => {

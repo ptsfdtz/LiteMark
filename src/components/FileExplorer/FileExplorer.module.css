@@ -448,6 +448,24 @@
   opacity: 0.66;
 }
 
+.folderNameInput {
+  flex: 1;
+  height: 23px;
+  padding: 1px 5px;
+  font: inherit;
+  color: var(--text-color);
+  background: var(--paper-bg);
+  border: 1px solid var(--accent-color);
+  min-width: 0;
+  border-radius: 2px;
+  box-sizing: border-box;
+  outline: none;
+}
+
+.folderNameInput:focus {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-color) 35%, transparent);
+}
+
 .chevron {
   display: inline-flex;
   flex: 0 0 16px;

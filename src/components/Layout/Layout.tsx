@@ -35,12 +35,17 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { isTauri } from '@tauri-apps/api/core';
 import type { WysiwygEditor } from '@/types/editor';
 import { registerWindowCloseGuard } from '@/modules/windowCloseGuard/registerWindowCloseGuard';
-import { persistWindowState, restoreWindowState } from '@/modules/windowState/windowState';
+import {
+  expandWindowForPanel,
+  persistWindowState,
+  restoreWindowState,
+} from '@/modules/windowState/windowState';
 import {
   createWorkspaceDirectory,
   deleteWorkspaceDirectory,
   deleteWorkspaceFile,
   listDirectoryEntries,
+  renameWorkspaceDirectory,
 } from '@/modules/directoryTree';
 import { getFileViewKind, type FileTreeNode } from '@/types/fileTree';
 import { loadWorkspaceDirectories, saveWorkspaceDirectories } from '@/utils/workspaceStore';
@@ -84,6 +89,13 @@ function replaceDirectoryChildren(
 }
 
 const AGENT_FILE_TREE_LINE_LIMIT = 200;
+const EXPLORER_DEFAULT_WIDTH = 252;
+const AGENT_PANEL_DEFAULT_WIDTH = 360;
+
+function storedPanelWidth(storageKey: string, fallback: number): number {
+  const value = Number(window.localStorage.getItem(storageKey));
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}
 
 function serializeFileTree(nodes: FileTreeNode[]): string {
   const lines: string[] = [];
@@ -186,7 +198,7 @@ const Layout: React.FC = () => {
     let active = true;
     void loadAgentSettings().then((settings) => {
       if (!active) return;
-      setAgentSettings(settings);
+      setAgentSettings({ ...settings, panelVisible: false });
       setAgentSettingsReady(true);
     });
     return () => {
@@ -210,6 +222,36 @@ const Layout: React.FC = () => {
       void showDocumentError(error, 'dialog.settingsSaveFailed');
     });
   };
+
+  const expandForPanel = useCallback(async (storageKey: string, fallbackWidth: number) => {
+    if (!isTauri()) return;
+    await expandWindowForPanel(getCurrentWindow(), storedPanelWidth(storageKey, fallbackWidth));
+  }, []);
+
+  const showExplorerPanel = useCallback(async () => {
+    if (explorerVisible) return;
+    await expandForPanel('litemark.explorerWidth', EXPLORER_DEFAULT_WIDTH);
+    setExplorerVisible(true);
+  }, [expandForPanel, explorerVisible]);
+
+  const showAgentPanel = useCallback(async () => {
+    if (agentSettings.panelVisible) return;
+    await expandForPanel('litemark.agentPanelWidth', AGENT_PANEL_DEFAULT_WIDTH);
+    setAgentSettings((current) => ({ ...current, panelVisible: true }));
+  }, [agentSettings.panelVisible, expandForPanel]);
+
+  const applyAgentSettings = useCallback(
+    (settings: AgentSettings) => {
+      if (settings.panelVisible && !agentSettings.panelVisible) {
+        void expandForPanel('litemark.agentPanelWidth', AGENT_PANEL_DEFAULT_WIDTH).then(() =>
+          setAgentSettings(settings),
+        );
+        return;
+      }
+      setAgentSettings(settings);
+    },
+    [agentSettings.panelVisible, expandForPanel],
+  );
 
   const confirmDiscard = useCallback(
     () =>
@@ -424,7 +466,6 @@ const Layout: React.FC = () => {
       const opened = await documentSession.openDocument(path);
       if (opened) {
         rememberTab(path);
-        setExplorerVisible(true);
       }
       return opened;
     } catch (error) {
@@ -464,7 +505,7 @@ const Layout: React.FC = () => {
         });
         return next;
       });
-      setExplorerVisible(true);
+      await showExplorerPanel();
       setRecentClosing(true);
     } catch (error) {
       await showDocumentError(error, 'dialog.openFolderFailed');
@@ -732,15 +773,42 @@ const Layout: React.FC = () => {
 
   const handleCreateWorkspaceDirectory = async (directory: string) => {
     try {
-      await createWorkspaceDirectory(directory, t('explorer.untitledFolderName'));
+      const createdPath = await createWorkspaceDirectory(
+        directory,
+        t('explorer.untitledFolderName'),
+      );
       const root = workspaceRoots.find((candidate) =>
         pathBelongsToDirectory(directory, candidate.path),
       );
-      if (root) await refreshWorkspaceTree(root.path);
-      return true;
+      if (root) {
+        if (normalizePath(directory) === normalizePath(root.path)) {
+          await refreshWorkspaceTree(root.path);
+        } else {
+          await loadWorkspaceDirectory(directory);
+        }
+      }
+      return createdPath;
     } catch (error) {
       await showDocumentError(error, 'dialog.createDirectoryFailed');
-      return false;
+      return null;
+    }
+  };
+
+  const handleRenameWorkspaceDirectory = async (path: string, newName: string) => {
+    try {
+      const renamedPath = await renameWorkspaceDirectory(path, newName);
+      const separatorIndex = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
+      const parent = path.slice(0, separatorIndex);
+      const root = workspaceRoots.find((candidate) => pathBelongsToDirectory(path, candidate.path));
+      if (root) {
+        if (normalizePath(parent) === normalizePath(root.path))
+          await refreshWorkspaceTree(root.path);
+        else await loadWorkspaceDirectory(parent);
+      }
+      return renamedPath;
+    } catch (error) {
+      await showDocumentError(error, 'dialog.renameDirectoryFailed');
+      return null;
     }
   };
 
@@ -897,7 +965,6 @@ const Layout: React.FC = () => {
       ).filter((root): root is FileExplorerRoot => root !== null);
       if (active && restored.length > 0) {
         setWorkspaceRoots(restored);
-        setExplorerVisible(true);
       }
       if (active) {
         void saveWorkspaceDirectories(restored.map((root) => root.path)).catch((error) => {
@@ -1078,14 +1145,19 @@ const Layout: React.FC = () => {
                 label: t(explorerVisible ? 'explorer.hide' : 'explorer.show'),
                 icon: <LuFolderTree />,
                 disabled: !explorerHasItems,
-                onSelect: () => setExplorerVisible((visible) => !visible),
+                onSelect: () => {
+                  if (explorerVisible) setExplorerVisible(false);
+                  else void showExplorerPanel();
+                },
               },
               {
                 id: 'agent',
                 label: t(agentSettings.panelVisible ? 'agent.close' : 'agent.open'),
                 icon: <LuMessageSquare />,
                 onSelect: () =>
-                  setAgentSettings({ ...agentSettings, panelVisible: !agentSettings.panelVisible }),
+                  agentSettings.panelVisible
+                    ? setAgentSettings({ ...agentSettings, panelVisible: false })
+                    : void showAgentPanel(),
               },
               {
                 id: 'settings',
@@ -1137,6 +1209,7 @@ const Layout: React.FC = () => {
             onDeleteFile={handleDeleteWorkspaceFile}
             onCreateFile={handleCreateWorkspaceFile}
             onCreateDirectory={handleCreateWorkspaceDirectory}
+            onRenameDirectory={handleRenameWorkspaceDirectory}
             onDeleteDirectory={handleDeleteWorkspaceDirectory}
             onRemoveStandaloneFile={async (path) => {
               try {
@@ -1160,7 +1233,7 @@ const Layout: React.FC = () => {
                 <button
                   type="button"
                   className={styles.showExplorerButton}
-                  onClick={() => setExplorerVisible(true)}
+                  onClick={() => void showExplorerPanel()}
                   title={t('explorer.show')}
                   aria-label={t('explorer.show')}
                 >
@@ -1173,7 +1246,7 @@ const Layout: React.FC = () => {
                 <button
                   type="button"
                   className={styles.showAgentButton}
-                  onClick={() => setAgentSettings({ ...agentSettings, panelVisible: true })}
+                  onClick={() => void showAgentPanel()}
                   title={t('agent.open')}
                   aria-label={t('agent.open')}
                 >
@@ -1247,7 +1320,7 @@ const Layout: React.FC = () => {
           workDir={workDir}
           setWorkDir={setWorkDir}
           agentSettings={agentSettings}
-          setAgentSettings={setAgentSettings}
+          setAgentSettings={applyAgentSettings}
           isClosing={settingsClosing}
           onRequestClose={() => setSettingsClosing(true)}
           onCloseComplete={() => {

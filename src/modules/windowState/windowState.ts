@@ -1,5 +1,9 @@
 import { PhysicalPosition, PhysicalSize } from '@tauri-apps/api/dpi';
-import { availableMonitors, type Window as TauriWindow } from '@tauri-apps/api/window';
+import {
+  availableMonitors,
+  currentMonitor,
+  type Window as TauriWindow,
+} from '@tauri-apps/api/window';
 
 // Keep this suffix aligned with tauri.conf.json so a changed default is not
 // immediately overwritten by geometry saved for an older default.
@@ -19,6 +23,8 @@ type StatefulWindow = Pick<
   TauriWindow,
   'center' | 'isMaximized' | 'maximize' | 'outerPosition' | 'outerSize' | 'setPosition' | 'setSize'
 >;
+
+type ExpandableWindow = Pick<TauriWindow, 'isMaximized' | 'outerSize' | 'scaleFactor' | 'setSize'>;
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
@@ -102,4 +108,23 @@ export async function persistWindowState(appWindow: StatefulWindow): Promise<voi
     y: position.y,
     maximized: false,
   });
+}
+
+export async function expandWindowForPanel(
+  appWindow: ExpandableWindow,
+  panelWidth: number,
+): Promise<void> {
+  if (panelWidth <= 0 || (await appWindow.isMaximized())) return;
+
+  const [size, scaleFactor, monitor] = await Promise.all([
+    appWindow.outerSize(),
+    appWindow.scaleFactor(),
+    currentMonitor(),
+  ]);
+  const extraWidth = Math.ceil(panelWidth * scaleFactor);
+  const maximumWidth = monitor?.workArea.size.width ?? Number.POSITIVE_INFINITY;
+  const nextWidth = Math.min(size.width + extraWidth, maximumWidth);
+  if (nextWidth > size.width) {
+    await appWindow.setSize(new PhysicalSize(nextWidth, size.height));
+  }
 }
