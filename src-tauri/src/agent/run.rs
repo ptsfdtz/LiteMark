@@ -15,21 +15,38 @@ use super::tools::filesystem::{resolve_work_path_for_write, WriteFileArgs};
 use super::validator::{normalize_tool_call_ids, record_tool_failure};
 use crate::agent_completion::validate_endpoint;
 
-pub(crate) async fn run_agent_turn(
-    run_id: String,
-    endpoint: String,
-    api_key: String,
-    model: String,
-    document: String,
-    messages: Vec<ChatMessage>,
-    instructions: Option<String>,
-    max_steps: Option<u32>,
-    work_dir: Option<String>,
-    current_file_path: Option<String>,
-    file_tree: Option<String>,
-    confirm_writes: bool,
-    on_event: Channel<AgentEvent>,
-) -> Result<(), String> {
+pub(crate) struct AgentRunRequest {
+    pub(crate) run_id: String,
+    pub(crate) endpoint: String,
+    pub(crate) api_key: String,
+    pub(crate) model: String,
+    pub(crate) document: String,
+    pub(crate) messages: Vec<ChatMessage>,
+    pub(crate) instructions: Option<String>,
+    pub(crate) max_steps: Option<u32>,
+    pub(crate) work_dir: Option<String>,
+    pub(crate) current_file_path: Option<String>,
+    pub(crate) file_tree: Option<String>,
+    pub(crate) confirm_writes: bool,
+    pub(crate) on_event: Channel<AgentEvent>,
+}
+
+pub(crate) async fn run_agent_turn(request: AgentRunRequest) -> Result<(), String> {
+    let AgentRunRequest {
+        run_id,
+        endpoint,
+        api_key,
+        model,
+        document,
+        messages,
+        instructions,
+        max_steps,
+        work_dir,
+        current_file_path,
+        file_tree,
+        confirm_writes,
+        on_event,
+    } = request;
     if run_id.trim().is_empty() {
         return Err("run id is required".to_string());
     }

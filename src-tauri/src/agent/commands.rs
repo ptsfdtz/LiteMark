@@ -22,7 +22,7 @@ pub async fn run_agent_turn(
     confirm_writes: bool,
     on_event: Channel<AgentEvent>,
 ) -> Result<(), String> {
-    run::run_agent_turn(
+    run::run_agent_turn(run::AgentRunRequest {
         run_id,
         endpoint,
         api_key,
@@ -36,7 +36,7 @@ pub async fn run_agent_turn(
         file_tree,
         confirm_writes,
         on_event,
-    )
+    })
     .await
 }
 
