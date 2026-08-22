@@ -67,26 +67,25 @@ jobs:
           tagName: v__VERSION__
           releaseName: 'LiteMark v__VERSION__'
           releaseBody: |
-            LiteMark 2.1.2 is a substantial workspace, editing, and AI-assistance update.
+            LiteMark 2.1.3 is a focused stability and rendering update.
 
-            ## Highlights
-            - A more capable file explorer with lazy loading, animated expansion, folder creation, inline renaming, deletion, path copying, and system file-manager integration.
-            - Consistent context menus across files, folders, tabs, recent files, the editor, Markdown previews, images, PDFs, AI conversations, and layout areas.
-            - Improved tab workflows with Close Others, Close All, Reopen Closed File, and smoother animations.
-            - A redesigned AI workspace with persistent conversations, archive and restore actions, resumable runs, plans, permission controls, and safer project tools.
-            - Better large-document performance and bounded scanning for very large projects.
+            ## Fixes and improvements
+            - Fixed HTML images inside Markdown table cells not rendering in the WYSIWYG editor.
+            - Resolved local relative image paths consistently in both the editor and preview.
+            - Fixed the entire interface becoming blank after closing the final open file.
+            - Unified standalone-file and folder-root row sizing, selection backgrounds, spacing, and remove-button behavior in the file explorer.
+            - Preserved original relative image paths so rendering never writes Tauri asset URLs back into Markdown files.
 
-            ## Reliability
-            - Expanded frontend and Rust test coverage.
-            - Stricter formatting, linting, type, Clippy, version, and dependency checks.
-            - Safer atomic storage, deletion, and no-overwrite rename behavior.
-            - Builds for Windows, Linux, Intel Mac, and Apple Silicon Mac.
+            ## Validation
+            - Added regression coverage for table images, path changes, and the empty-editor state.
+            - Verified the fixes in the real Tauri desktop window.
+            - Builds remain available for Windows, Linux, Intel Mac, and Apple Silicon Mac.
 
-            Full bilingual release notes: https://github.com/ptsfdtz/LiteMark/blob/v2.1.2/RELEASE_NOTES.md
+            Full bilingual release notes: https://github.com/ptsfdtz/LiteMark/blob/v2.1.3/RELEASE_NOTES.md
 
             ---
 
-            LiteMark 2.1.2 是一次覆盖工作区、编辑体验和 AI 助手的重要更新，新增全局右键快捷操作、文件夹创建后就地重命名、文件树动画、标签页批量操作、AI 会话持久化与恢复，并改善大型文档和大型目录性能。
+            LiteMark 2.1.3 是一次专注稳定性与 Markdown 渲染的维护更新，修复表格内图片不显示、本地相对图片路径解析不一致、关闭最后一个文件后整页空白等问题，并统一左侧单文件与文件夹项目的交互样式。
 
             请在下方 Assets 区域下载对应平台的安装包或压缩包。完整中英文说明请查看上方链接。
           releaseDraft: false
