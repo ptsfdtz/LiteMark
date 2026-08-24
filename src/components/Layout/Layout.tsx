@@ -198,7 +198,7 @@ const Layout: React.FC = () => {
     let active = true;
     void loadAgentSettings().then((settings) => {
       if (!active) return;
-      setAgentSettings({ ...settings, panelVisible: false });
+      setAgentSettings(settings);
       setAgentSettingsReady(true);
     });
     return () => {
