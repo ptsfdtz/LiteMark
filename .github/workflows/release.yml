@@ -68,7 +68,7 @@ jobs:
           tagName: v__VERSION__
           releaseName: 'LiteMark v__VERSION__'
           releaseBody: |
-            LiteMark 2.1.5 adds signed over-the-air updates and preserves sidebar states across app restarts.
+            LiteMark v__VERSION__ adds signed over-the-air updates and preserves sidebar states across app restarts.
 
             ## Fixes and improvements
             - Checks for signed updates at startup and installs them with download progress and a restart.
@@ -79,11 +79,11 @@ jobs:
             - Added regression coverage for updater behavior and File Explorer visibility.
             - Builds remain available for Windows, Linux, Intel Mac, and Apple Silicon Mac.
 
-            Full bilingual release notes: https://github.com/ptsfdtz/LiteMark/blob/v2.1.5/RELEASE_NOTES.md
+            Full bilingual release notes: https://github.com/ptsfdtz/LiteMark/blob/v__VERSION__/RELEASE_NOTES.md
 
             ---
 
-            LiteMark 2.1.5 新增带签名的 OTA 自动更新，可显示下载进度并在安装后重启；同时会在后续启动时恢复文件栏和 Agent 侧边栏的展开或关闭状态。
+            LiteMark v__VERSION__ 新增带签名的 OTA 自动更新，可显示下载进度并在安装后重启；同时会在后续启动时恢复文件栏和 Agent 侧边栏的展开或关闭状态。
 
             请在下方 Assets 区域下载对应平台的安装包或压缩包。完整中英文说明请查看上方链接。
           releaseDraft: false

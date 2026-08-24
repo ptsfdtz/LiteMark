@@ -1,6 +1,6 @@
-# LiteMark 2.1.5
+# LiteMark 2.1.6
 
-LiteMark 2.1.5 adds signed over-the-air updates and preserves both sidebar states across app restarts.
+LiteMark 2.1.6 adds signed over-the-air updates and preserves both sidebar states across app restarts.
 
 ## Fixes and improvements
 
@@ -20,9 +20,9 @@ Download the package for your platform from the Assets section below. Builds are
 
 ---
 
-# LiteMark 2.1.5 中文说明
+# LiteMark 2.1.6 中文说明
 
-LiteMark 2.1.5 新增了带签名的 OTA 自动更新，并让左右侧边栏都能在重启后恢复状态。
+LiteMark 2.1.6 新增了带签名的 OTA 自动更新，并让左右侧边栏都能在重启后恢复状态。
 
 ## 修复与改进
 
