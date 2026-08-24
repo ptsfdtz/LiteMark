@@ -270,6 +270,15 @@ const common = {
   'tabs.barActions': '标签栏操作',
   'tabs.reopenClosed': '重新打开已关闭文件',
   'app.layoutActions': '布局操作',
+  'update.title': '发现新版本',
+  'update.available': 'LiteMark {version} 已可安装，更新完成后应用将重新启动。',
+  'update.saveBeforeInstall': '请先保存当前修改，再安装更新。',
+  'update.downloading': '正在下载更新',
+  'update.installing': '正在安装更新',
+  'update.failed': '更新安装失败，请检查网络连接后重试。',
+  'update.later': '稍后提醒',
+  'update.install': '立即更新',
+  'update.retry': '重新尝试',
 } as const;
 
 export default common;

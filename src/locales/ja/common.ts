@@ -273,6 +273,15 @@ const common = {
   'tabs.barActions': 'タブバー操作',
   'tabs.reopenClosed': '閉じたファイルを再度開く',
   'app.layoutActions': 'レイアウト操作',
+  'update.title': 'アップデートがあります',
+  'update.available': 'LiteMark {version} をインストールできます。完了後に再起動します。',
+  'update.saveBeforeInstall': 'アップデートをインストールする前に変更を保存してください。',
+  'update.downloading': 'アップデートをダウンロード中',
+  'update.installing': 'アップデートをインストール中',
+  'update.failed': 'アップデートをインストールできませんでした。接続を確認して再試行してください。',
+  'update.later': '後で',
+  'update.install': '今すぐ更新',
+  'update.retry': '再試行',
 } as const;
 
 export default common;

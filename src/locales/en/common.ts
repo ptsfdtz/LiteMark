@@ -273,6 +273,15 @@ const common = {
   'tabs.barActions': 'Tab bar actions',
   'tabs.reopenClosed': 'Reopen Closed File',
   'app.layoutActions': 'Layout actions',
+  'update.title': 'Update available',
+  'update.available': 'LiteMark {version} is ready to install. The app will restart.',
+  'update.saveBeforeInstall': 'Save your current changes before installing the update.',
+  'update.downloading': 'Downloading update',
+  'update.installing': 'Installing update',
+  'update.failed': 'The update could not be installed. Check your connection and try again.',
+  'update.later': 'Later',
+  'update.install': 'Update now',
+  'update.retry': 'Try again',
 } as const;
 
 export default common;

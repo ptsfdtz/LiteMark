@@ -2,6 +2,7 @@ import { Store } from '@tauri-apps/plugin-store';
 
 const KEY = 'workspaceDirectories';
 const LEGACY_KEY = 'workspaceDirectory';
+const EXPLORER_VISIBLE_KEY = 'explorerVisible';
 
 async function getStore(): Promise<Store> {
   return Store.load('user-settings.json');
@@ -28,5 +29,20 @@ export async function saveWorkspaceDirectories(directories: string[]): Promise<v
   const store = await getStore();
   await store.set(KEY, directories);
   await store.delete(LEGACY_KEY);
+  await store.save();
+}
+
+export async function loadExplorerVisible(): Promise<boolean> {
+  try {
+    const store = await getStore();
+    return (await store.get<unknown>(EXPLORER_VISIBLE_KEY)) === true;
+  } catch {
+    return false;
+  }
+}
+
+export async function saveExplorerVisible(visible: boolean): Promise<void> {
+  const store = await getStore();
+  await store.set(EXPLORER_VISIBLE_KEY, visible);
   await store.save();
 }

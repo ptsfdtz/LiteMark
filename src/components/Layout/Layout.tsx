@@ -6,6 +6,7 @@ import Settings from '@/components/Settings/Settings';
 import SettingsButton from '@/components/SettingsButton/SettingsButton';
 import RecentFilesSidebar from '@/components/RecentFilesSidebar/RecentFilesSidebar';
 import WindowControls from '@/components/WindowControls/WindowControls';
+import UpdateDialog from '@/components/UpdateDialog/UpdateDialog';
 import styles from './Layout.module.css';
 import CurrentFileName from './components/CurrentFileName';
 import { loadWorkDir, saveWorkDir } from '@/utils/workDirStore';
@@ -48,7 +49,12 @@ import {
   renameWorkspaceDirectory,
 } from '@/modules/directoryTree';
 import { getFileViewKind, type FileTreeNode } from '@/types/fileTree';
-import { loadWorkspaceDirectories, saveWorkspaceDirectories } from '@/utils/workspaceStore';
+import {
+  loadExplorerVisible,
+  loadWorkspaceDirectories,
+  saveExplorerVisible,
+  saveWorkspaceDirectories,
+} from '@/utils/workspaceStore';
 import OpenTabs from '@/components/OpenTabs/OpenTabs';
 import { LuPanelLeftOpen, LuPanelRightOpen } from 'react-icons/lu';
 import { LuFolderTree, LuMessageSquare, LuSettings } from 'react-icons/lu';
@@ -124,6 +130,7 @@ const Layout: React.FC = () => {
   const [workspaceRoots, setWorkspaceRoots] = useState<FileExplorerRoot[]>([]);
   const [titleBarMenu, setTitleBarMenu] = useState<{ x: number; y: number } | null>(null);
   const [explorerVisible, setExplorerVisible] = useState(false);
+  const [explorerVisibilityReady, setExplorerVisibilityReady] = useState(false);
   // Keep panels mounted while their close animation plays out.
   const [explorerRendered, setExplorerRendered] = useState(false);
   const [agentPanelRendered, setAgentPanelRendered] = useState(false);
@@ -150,6 +157,18 @@ const Layout: React.FC = () => {
   useEffect(() => {
     if (explorerVisible) setExplorerRendered(true);
   }, [explorerVisible]);
+
+  useEffect(() => {
+    let active = true;
+    void loadExplorerVisible().then((visible) => {
+      if (!active) return;
+      setExplorerVisible(visible);
+      setExplorerVisibilityReady(true);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (agentSettings.panelVisible) setAgentPanelRendered(true);
@@ -193,6 +212,16 @@ const Layout: React.FC = () => {
     },
     [t],
   );
+
+  useEffect(() => {
+    if (!explorerVisibilityReady) return;
+    const timeout = window.setTimeout(() => {
+      void saveExplorerVisible(explorerVisible).catch((error) => {
+        void showDocumentError(error, 'dialog.settingsSaveFailed');
+      });
+    }, 300);
+    return () => window.clearTimeout(timeout);
+  }, [explorerVisible, explorerVisibilityReady, showDocumentError]);
 
   useEffect(() => {
     let active = true;
@@ -1329,6 +1358,7 @@ const Layout: React.FC = () => {
           }}
         />
       )}
+      <UpdateDialog hasUnsavedChanges={isDirty} />
     </div>
   );
 };

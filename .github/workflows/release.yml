@@ -63,25 +63,27 @@ jobs:
       - uses: tauri-apps/tauri-action@fce9c6108b31ea247710505d3aaaa893ee6768d4 # v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         with:
           tagName: v__VERSION__
           releaseName: 'LiteMark v__VERSION__'
           releaseBody: |
-            LiteMark 2.1.4 preserves the Agent sidebar state across app restarts.
+            LiteMark 2.1.5 adds signed over-the-air updates and preserves sidebar states across app restarts.
 
             ## Fixes and improvements
-            - The Agent sidebar stays closed by default on first launch.
-            - The app restores the user's Agent sidebar open or closed state on subsequent launches.
+            - Checks for signed updates at startup and installs them with download progress and a restart.
+            - Protects unsaved documents before installing an update.
+            - Restores the File Explorer and Agent sidebar open or closed states on later launches.
 
             ## Validation
-            - Passed TypeScript checks and the full frontend test suite.
+            - Added regression coverage for updater behavior and File Explorer visibility.
             - Builds remain available for Windows, Linux, Intel Mac, and Apple Silicon Mac.
 
-            Full bilingual release notes: https://github.com/ptsfdtz/LiteMark/blob/v2.1.4/RELEASE_NOTES.md
+            Full bilingual release notes: https://github.com/ptsfdtz/LiteMark/blob/v2.1.5/RELEASE_NOTES.md
 
             ---
 
-            LiteMark 2.1.4 是一次维护更新：首次启动时 Agent 侧边栏默认关闭；用户手动展开或关闭后，应用会在后续启动时恢复该选择。
+            LiteMark 2.1.5 新增带签名的 OTA 自动更新，可显示下载进度并在安装后重启；同时会在后续启动时恢复文件栏和 Agent 侧边栏的展开或关闭状态。
 
             请在下方 Assets 区域下载对应平台的安装包或压缩包。完整中英文说明请查看上方链接。
           releaseDraft: false
