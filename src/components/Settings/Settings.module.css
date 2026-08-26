@@ -296,28 +296,28 @@
 }
 
 .profileSelectorRow {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 32px 32px;
+  display: flex;
   gap: 6px;
 }
 
 .profileSelectControl {
   position: relative;
+  flex: 1;
   min-width: 0;
 }
 
 .profileSelectButton {
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  align-items: center;
   width: 100%;
-  min-width: 0;
   height: 32px;
   padding: 0 8px 0 9px;
   color: var(--text-color, #222);
   background: var(--paper-bg, #fff);
   border: 1px solid var(--editor-border, #ddd);
+  gap: 8px;
+  min-width: 0;
   border-radius: 4px;
   font-family: inherit;
   font-size: 12px;
@@ -335,10 +335,12 @@
   flex: 0 0 auto;
   width: 15px;
   height: 15px;
-  transition: transform 160ms ease;
+  transition: transform 0.16s ease;
 }
 
-.profileSelectButtonOpen > svg { transform: rotate(180deg); }
+.profileSelectButtonOpen > svg {
+  transform: rotate(180deg);
+}
 
 .profileSelectButton:focus-visible,
 .profileIconButton:focus-visible {
@@ -365,15 +367,15 @@
 
 .profileOption {
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  align-items: center;
   width: 100%;
-  min-height: 30px;
   padding: 5px 7px;
   color: inherit;
   background: transparent;
   border: 0;
+  gap: 8px;
+  min-height: 30px;
   border-radius: 3px;
   font-family: inherit;
   font-size: 12px;
@@ -381,20 +383,40 @@
   cursor: pointer;
 }
 
-.profileOption > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.profileOption > svg { flex: 0 0 auto; width: 14px; height: 14px; color: var(--accent-color); }
+.profileOption > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profileOption > svg {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  color: var(--accent-color);
+}
+
 .profileOption:hover,
-.profileOption:focus-visible { outline: none; background: var(--control-hover); }
-.profileOptionSelected { color: var(--accent-color); font-weight: 600; }
+.profileOption:focus-visible {
+  outline: none;
+  background: var(--control-hover);
+}
+
+.profileOptionSelected {
+  color: var(--accent-color);
+  font-weight: 600;
+}
 
 @media (prefers-reduced-motion: reduce) {
-  .profileSelectButton > svg { transition: none; }
+  .profileSelectButton > svg {
+    transition: none;
+  }
 }
 
 .profileIconButton {
   display: inline-flex;
-  align-items: center;
   justify-content: center;
+  align-items: center;
   width: 32px;
   height: 32px;
   padding: 0;
@@ -405,10 +427,23 @@
   cursor: pointer;
 }
 
-.profileIconButton:hover:not(:disabled) { background: var(--control-hover); }
-.profileIconButton:disabled { opacity: 0.42; cursor: not-allowed; }
-.profileIconButton svg { width: 15px; height: 15px; }
-.profileDeleteButton:not(:disabled) { color: var(--danger-color, #c9362b); }
+.profileIconButton:hover:not(:disabled) {
+  background: var(--control-hover);
+}
+
+.profileIconButton:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.profileIconButton svg {
+  width: 15px;
+  height: 15px;
+}
+
+.profileDeleteButton:not(:disabled) {
+  color: var(--danger-color, #c9362b);
+}
 
 .fieldLabel {
   margin-top: 4px;

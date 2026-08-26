@@ -13,9 +13,9 @@ const session: AgentSession = {
   resume: vi.fn(async () => undefined),
   stop: vi.fn(),
   clear: vi.fn(),
-      applyEdit: vi.fn(),
-      resolveTaskChanges: vi.fn(async () => undefined),
-      respondPermission: vi.fn(),
+  applyEdit: vi.fn(),
+  resolveTaskChanges: vi.fn(async () => undefined),
+  respondPermission: vi.fn(),
 };
 
 describe('AgentPanel conversations', () => {
@@ -29,10 +29,26 @@ describe('AgentPanel conversations', () => {
           session={{
             ...session,
             resolveTaskChanges,
-            items: [{
-              id: 'changes-1', role: 'task-changes', checkpointId: 'run-1', added: 2, removed: 1, resolution: 'pending',
-              files: [{ path: 'notes/a.md', status: 'modified', added: 2, removed: 1, before: '# Old', after: '# New\nBody' }],
-            }],
+            items: [
+              {
+                id: 'changes-1',
+                role: 'task-changes',
+                checkpointId: 'run-1',
+                added: 2,
+                removed: 1,
+                resolution: 'pending',
+                files: [
+                  {
+                    path: 'notes/a.md',
+                    status: 'modified',
+                    added: 2,
+                    removed: 1,
+                    before: '# Old',
+                    after: '# New\nBody',
+                  },
+                ],
+              },
+            ],
           }}
           conversations={[]}
           activeConversationId="first"

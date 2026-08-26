@@ -549,12 +549,23 @@ const AgentPanel: React.FC<AgentPanelProps> = ({
 
   const panelWidth = closing || !entered ? 0 : width;
 
-  const { items, status, error, activeRun, send, resume, stop, applyEdit, resolveTaskChanges, respondPermission } =
-    session;
+  const {
+    items,
+    status,
+    error,
+    activeRun,
+    send,
+    resume,
+    stop,
+    applyEdit,
+    resolveTaskChanges,
+    respondPermission,
+  } = session;
   const running = status === 'running';
   const panelTitle = isConfigured && modelName.trim() ? modelName.trim() : t('agent.title');
   const scopeLabel =
-    scopeName?.trim() || (scopeKind === 'project' ? t('agent.scope.project') : t('agent.scope.file'));
+    scopeName?.trim() ||
+    (scopeKind === 'project' ? t('agent.scope.project') : t('agent.scope.file'));
 
   useEffect(() => {
     const list = listRef.current;
@@ -1010,7 +1021,9 @@ const AgentPanel: React.FC<AgentPanelProps> = ({
                   <div className={styles.taskChangesCard}>
                     <div className={styles.taskChangesHeader}>
                       <LuFileDiff aria-hidden="true" />
-                      <strong>{t('agent.changes.filesChanged', { count: item.files.length })}</strong>
+                      <strong>
+                        {t('agent.changes.filesChanged', { count: item.files.length })}
+                      </strong>
                       <span className={styles.changeAdded}>+{item.added}</span>
                       <span className={styles.changeRemoved}>-{item.removed}</span>
                     </div>
@@ -1019,12 +1032,15 @@ const AgentPanel: React.FC<AgentPanelProps> = ({
                         <details key={file.path} className={styles.changedFile}>
                           <summary>
                             <span title={file.path}>{file.path}</span>
-                            <span className={styles.fileStats}>+{file.added} / -{file.removed}</span>
+                            <span className={styles.fileStats}>
+                              +{file.added} / -{file.removed}
+                            </span>
                           </summary>
                           <pre className={styles.diffBlock}>
                             {diffLines(file.before, file.after).map((line, index) => (
                               <span key={index} className={styles[`diff-${line.type}`]}>
-                                {line.text || ' '}{'\n'}
+                                {line.text || ' '}
+                                {'\n'}
                               </span>
                             ))}
                           </pre>
@@ -1034,15 +1050,29 @@ const AgentPanel: React.FC<AgentPanelProps> = ({
                     <div className={styles.taskChangeActions}>
                       {item.resolution === 'pending' ? (
                         <>
-                          <button className={styles.acceptAllButton} onClick={() => void resolveTaskChanges(item.id, 'accept')}>
-                            <LuCheck aria-hidden="true" />{t('agent.changes.acceptAll')}
+                          <button
+                            className={styles.acceptAllButton}
+                            onClick={() => void resolveTaskChanges(item.id, 'accept')}
+                          >
+                            <LuCheck aria-hidden="true" />
+                            {t('agent.changes.acceptAll')}
                           </button>
-                          <button className={styles.revertAllButton} onClick={() => void resolveTaskChanges(item.id, 'revert')}>
-                            <LuRotateCcw aria-hidden="true" />{t('agent.changes.revertAll')}
+                          <button
+                            className={styles.revertAllButton}
+                            onClick={() => void resolveTaskChanges(item.id, 'revert')}
+                          >
+                            <LuRotateCcw aria-hidden="true" />
+                            {t('agent.changes.revertAll')}
                           </button>
                         </>
                       ) : (
-                        <span className={styles.changeResolution}>{t(item.resolution === 'accepted' ? 'agent.changes.accepted' : 'agent.changes.reverted')}</span>
+                        <span className={styles.changeResolution}>
+                          {t(
+                            item.resolution === 'accepted'
+                              ? 'agent.changes.accepted'
+                              : 'agent.changes.reverted',
+                          )}
+                        </span>
                       )}
                     </div>
                   </div>

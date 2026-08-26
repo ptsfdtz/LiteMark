@@ -22,8 +22,20 @@ describe('agent settings profiles', () => {
   it('restores multiple profiles and the selected model', () => {
     const settings = parseAgentSettings({
       profiles: [
-        { id: 'openai', name: 'OpenAI', endpoint: 'https://a.example', model: 'model-a', apiKey: 'a' },
-        { id: 'local', name: 'Local', endpoint: 'http://localhost:11434/v1/chat/completions', model: 'model-b', apiKey: 'b' },
+        {
+          id: 'openai',
+          name: 'OpenAI',
+          endpoint: 'https://a.example',
+          model: 'model-a',
+          apiKey: 'a',
+        },
+        {
+          id: 'local',
+          name: 'Local',
+          endpoint: 'http://localhost:11434/v1/chat/completions',
+          model: 'model-b',
+          apiKey: 'b',
+        },
       ],
       activeProfileId: 'local',
     });

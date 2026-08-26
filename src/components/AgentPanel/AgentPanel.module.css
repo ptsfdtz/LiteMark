@@ -714,10 +714,10 @@
 
 .taskChangesCard {
   width: 100%;
+  background: color-mix(in srgb, var(--editor-bg) 96%, var(--accent-color));
   border: 1px solid var(--hairline-color);
   border-radius: 4px;
   overflow: hidden;
-  background: color-mix(in srgb, var(--editor-bg) 96%, var(--accent-color));
   font-size: 12px;
 }
 
@@ -730,24 +730,106 @@
   border-bottom: 1px solid var(--hairline-color);
 }
 
-.taskChangesHeader > svg { width: 15px; height: 15px; color: var(--accent-color); }
-.taskChangesHeader strong { margin-right: auto; }
-.changeAdded { color: var(--success-color, #218739); font-variant-numeric: tabular-nums; }
-.changeRemoved { color: var(--error-color, #c9362b); font-variant-numeric: tabular-nums; }
-.changedFiles { max-height: 280px; overflow: auto; }
-.changedFile { border-bottom: 1px solid var(--hairline-color); }
-.changedFile summary { display: flex; gap: 8px; align-items: center; min-height: 34px; padding: 0 10px; cursor: pointer; }
-.changedFile summary > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.fileStats { margin-left: auto; color: var(--muted-text); white-space: nowrap; font-variant-numeric: tabular-nums; }
-.changedFile .diffBlock { max-height: 220px; margin: 0; border-top: 1px solid var(--hairline-color); border-radius: 0; }
-.taskChangeActions { display: flex; justify-content: flex-end; align-items: center; gap: 8px; min-height: 42px; padding: 0 10px; }
+.taskChangesHeader > svg {
+  width: 15px;
+  height: 15px;
+  color: var(--accent-color);
+}
+
+.taskChangesHeader strong {
+  margin-right: auto;
+}
+
+.changeAdded {
+  color: var(--success-color, #218739);
+  font-variant-numeric: tabular-nums;
+}
+
+.changeRemoved {
+  color: var(--error-color, #c9362b);
+  font-variant-numeric: tabular-nums;
+}
+
+.changedFiles {
+  max-height: 280px;
+  overflow: auto;
+}
+
+.changedFile {
+  border-bottom: 1px solid var(--hairline-color);
+}
+
+.changedFile summary {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 10px;
+  cursor: pointer;
+}
+
+.changedFile summary > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fileStats {
+  margin-left: auto;
+  color: var(--muted-text);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.changedFile .diffBlock {
+  max-height: 220px;
+  margin: 0;
+  border-top: 1px solid var(--hairline-color);
+  border-radius: 0;
+}
+
+.taskChangeActions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 10px;
+}
+
 .acceptAllButton,
-.revertAllButton { display: inline-flex; align-items: center; gap: 5px; min-height: 28px; padding: 0 9px; border-radius: 4px; font: inherit; cursor: pointer; }
-.acceptAllButton { color: var(--button-text, #fff); background: var(--accent-color); border: 1px solid var(--accent-color); }
-.revertAllButton { color: var(--error-color, #c9362b); background: transparent; border: 1px solid color-mix(in srgb, var(--error-color, #c9362b) 45%, transparent); }
+.revertAllButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 28px;
+  padding: 0 9px;
+  border-radius: 4px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.acceptAllButton {
+  color: var(--button-text, #fff);
+  background: var(--accent-color);
+  border: 1px solid var(--accent-color);
+}
+
+.revertAllButton {
+  color: var(--error-color, #c9362b);
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--error-color, #c9362b) 45%, transparent);
+}
+
 .acceptAllButton:focus-visible,
-.revertAllButton:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; }
-.changeResolution { color: var(--muted-text); }
+.revertAllButton:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+}
+
+.changeResolution {
+  color: var(--muted-text);
+}
 
 .planCard {
   width: 100%;

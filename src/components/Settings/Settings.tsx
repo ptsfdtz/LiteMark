@@ -365,7 +365,9 @@ const Settings: React.FC<SettingsProps> = ({
                     }
                   }}
                 >
-                  <span>{activeProfile.name || activeProfile.model || t('settings.agentUnnamedProfile')}</span>
+                  <span>
+                    {activeProfile.name || activeProfile.model || t('settings.agentUnnamedProfile')}
+                  </span>
                   <LuChevronDown aria-hidden="true" />
                 </button>
                 {profileMenuOpen && (
@@ -399,7 +401,9 @@ const Settings: React.FC<SettingsProps> = ({
                           className={`${styles.profileOption} ${selected ? styles.profileOptionSelected : ''}`}
                           onClick={() => selectProfile(profile.id)}
                         >
-                          <span>{profile.name || profile.model || t('settings.agentUnnamedProfile')}</span>
+                          <span>
+                            {profile.name || profile.model || t('settings.agentUnnamedProfile')}
+                          </span>
                           {selected && <LuCheck aria-hidden="true" />}
                         </button>
                       );

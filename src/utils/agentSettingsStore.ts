@@ -30,7 +30,9 @@ export async function loadAgentSettings(): Promise<AgentSettings> {
   }
 }
 
-export function parseAgentSettings(value: Record<string, unknown> | null | undefined): AgentSettings {
+export function parseAgentSettings(
+  value: Record<string, unknown> | null | undefined,
+): AgentSettings {
   if (!value) return DEFAULT_AGENT_SETTINGS;
   const profiles = parseProfiles(value);
   const activeProfileId = asString(value.activeProfileId, profiles[0].id);
@@ -57,24 +59,28 @@ function parseProfiles(value: Record<string, unknown>): AgentProfile[] {
       const id = asString(profile.id, '').trim();
       if (!id || ids.has(id)) return [];
       ids.add(id);
-      return [{
-        id,
-        name: asString(profile.name, '').trim() || asString(profile.model, '').trim() || 'Model',
-        endpoint: asString(profile.endpoint, ''),
-        model: asString(profile.model, ''),
-        apiKey: asString(profile.apiKey, ''),
-      }];
+      return [
+        {
+          id,
+          name: asString(profile.name, '').trim() || asString(profile.model, '').trim() || 'Model',
+          endpoint: asString(profile.endpoint, ''),
+          model: asString(profile.model, ''),
+          apiKey: asString(profile.apiKey, ''),
+        },
+      ];
     });
     if (profiles.length) return profiles;
   }
 
   // Migrate the original single-provider settings without losing credentials.
-  return [{
-    ...DEFAULT_AGENT_PROFILE,
-    endpoint: asString(value.endpoint, DEFAULT_AGENT_PROFILE.endpoint),
-    model: asString(value.model, DEFAULT_AGENT_PROFILE.model),
-    apiKey: asString(value.apiKey, ''),
-  }];
+  return [
+    {
+      ...DEFAULT_AGENT_PROFILE,
+      endpoint: asString(value.endpoint, DEFAULT_AGENT_PROFILE.endpoint),
+      model: asString(value.model, DEFAULT_AGENT_PROFILE.model),
+      apiKey: asString(value.apiKey, ''),
+    },
+  ];
 }
 
 export async function saveAgentSettings(settings: AgentSettings): Promise<void> {

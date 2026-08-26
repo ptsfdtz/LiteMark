@@ -102,10 +102,9 @@ describe('Agent conversations', () => {
   });
 
   it('keeps the active agent bound when folders switch until a new chat is created', async () => {
-    const { result, rerender } = renderHook(
-      ({ scope }) => useAgentConversations(scope),
-      { initialProps: { scope: 'C:\\notes' } },
-    );
+    const { result, rerender } = renderHook(({ scope }) => useAgentConversations(scope), {
+      initialProps: { scope: 'C:\\notes' },
+    });
     await waitFor(() => expect(mocks.loadConversationScope).toHaveBeenCalledWith('C:\\notes'));
     act(() => {
       result.current.syncActiveConversation([
