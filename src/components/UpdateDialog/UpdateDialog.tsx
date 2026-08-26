@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { LuDownload, LuRefreshCw } from 'react-icons/lu';
+import { LuDownload, LuRefreshCw, LuSparkles, LuX } from 'react-icons/lu';
 import { useI18n } from '@/locales/useI18n';
 import { checkForAppUpdate, restartAfterUpdate, type AppUpdate } from '@/modules/appUpdater';
 import styles from './UpdateDialog.module.css';
@@ -10,6 +10,8 @@ interface UpdateDialogProps {
 
 type InstallState = 'ready' | 'downloading' | 'installing' | 'failed';
 
+const UPDATE_QUIP_COUNT = 6;
+
 const UpdateDialog = ({ hasUnsavedChanges }: UpdateDialogProps) => {
   const { t } = useI18n();
   const checkedRef = useRef(false);
@@ -17,6 +19,7 @@ const UpdateDialog = ({ hasUnsavedChanges }: UpdateDialogProps) => {
   const [state, setState] = useState<InstallState>('ready');
   const [downloaded, setDownloaded] = useState(0);
   const [total, setTotal] = useState<number | undefined>();
+  const [quipIndex] = useState(() => Math.floor(Math.random() * UPDATE_QUIP_COUNT));
 
   useEffect(() => {
     if (checkedRef.current) return;
@@ -80,17 +83,44 @@ const UpdateDialog = ({ hasUnsavedChanges }: UpdateDialogProps) => {
         aria-labelledby="appUpdateTitle"
         aria-describedby="appUpdateDescription"
       >
-        <div className={styles.icon} aria-hidden="true">
-          {state === 'failed' ? <LuRefreshCw /> : <LuDownload />}
-        </div>
+        {!busy && (
+          <button
+            type="button"
+            className={styles.closeButton}
+            onClick={dismiss}
+            aria-label={t('update.close')}
+            title={t('update.close')}
+          >
+            <LuX aria-hidden="true" />
+          </button>
+        )}
+        <header className={styles.header}>
+          <div className={styles.icon} aria-hidden="true">
+            {state === 'failed' ? <LuRefreshCw /> : <LuDownload />}
+          </div>
+          <div className={styles.heading}>
+            <h2 id="appUpdateTitle">{t('update.title')}</h2>
+            <span className={styles.version}>
+              {t('update.version', { version: update.version })}
+            </span>
+          </div>
+        </header>
         <div className={styles.content}>
-          <h2 id="appUpdateTitle">{t('update.title')}</h2>
           <p id="appUpdateDescription">
-            {state === 'failed'
-              ? t('update.failed')
-              : t('update.available', { version: update.version })}
+            {state === 'failed' ? t('update.failed') : t('update.available')}
           </p>
-          {update.notes && state === 'ready' && <div className={styles.notes}>{update.notes}</div>}
+          {update.notes && state === 'ready' && (
+            <section className={styles.releaseNotes} aria-labelledby="appUpdateNotesTitle">
+              <h3 id="appUpdateNotesTitle">{t('update.whatsNew')}</h3>
+              <div className={styles.notes}>{update.notes}</div>
+            </section>
+          )}
+          {state === 'ready' && (
+            <p className={styles.quip}>
+              <LuSparkles aria-hidden="true" />
+              <span>{t(`update.quip${quipIndex + 1}` as Parameters<typeof t>[0])}</span>
+            </p>
+          )}
           {hasUnsavedChanges && !busy && (
             <p className={styles.warning}>{t('update.saveBeforeInstall')}</p>
           )}

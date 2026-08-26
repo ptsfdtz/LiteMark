@@ -271,7 +271,15 @@ const common = {
   'tabs.reopenClosed': '重新打开已关闭文件',
   'app.layoutActions': '布局操作',
   'update.title': '发现新版本',
-  'update.available': 'LiteMark {version} 已可安装，更新完成后应用将重新启动。',
+  'update.version': 'v{version}',
+  'update.available': '更新已经准备好了，安装完成后 LiteMark 将自动重启。',
+  'update.whatsNew': '本次更新',
+  'update.quip1': '顺手修了几颗螺丝，现在转得更顺了。',
+  'update.quip2': '这次没有惊天动地，只有一点一点变好。',
+  'update.quip3': '代码刚出炉，趁热更新。',
+  'update.quip4': '给 LiteMark 换了些新零件，旧文档照常营业。',
+  'update.quip5': '一些 bug 已经被请出了编辑器。',
+  'update.quip6': '更新很短，接着写很长。',
   'update.saveBeforeInstall': '请先保存当前修改，再安装更新。',
   'update.downloading': '正在下载更新',
   'update.installing': '正在安装更新',
@@ -279,6 +287,7 @@ const common = {
   'update.later': '稍后提醒',
   'update.install': '立即更新',
   'update.retry': '重新尝试',
+  'update.close': '关闭更新提示',
 } as const;
 
 export default common;

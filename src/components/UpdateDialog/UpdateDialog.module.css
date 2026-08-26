@@ -5,21 +5,55 @@
   display: grid;
   place-items: center;
   padding: 20px;
-  background: rgb(0 0 0 / 28%);
+  background: rgb(10 18 20 / 38%);
+  backdrop-filter: blur(2px);
 }
 
 .dialog {
+  position: relative;
   display: grid;
-  grid-template-columns: 38px calc(100% - 50px);
-  gap: 12px;
-  width: min(430px, 100%);
-  padding: 20px;
+  gap: 0;
+  width: min(480px, 100%);
+  padding: 24px;
   color: var(--text-color);
   background: var(--paper-bg);
   border: 1px solid var(--hairline-color);
   border-radius: 6px;
-  box-shadow: 0 18px 48px rgb(0 0 0 / 24%);
+  box-shadow: 0 22px 60px rgb(0 0 0 / 28%);
   box-sizing: border-box;
+  animation: dialog-enter 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.closeButton {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  color: var(--muted-text);
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+}
+
+.closeButton:hover {
+  color: var(--text-color);
+  background: var(--control-hover);
+}
+
+.closeButton svg {
+  width: 18px;
+  height: 18px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-right: 36px;
 }
 
 .icon {
@@ -38,23 +72,55 @@
   stroke-width: 2;
 }
 
+.heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px 10px;
+  min-width: 0;
+}
+
+.heading h2 {
+  margin: 0;
+  color: var(--heading-color);
+  font-size: 18px;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+
+.version {
+  padding: 2px 7px;
+  color: var(--accent-color);
+  background: color-mix(in srgb, var(--accent-color) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-color) 24%, transparent);
+  border-radius: 3px;
+  font-family: var(--monospace-font);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
 .content {
   min-width: 0;
 }
 
-.content h2 {
-  margin: 1px 0 0;
-  color: var(--heading-color);
-  font-size: 16px;
-  font-weight: 600;
-  letter-spacing: 0;
-}
-
 .content p {
-  margin: 7px 0 0;
+  margin: 14px 0 0;
   color: var(--muted-text);
   font-size: 13px;
   line-height: 1.5;
+}
+
+.releaseNotes {
+  margin-top: 18px;
+}
+
+.releaseNotes h3 {
+  margin: 0 0 7px;
+  color: var(--heading-color);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
 }
 
 .content .warning {
@@ -62,9 +128,8 @@
 }
 
 .notes {
-  max-height: 112px;
-  margin-top: 12px;
-  padding: 9px 10px;
+  max-height: 128px;
+  padding: 11px 12px;
   overflow: auto;
   color: var(--muted-text);
   background: var(--background-color);
@@ -73,6 +138,23 @@
   font-size: 12px;
   line-height: 1.5;
   white-space: pre-wrap;
+}
+
+.content .quip {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin-top: 14px;
+  color: var(--muted-text);
+  font-size: 12px;
+}
+
+.quip svg {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  margin-top: 2px;
+  color: var(--accent-color);
 }
 
 .progressArea {
@@ -109,11 +191,22 @@
 }
 
 .actions {
-  grid-column: 1 / -1;
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  margin-top: 6px;
+  margin-top: 22px;
+}
+
+@keyframes dialog-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .actions button {
@@ -157,11 +250,30 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .dialog {
+    animation: none;
+  }
+
   .progressTrack span {
     transition: none;
   }
 
   .indeterminate span {
     animation: none;
+  }
+}
+
+@media (width <= 520px) {
+  .backdrop {
+    align-items: end;
+    padding: 12px;
+  }
+
+  .dialog {
+    padding: 20px;
+  }
+
+  .actions button {
+    flex: 1;
   }
 }

@@ -45,12 +45,35 @@ describe('UpdateDialog', () => {
 
     expect(await screen.findByRole('alertdialog')).toBeInTheDocument();
     expect(
-      screen.getByText('LiteMark 2.2.0 is ready to install. The app will restart.'),
+      screen.getByText('Your update is ready. LiteMark will restart after installation.'),
     ).toBeVisible();
+    expect(screen.getByText('v2.2.0')).toBeVisible();
+    expect(screen.getByText("What's new")).toBeVisible();
     expect(
       screen.getByText('Save your current changes before installing the update.'),
     ).toBeVisible();
     expect(screen.getByRole('button', { name: 'Update now' })).toBeDisabled();
+  });
+
+  it('lets the user dismiss the prompt from the close button', async () => {
+    const close = vi.fn();
+    mocks.checkForAppUpdate.mockResolvedValue({
+      version: '2.2.0',
+      downloadAndInstall: vi.fn(),
+      close,
+    });
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+
+    render(
+      <I18nProvider>
+        <UpdateDialog hasUnsavedChanges={false} />
+      </I18nProvider>,
+    );
+    await act(async () => vi.advanceTimersByTime(1_500));
+    await user.click(await screen.findByRole('button', { name: 'Close update prompt' }));
+
+    expect(close).toHaveBeenCalledOnce();
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
   });
 
   it('downloads, installs, and restarts when the user accepts', async () => {

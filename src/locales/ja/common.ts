@@ -274,7 +274,15 @@ const common = {
   'tabs.reopenClosed': '閉じたファイルを再度開く',
   'app.layoutActions': 'レイアウト操作',
   'update.title': 'アップデートがあります',
-  'update.available': 'LiteMark {version} をインストールできます。完了後に再起動します。',
+  'update.version': 'v{version}',
+  'update.available': 'アップデートの準備ができました。インストール後に LiteMark が再起動します。',
+  'update.whatsNew': '今回のアップデート',
+  'update.quip1': 'ネジを少し締め直して、動きがより滑らかになりました。',
+  'update.quip2': '大事件ではなくても、あちこち少しずつ良くなりました。',
+  'update.quip3': 'できたてのコードを、温かいうちにどうぞ。',
+  'update.quip4': 'LiteMark に新しい部品を。今までのノートもそのまま使えます。',
+  'update.quip5': 'いくつかのバグには丁重にお帰りいただきました。',
+  'update.quip6': '短い更新を終えたら、長い文章の続きをどうぞ。',
   'update.saveBeforeInstall': 'アップデートをインストールする前に変更を保存してください。',
   'update.downloading': 'アップデートをダウンロード中',
   'update.installing': 'アップデートをインストール中',
@@ -282,6 +290,7 @@ const common = {
   'update.later': '後で',
   'update.install': '今すぐ更新',
   'update.retry': '再試行',
+  'update.close': 'アップデート通知を閉じる',
 } as const;
 
 export default common;

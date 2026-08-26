@@ -274,7 +274,15 @@ const common = {
   'tabs.reopenClosed': 'Reopen Closed File',
   'app.layoutActions': 'Layout actions',
   'update.title': 'Update available',
-  'update.available': 'LiteMark {version} is ready to install. The app will restart.',
+  'update.version': 'v{version}',
+  'update.available': 'Your update is ready. LiteMark will restart after installation.',
+  'update.whatsNew': "What's new",
+  'update.quip1': 'A few screws tightened. Everything turns a little smoother now.',
+  'update.quip2': 'Nothing earth-shattering, just a little better everywhere.',
+  'update.quip3': 'Fresh code, best served warm.',
+  'update.quip4': 'New parts for LiteMark. Your old notes still fit.',
+  'update.quip5': 'A few bugs have been politely shown the door.',
+  'update.quip6': 'A short update, then back to writing long things.',
   'update.saveBeforeInstall': 'Save your current changes before installing the update.',
   'update.downloading': 'Downloading update',
   'update.installing': 'Installing update',
@@ -282,6 +290,7 @@ const common = {
   'update.later': 'Later',
   'update.install': 'Update now',
   'update.retry': 'Try again',
+  'update.close': 'Close update prompt',
 } as const;
 
 export default common;
