@@ -475,6 +475,58 @@ describe('Agent Session', () => {
     );
   });
 
+  it('repairs incomplete tool calls before sending the next message', async () => {
+    const { result } = setup();
+    mocks.runAgentTurn.mockImplementationOnce(async ({ onEvent }: RunAgentTurnArgs) => {
+      onEvent({
+        type: 'assistant_message',
+        content: '',
+        tool_calls: [
+          {
+            id: 'call-complete',
+            type: 'function',
+            function: { name: 'read_document', arguments: '{}' },
+          },
+          {
+            id: 'call-interrupted',
+            type: 'function',
+            function: { name: 'write_file', arguments: '{}' },
+          },
+        ],
+      });
+      onEvent({
+        type: 'tool_call_end',
+        id: 'call-complete',
+        name: 'read_document',
+        result: '# Hello',
+      });
+      throw new Error('tool execution stopped');
+    });
+
+    await act(async () => {
+      await result.current.send('first');
+    });
+
+    emit(mocks.runAgentTurn, [{ type: 'done' }]);
+    await act(async () => {
+      await result.current.send('second');
+    });
+
+    const args = mocks.runAgentTurn.mock.calls[1][0] as RunAgentTurnArgs;
+    expect(args.messages).toEqual([
+      { role: 'user', content: 'first' },
+      expect.objectContaining({ role: 'assistant' }),
+      { role: 'tool', tool_call_id: 'call-complete', content: '# Hello' },
+      {
+        role: 'tool',
+        tool_call_id: 'call-interrupted',
+        name: 'write_file',
+        content: 'Error: tool call interrupted before completion.',
+      },
+      { role: 'user', content: 'second' },
+    ]);
+  });
+
   it('persists the conversation after it changes', async () => {
     const { result } = setup();
     emit(mocks.runAgentTurn, [{ type: 'text_delta', text: 'ok' }, { type: 'done' }]);

@@ -589,7 +589,7 @@ const Layout: React.FC = () => {
     await Promise.all(workspaceRoots.map((root) => refreshWorkspaceTree(root.path)));
   };
 
-  // The agent wrote a project file to disk: surface it to the user.
+  // Keep agent-created project files in the explorer instead of replacing the active document.
   agentFileWrittenRef.current = (path: string) => {
     void (async () => {
       const root = workspaceRoots.find((candidate) => pathBelongsToDirectory(path, candidate.path));
@@ -599,6 +599,7 @@ const Layout: React.FC = () => {
         if (!isDirty) await documentSession.openDocument(path);
         return;
       }
+      if (root) return;
       await handleOpenDocument(path);
     })();
   };

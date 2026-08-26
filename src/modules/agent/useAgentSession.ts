@@ -55,24 +55,31 @@ function rebuildPendingEdits(items: AgentItem[]): Map<string, string> {
 }
 
 function repairInterruptedHistory(history: ChatMessage[]): ChatMessage[] {
-  const repaired = [...history];
-  const unresolved = new Map<string, string>();
-  for (const message of history) {
-    if (message.role === 'assistant') {
-      for (const call of message.tool_calls ?? []) {
-        unresolved.set(call.id, call.function.name);
-      }
-    } else if (message.role === 'tool') {
-      unresolved.delete(message.tool_call_id);
+  const repaired: ChatMessage[] = [];
+  for (let index = 0; index < history.length; index += 1) {
+    const message = history[index];
+    if (message.role === 'tool') continue;
+
+    repaired.push(message);
+    if (message.role !== 'assistant' || !message.tool_calls?.length) continue;
+
+    const responses = new Map<string, ChatMessage & { role: 'tool' }>();
+    while (history[index + 1]?.role === 'tool') {
+      const response = history[index + 1] as ChatMessage & { role: 'tool' };
+      if (!responses.has(response.tool_call_id)) responses.set(response.tool_call_id, response);
+      index += 1;
     }
-  }
-  for (const [toolCallId, name] of unresolved) {
-    repaired.push({
-      role: 'tool',
-      tool_call_id: toolCallId,
-      name,
-      content: 'Error: tool call interrupted before completion.',
-    });
+
+    for (const call of message.tool_calls) {
+      repaired.push(
+        responses.get(call.id) ?? {
+          role: 'tool',
+          tool_call_id: call.id,
+          name: call.function.name,
+          content: 'Error: tool call interrupted before completion.',
+        },
+      );
+    }
   }
   return repaired;
 }
@@ -212,6 +219,7 @@ export function useAgentSession({
     setStatus('running');
     const initialDocument = getDocumentRef.current();
 
+    historyRef.current = repairInterruptedHistory(historyRef.current);
     historyRef.current.push({ role: 'user', content: trimmed });
     const userItem: AgentItem = { id: nextId('user'), role: 'user', content: trimmed };
     const assistantId = nextId('assistant');
