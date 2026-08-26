@@ -115,6 +115,97 @@ fn reads_a_file_within_the_working_directory() {
 }
 
 #[test]
+fn searches_file_names_and_text_with_line_context() {
+    let directory = tempfile::tempdir().expect("temporary directory");
+    fs::create_dir(directory.path().join("notes")).expect("notes directory");
+    fs::write(
+        directory.path().join("notes/alpha.md"),
+        "first\nKnowledge Agent\nthird",
+    )
+    .expect("seed note");
+    let mut document = String::new();
+
+    let files = execute_tool(
+        "search_files",
+        r#"{"query":"*alpha.md"}"#,
+        &mut document,
+        Some(directory.path()),
+    )
+    .expect("file search");
+    let files: serde_json::Value = serde_json::from_str(&files).expect("search JSON");
+    assert_eq!(files["matches"][0]["path"], "notes/alpha.md");
+
+    let matches = execute_tool(
+        "grep_text",
+        r#"{"query":"knowledge agent","context_lines":1}"#,
+        &mut document,
+        Some(directory.path()),
+    )
+    .expect("text search");
+    let matches: serde_json::Value = serde_json::from_str(&matches).expect("grep JSON");
+    assert_eq!(matches["matches"][0]["line"], 2);
+    assert_eq!(
+        matches["matches"][0]["context"].as_array().unwrap().len(),
+        2
+    );
+}
+
+#[test]
+fn applies_a_validated_patch_and_rejects_bad_context() {
+    let directory = tempfile::tempdir().expect("temporary directory");
+    let path = directory.path().join("note.md");
+    fs::write(&path, "# Title\nold line\nend\n").expect("seed note");
+    let mut document = String::new();
+    let patch =
+        "--- a/note.md\n+++ b/note.md\n@@ -1,3 +1,3 @@\n # Title\n-old line\n+new line\n end";
+    execute_tool(
+        "apply_patch",
+        &json!({ "patch": patch }).to_string(),
+        &mut document,
+        Some(directory.path()),
+    )
+    .expect("apply patch");
+    assert_eq!(
+        fs::read_to_string(&path).unwrap(),
+        "# Title\nnew line\nend\n"
+    );
+
+    let bad = "--- a/note.md\n+++ b/note.md\n@@ -1,2 +1,2 @@\n # Missing\n-new line\n+other";
+    assert!(execute_tool(
+        "apply_patch",
+        &json!({ "patch": bad }).to_string(),
+        &mut document,
+        Some(directory.path())
+    )
+    .is_err());
+    assert_eq!(
+        fs::read_to_string(&path).unwrap(),
+        "# Title\nnew line\nend\n"
+    );
+}
+
+#[test]
+fn markdown_verification_reports_broken_references() {
+    let directory = tempfile::tempdir().expect("temporary directory");
+    fs::write(
+        directory.path().join("index.md"),
+        "# Index\n\n[Missing](missing.md)\n",
+    )
+    .expect("seed index");
+    let mut document = String::new();
+    let report = execute_tool(
+        "check_markdown",
+        "{}",
+        &mut document,
+        Some(directory.path()),
+    )
+    .expect("verify markdown");
+    let report: serde_json::Value = serde_json::from_str(&report).expect("report JSON");
+    assert_eq!(report["ok"], false);
+    assert_eq!(report["findings"][0]["code"], "broken-reference");
+}
+
+#[test]
 fn reads_multiple_files_in_one_tool_call() {
     let directory = tempfile::tempdir().expect("temporary directory");
     fs::write(directory.path().join("a.md"), "# alpha").expect("seed a.md");

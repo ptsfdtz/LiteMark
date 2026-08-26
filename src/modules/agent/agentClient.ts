@@ -51,3 +51,11 @@ export async function resolveAgentPermission(requestId: number, allow: boolean):
 export async function cancelAgentTurn(runId: string): Promise<void> {
   await invoke('cancel_agent_turn', { runId });
 }
+
+export async function acceptAgentCheckpoint(checkpointId: string): Promise<void> {
+  await invoke('accept_agent_checkpoint', { checkpointId });
+}
+
+export async function revertAgentCheckpoint(checkpointId: string): Promise<string[]> {
+  return invoke<string[]>('revert_agent_checkpoint', { checkpointId });
+}

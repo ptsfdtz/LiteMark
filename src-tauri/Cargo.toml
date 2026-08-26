@@ -23,6 +23,7 @@ reqwest = { version = "0.12.23", default-features = false, features = ["json", "
 futures-util = "0.3"
 tokio = { version = "1", features = ["sync", "time"] }
 tempfile = "3"
+regex = "1"
 tauri-plugin-opener = "=2.5.3"
 tauri-plugin-single-instance = "=2.3.0"
 tauri-plugin-updater = "=2.9.0"

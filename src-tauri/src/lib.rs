@@ -209,7 +209,9 @@ pub fn run() {
             agent_completion::request_agent_completion,
             agent::commands::run_agent_turn,
             agent::commands::cancel_agent_turn,
-            agent::commands::resolve_agent_permission
+            agent::commands::resolve_agent_permission,
+            agent::commands::accept_agent_checkpoint,
+            agent::commands::revert_agent_checkpoint
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

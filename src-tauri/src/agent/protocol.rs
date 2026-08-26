@@ -89,8 +89,24 @@ pub enum AgentEvent {
     FileWritten {
         path: String,
     },
+    TaskChanges {
+        checkpoint_id: String,
+        files: Vec<FileChange>,
+        added: usize,
+        removed: usize,
+    },
     PlanUpdated {
         steps: Vec<AgentPlanStep>,
     },
     Done,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct FileChange {
+    pub path: String,
+    pub added: usize,
+    pub removed: usize,
+    pub status: String,
+    pub before: String,
+    pub after: String,
 }

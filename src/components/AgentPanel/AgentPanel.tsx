@@ -12,6 +12,7 @@ import {
   LuCode,
   LuChevronRight,
   LuFiles,
+  LuFileDiff,
   LuHistory,
   LuListChecks,
   LuMessageSquare,
@@ -36,6 +37,7 @@ import type { TranslationKey } from '@/locales/config';
 import type { AgentItem, AgentPlanStep } from '@/modules/agent/types';
 import { useResizablePanel } from '@/hooks/useResizablePanel';
 import ContextMenu from '@/components/ContextMenu/ContextMenu';
+import { diffLines } from '@/modules/agent/diff';
 
 interface AgentPanelProps {
   session: AgentSession;
@@ -67,6 +69,14 @@ const toolNameKeys: Record<string, TranslationKey> = {
   read_files: 'agent.tool.readFiles',
   write_file: 'agent.tool.writeFile',
   write_files: 'agent.tool.writeFiles',
+  search_files: 'agent.tool.searchFiles',
+  grep_text: 'agent.tool.grepText',
+  apply_patch: 'agent.tool.applyPatch',
+  check_markdown: 'agent.tool.checkMarkdown',
+  check_links: 'agent.tool.checkLinks',
+  check_headings: 'agent.tool.checkHeadings',
+  check_duplicate_titles: 'agent.tool.checkDuplicateTitles',
+  check_broken_references: 'agent.tool.checkBrokenReferences',
 };
 
 const SYSTEM_URL_PATTERN = /^(?:https?:\/\/|mailto:|tel:)/i;
@@ -537,7 +547,7 @@ const AgentPanel: React.FC<AgentPanelProps> = ({
 
   const panelWidth = closing || !entered ? 0 : width;
 
-  const { items, status, error, activeRun, send, resume, stop, applyEdit, respondPermission } =
+  const { items, status, error, activeRun, send, resume, stop, applyEdit, resolveTaskChanges, respondPermission } =
     session;
   const running = status === 'running';
   const panelTitle = isConfigured && modelName.trim() ? modelName.trim() : t('agent.title');
@@ -988,6 +998,50 @@ const AgentPanel: React.FC<AgentPanelProps> = ({
                         ))}
                       </pre>
                     </details>
+                  </div>
+                </div>
+              );
+            case 'task-changes':
+              return (
+                <div key={item.id} className={styles.toolRow}>
+                  <div className={styles.taskChangesCard}>
+                    <div className={styles.taskChangesHeader}>
+                      <LuFileDiff aria-hidden="true" />
+                      <strong>{t('agent.changes.filesChanged', { count: item.files.length })}</strong>
+                      <span className={styles.changeAdded}>+{item.added}</span>
+                      <span className={styles.changeRemoved}>-{item.removed}</span>
+                    </div>
+                    <div className={styles.changedFiles}>
+                      {item.files.map((file) => (
+                        <details key={file.path} className={styles.changedFile}>
+                          <summary>
+                            <span title={file.path}>{file.path}</span>
+                            <span className={styles.fileStats}>+{file.added} / -{file.removed}</span>
+                          </summary>
+                          <pre className={styles.diffBlock}>
+                            {diffLines(file.before, file.after).map((line, index) => (
+                              <span key={index} className={styles[`diff-${line.type}`]}>
+                                {line.text || ' '}{'\n'}
+                              </span>
+                            ))}
+                          </pre>
+                        </details>
+                      ))}
+                    </div>
+                    <div className={styles.taskChangeActions}>
+                      {item.resolution === 'pending' ? (
+                        <>
+                          <button className={styles.acceptAllButton} onClick={() => void resolveTaskChanges(item.id, 'accept')}>
+                            <LuCheck aria-hidden="true" />{t('agent.changes.acceptAll')}
+                          </button>
+                          <button className={styles.revertAllButton} onClick={() => void resolveTaskChanges(item.id, 'revert')}>
+                            <LuRotateCcw aria-hidden="true" />{t('agent.changes.revertAll')}
+                          </button>
+                        </>
+                      ) : (
+                        <span className={styles.changeResolution}>{t(item.resolution === 'accepted' ? 'agent.changes.accepted' : 'agent.changes.reverted')}</span>
+                      )}
+                    </div>
                   </div>
                 </div>
               );

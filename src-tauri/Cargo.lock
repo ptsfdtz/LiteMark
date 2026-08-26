@@ -2108,6 +2108,7 @@ name = "litemark"
 version = "2.1.9"
 dependencies = [
  "futures-util",
+ "regex",
  "reqwest",
  "rustix",
  "serde",

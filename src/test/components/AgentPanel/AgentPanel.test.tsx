@@ -13,11 +13,47 @@ const session: AgentSession = {
   resume: vi.fn(async () => undefined),
   stop: vi.fn(),
   clear: vi.fn(),
-  applyEdit: vi.fn(),
-  respondPermission: vi.fn(),
+      applyEdit: vi.fn(),
+      resolveTaskChanges: vi.fn(async () => undefined),
+      respondPermission: vi.fn(),
 };
 
 describe('AgentPanel conversations', () => {
+  it('shows task-level file stats and resolves all changes together', async () => {
+    window.localStorage.setItem('litemark.locale', 'en');
+    const user = userEvent.setup();
+    const resolveTaskChanges = vi.fn(async () => undefined);
+    render(
+      <I18nProvider>
+        <AgentPanel
+          session={{
+            ...session,
+            resolveTaskChanges,
+            items: [{
+              id: 'changes-1', role: 'task-changes', checkpointId: 'run-1', added: 2, removed: 1, resolution: 'pending',
+              files: [{ path: 'notes/a.md', status: 'modified', added: 2, removed: 1, before: '# Old', after: '# New\nBody' }],
+            }],
+          }}
+          conversations={[]}
+          activeConversationId="first"
+          scopeKind="project"
+          onCreateConversation={vi.fn()}
+          onSelectConversation={vi.fn()}
+          onRenameConversation={vi.fn()}
+          onDeleteConversation={vi.fn()}
+          isConfigured
+          modelName="gpt-4o-mini"
+          onClose={vi.fn()}
+        />
+      </I18nProvider>,
+    );
+    await user.click(screen.getByRole('button', { name: 'Start a new chat' }));
+    expect(screen.getByText('1 files changed')).toBeVisible();
+    expect(screen.getByText('notes/a.md')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Revert all' }));
+    expect(resolveTaskChanges).toHaveBeenCalledWith('changes-1', 'revert');
+  });
+
   it('groups completed file write approvals and results', async () => {
     window.localStorage.setItem('litemark.locale', 'en');
     const firstArgs = '{"path":"notes/a.md","content":"alpha"}';

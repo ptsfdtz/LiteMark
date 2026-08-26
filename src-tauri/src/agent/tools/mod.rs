@@ -1,5 +1,8 @@
 mod document;
 pub(crate) mod filesystem;
+pub(crate) mod patch;
+mod search;
+mod verification;
 
 use serde_json::{json, Value};
 use std::path::Path;
@@ -10,6 +13,39 @@ pub(crate) const MAX_BATCH_WRITE_FILES: usize = 20;
 
 pub(crate) fn tool_definitions() -> Value {
     json!([
+        {
+            "type": "function",
+            "function": {
+                "name": "search_files",
+                "description": "Search workspace text files by file name or relative path. Use this before broad directory listing and reading.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": { "type": "string", "description": "Case-insensitive name/path query. Supports * and ? wildcards." },
+                        "limit": { "type": "integer", "minimum": 1, "maximum": 200 }
+                    },
+                    "required": ["query"], "additionalProperties": false
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "grep_text",
+                "description": "Search Markdown/text content across the workspace and return paths, line numbers, and compact context. Prefer this over reading many files to find relevant content.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": { "type": "string" },
+                        "path": { "type": "string", "description": "Optional workspace-relative directory or file scope." },
+                        "case_sensitive": { "type": "boolean" },
+                        "context_lines": { "type": "integer", "minimum": 0, "maximum": 5 },
+                        "limit": { "type": "integer", "minimum": 1, "maximum": 200 }
+                    },
+                    "required": ["query"], "additionalProperties": false
+                }
+            }
+        },
         {
             "type": "function",
             "function": {
@@ -36,6 +72,62 @@ pub(crate) fn tool_definitions() -> Value {
                     "required": ["steps"],
                     "additionalProperties": false
                 }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "apply_patch",
+                "description": "Apply a validated unified diff to one or more Markdown/text files in the workspace. Include file headers (--- a/path and +++ b/path) and exact context. After applying, the tool re-reads changed regions and reports them.",
+                "parameters": {
+                    "type": "object",
+                    "properties": { "patch": { "type": "string", "description": "Unified diff text." } },
+                    "required": ["patch"], "additionalProperties": false
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "check_markdown",
+                "description": "Run workspace Markdown verification: malformed links, heading hierarchy, duplicate top-level titles, and broken local references. Returns structured findings; fix errors and verify again before finishing.",
+                "parameters": {
+                    "type": "object",
+                    "properties": { "paths": { "type": "array", "items": { "type": "string" }, "maxItems": 50 } },
+                    "additionalProperties": false
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "check_links",
+                "description": "Check Markdown links and local reference targets in workspace files.",
+                "parameters": { "type": "object", "properties": { "paths": { "type": "array", "items": { "type": "string" }, "maxItems": 50 } }, "additionalProperties": false }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "check_headings",
+                "description": "Check heading hierarchy and duplicate headings in workspace Markdown files.",
+                "parameters": { "type": "object", "properties": { "paths": { "type": "array", "items": { "type": "string" }, "maxItems": 50 } }, "additionalProperties": false }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "check_duplicate_titles",
+                "description": "Find duplicate top-level Markdown titles across workspace files.",
+                "parameters": { "type": "object", "properties": { "paths": { "type": "array", "items": { "type": "string" }, "maxItems": 50 } }, "additionalProperties": false }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "check_broken_references",
+                "description": "Find local Markdown links whose files or heading anchors do not exist.",
+                "parameters": { "type": "object", "properties": { "paths": { "type": "array", "items": { "type": "string" }, "maxItems": 50 } }, "additionalProperties": false }
             }
         },
         {
@@ -184,6 +276,24 @@ pub(crate) fn execute_tool(
         "list_documents" => filesystem::list(work_dir),
         "read_file" => filesystem::read(arguments, work_dir),
         "read_files" => filesystem::read_many(arguments, work_dir),
+        "search_files" => search::search_files(arguments, work_dir),
+        "grep_text" => search::grep_text(arguments, work_dir),
+        "apply_patch" => patch::apply(arguments, work_dir),
+        "check_markdown" => verification::check(arguments, work_dir, verification::CheckKind::All),
+        "check_links" => verification::check(arguments, work_dir, verification::CheckKind::Links),
+        "check_headings" => {
+            verification::check(arguments, work_dir, verification::CheckKind::Headings)
+        }
+        "check_duplicate_titles" => verification::check(
+            arguments,
+            work_dir,
+            verification::CheckKind::DuplicateTitles,
+        ),
+        "check_broken_references" => verification::check(
+            arguments,
+            work_dir,
+            verification::CheckKind::BrokenReferences,
+        ),
         "write_file" => filesystem::write(arguments, work_dir),
         "write_files" => filesystem::write_many(arguments, work_dir),
         _ => Err(format!("unknown tool: {name}")),

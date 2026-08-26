@@ -10,11 +10,13 @@ use super::permissions::{discard_permission_request, register_permission_request
 use super::planner::{plan_is_complete, validate_plan, UpdatePlanArgs};
 use super::prompt::AGENT_SYSTEM_PROMPT;
 use super::protocol::{AgentEvent, ChatMessage, PlanStepStatus};
+use super::repository::ensure_no_pending_checkpoint;
 use super::state_machine::AgentRunState;
 use super::tools::execute_tool;
 use super::tools::filesystem::{
     resolve_work_path, resolve_work_path_for_write, WriteFileArgs, WriteFilesArgs,
 };
+use super::tools::patch;
 use super::validator::{normalize_tool_call_ids, record_tool_failure};
 use crate::agent_completion::validate_endpoint;
 
@@ -171,6 +173,14 @@ pub(crate) async fn run_agent_turn(request: AgentRunRequest) -> Result<(), Strin
             .map_err(|error| error.to_string())?;
 
         if completion.tool_calls.is_empty() {
+            if state.verification_required {
+                thread.push(json!({ "role": "assistant", "content": completion.text }));
+                thread.push(json!({
+                    "role": "system",
+                    "content": "Workspace changes have not passed final verification. Call check_markdown now. If it reports errors, fix them and run check_markdown again before finishing."
+                }));
+                continue;
+            }
             if state.plan.is_empty() || plan_is_complete(&state.plan) {
                 state.completed = true;
                 break;
@@ -264,7 +274,11 @@ pub(crate) async fn run_agent_turn(request: AgentRunRequest) -> Result<(), Strin
             let requires_approval = confirm_writes
                 && matches!(
                     call.function.name.as_str(),
-                    "rewrite_document" | "replace_in_document" | "write_file" | "write_files"
+                    "rewrite_document"
+                        | "replace_in_document"
+                        | "write_file"
+                        | "write_files"
+                        | "apply_patch"
                 );
             if requires_approval {
                 let (request_id, receiver) = register_permission_request();
@@ -307,10 +321,15 @@ pub(crate) async fn run_agent_turn(request: AgentRunRequest) -> Result<(), Strin
 
             let is_write = matches!(
                 call.function.name.as_str(),
-                "rewrite_document" | "replace_in_document" | "write_file" | "write_files"
+                "rewrite_document"
+                    | "replace_in_document"
+                    | "write_file"
+                    | "write_files"
+                    | "apply_patch"
             );
             if is_write && state.workspace_write_guard.is_none() {
                 if let Some(directory) = work_dir_path.as_deref() {
+                    ensure_no_pending_checkpoint(directory)?;
                     state.workspace_write_guard =
                         Some(WorkspaceWriteGuard::acquire(directory, &run_id)?);
                 }
@@ -340,6 +359,13 @@ pub(crate) async fn run_agent_turn(request: AgentRunRequest) -> Result<(), Strin
                     .ok_or_else(|| "no working directory is set".to_string())?;
                 for file in args.files {
                     let path = resolve_work_path_for_write(directory, &file.path)?;
+                    state.write_journal.capture(&path)?;
+                }
+            } else if call.function.name == "apply_patch" {
+                let directory = work_dir_path
+                    .as_deref()
+                    .ok_or_else(|| "no working directory is set".to_string())?;
+                for path in patch::target_paths(&call.function.arguments, directory)? {
                     state.write_journal.capture(&path)?;
                 }
             }
@@ -372,6 +398,17 @@ pub(crate) async fn run_agent_turn(request: AgentRunRequest) -> Result<(), Strin
 
             match tool_result {
                 Ok(result) => {
+                    if is_write {
+                        state.verification_required = true;
+                    } else if call.function.name == "check_markdown" {
+                        let passed = serde_json::from_str::<Value>(&result)
+                            .ok()
+                            .and_then(|value| value.get("ok").and_then(Value::as_bool))
+                            .unwrap_or(false);
+                        if passed {
+                            state.verification_required = false;
+                        }
+                    }
                     on_event
                         .send(AgentEvent::ToolCallEnd {
                             id: call.id.clone(),
@@ -410,6 +447,20 @@ pub(crate) async fn run_agent_turn(request: AgentRunRequest) -> Result<(), Strin
                                 }
                             }
                         }
+                    } else if call.function.name == "apply_patch" {
+                        if let Some(directory) = work_dir_path.as_deref() {
+                            if let Ok(paths) =
+                                patch::target_paths(&call.function.arguments, directory)
+                            {
+                                for path in paths {
+                                    on_event
+                                        .send(AgentEvent::FileWritten {
+                                            path: path.to_string_lossy().to_string(),
+                                        })
+                                        .map_err(|error| error.to_string())?;
+                                }
+                            }
+                        }
                     }
                     thread.push(json!({
                         "role": "tool",
@@ -443,14 +494,32 @@ pub(crate) async fn run_agent_turn(request: AgentRunRequest) -> Result<(), Strin
         ));
     }
 
-    on_event
-        .send(AgentEvent::Done)
-        .map_err(|error| error.to_string())?;
     if document != original_document {
         on_event
             .send(AgentEvent::Edit { content: document })
             .map_err(|error| error.to_string())?;
     }
-    state.write_journal.commit();
+    if let Some(directory) = work_dir_path.as_deref() {
+        let checkpoint_id = run_id.clone();
+        let changes = std::mem::take(&mut state.write_journal)
+            .checkpoint(checkpoint_id.clone(), directory)?;
+        if !changes.is_empty() {
+            let added = changes.iter().map(|change| change.added).sum();
+            let removed = changes.iter().map(|change| change.removed).sum();
+            on_event
+                .send(AgentEvent::TaskChanges {
+                    checkpoint_id,
+                    files: changes,
+                    added,
+                    removed,
+                })
+                .map_err(|error| error.to_string())?;
+        }
+    } else {
+        state.write_journal.commit();
+    }
+    on_event
+        .send(AgentEvent::Done)
+        .map_err(|error| error.to_string())?;
     Ok(())
 }

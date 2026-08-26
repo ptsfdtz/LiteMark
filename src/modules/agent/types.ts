@@ -19,6 +19,7 @@ export type AgentEvent =
   | { type: 'assistant_message'; content: string; tool_calls: ToolCall[] }
   | { type: 'edit'; content: string }
   | { type: 'file_written'; path: string }
+  | { type: 'task_changes'; checkpoint_id: string; files: FileChange[]; added: number; removed: number }
   | { type: 'plan_updated'; steps: AgentPlanStep[] }
   | { type: 'done' };
 
@@ -38,6 +39,15 @@ export interface DiffSummary {
 export interface DiffLine {
   type: 'context' | 'add' | 'remove';
   text: string;
+}
+
+export interface FileChange {
+  path: string;
+  added: number;
+  removed: number;
+  status: 'created' | 'modified' | 'deleted';
+  before: string;
+  after: string;
 }
 
 export type AgentItem =
@@ -61,6 +71,15 @@ export type AgentItem =
       diff: DiffLine[];
       content: string;
       applied: boolean;
+    }
+  | {
+      id: string;
+      role: 'task-changes';
+      checkpointId: string;
+      files: FileChange[];
+      added: number;
+      removed: number;
+      resolution: 'pending' | 'accepted' | 'reverted';
     };
 
 export type AgentStatus = 'idle' | 'running';

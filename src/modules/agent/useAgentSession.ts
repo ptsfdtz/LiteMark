@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AgentSettings } from '@/types/agent';
-import { cancelAgentTurn, resolveAgentPermission, runAgentTurn } from './agentClient';
+import { acceptAgentCheckpoint, cancelAgentTurn, resolveAgentPermission, revertAgentCheckpoint, runAgentTurn } from './agentClient';
 import { loadAgentSession, saveAgentSession } from './agentSessionStore';
 import { diffLines, summarizeDiff } from './diff';
 import type { AgentEvent, AgentItem, AgentStatus, ChatMessage, PersistedAgentRun } from './types';
@@ -30,6 +30,7 @@ export interface AgentSession {
   stop: () => void;
   clear: () => void;
   applyEdit: (id: string) => void;
+  resolveTaskChanges: (id: string, action: 'accept' | 'revert') => Promise<void>;
   respondPermission: (requestId: number, allow: boolean, remember?: boolean) => void;
 }
 
@@ -378,6 +379,20 @@ export function useAgentSession({
         case 'file_written':
           onFileWrittenRef.current?.(event.path);
           break;
+        case 'task_changes':
+          setItems((current) => [
+            ...current,
+            {
+              id: nextId('task-changes'),
+              role: 'task-changes',
+              checkpointId: event.checkpoint_id,
+              files: event.files,
+              added: event.added,
+              removed: event.removed,
+              resolution: 'pending',
+            },
+          ]);
+          break;
         case 'plan_updated':
           if (activeRunRef.current) {
             activeRunRef.current = {
@@ -513,6 +528,22 @@ export function useAgentSession({
     );
   }, []);
 
+  const resolveTaskChanges = useCallback(async (id: string, action: 'accept' | 'revert') => {
+    const item = itemsRef.current.find((candidate) => candidate.id === id && candidate.role === 'task-changes');
+    if (!item || item.role !== 'task-changes' || item.resolution !== 'pending') return;
+    try {
+      if (action === 'accept') await acceptAgentCheckpoint(item.checkpointId);
+      else {
+        const restored = await revertAgentCheckpoint(item.checkpointId);
+        restored.forEach((path) => onFileWrittenRef.current?.(path));
+      }
+      setItems((current) => current.map((candidate) => candidate.id === id && candidate.role === 'task-changes' ? { ...candidate, resolution: action === 'accept' ? 'accepted' : 'reverted' } : candidate));
+      setError(null);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    }
+  }, []);
+
   return {
     items,
     status,
@@ -523,6 +554,7 @@ export function useAgentSession({
     stop,
     clear,
     applyEdit,
+    resolveTaskChanges,
     respondPermission,
   };
 }

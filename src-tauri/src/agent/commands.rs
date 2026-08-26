@@ -3,6 +3,7 @@ use tauri::ipc::Channel;
 use super::cancellation::cancel_run;
 use super::permissions::resolve_permission;
 use super::protocol::{AgentEvent, ChatMessage};
+use super::repository::{accept_checkpoint, revert_checkpoint};
 use super::run;
 
 #[allow(clippy::too_many_arguments)]
@@ -48,4 +49,14 @@ pub async fn cancel_agent_turn(run_id: String) -> Result<(), String> {
 #[tauri::command]
 pub fn resolve_agent_permission(request_id: u64, allow: bool) -> Result<(), String> {
     resolve_permission(request_id, allow)
+}
+
+#[tauri::command]
+pub fn accept_agent_checkpoint(checkpoint_id: String) -> Result<(), String> {
+    accept_checkpoint(&checkpoint_id)
+}
+
+#[tauri::command]
+pub fn revert_agent_checkpoint(checkpoint_id: String) -> Result<Vec<String>, String> {
+    revert_checkpoint(&checkpoint_id)
 }

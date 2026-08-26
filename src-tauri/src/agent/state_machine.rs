@@ -11,6 +11,7 @@ pub(crate) struct AgentRunState {
     pub(crate) completed_calls: HashMap<String, (String, String)>,
     pub(crate) workspace_write_guard: Option<WorkspaceWriteGuard>,
     pub(crate) write_journal: WriteJournal,
+    pub(crate) verification_required: bool,
 }
 
 impl AgentRunState {
@@ -22,6 +23,7 @@ impl AgentRunState {
             completed_calls: HashMap::new(),
             workspace_write_guard: None,
             write_journal: WriteJournal::default(),
+            verification_required: false,
         }
     }
 

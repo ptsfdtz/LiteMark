@@ -76,6 +76,28 @@ pub(crate) fn resolve_work_path(work_dir: &Path, requested: &str) -> Result<Path
     Ok(canonical_candidate)
 }
 
+pub(crate) fn resolve_workspace_scope(work_dir: &Path, requested: &str) -> Result<PathBuf, String> {
+    if requested.trim().is_empty() {
+        return Err("path must not be empty.".to_string());
+    }
+    let requested = Path::new(requested);
+    let candidate = if requested.is_absolute() {
+        requested.to_path_buf()
+    } else {
+        work_dir.join(requested)
+    };
+    let root = work_dir
+        .canonicalize()
+        .map_err(|e| format!("cannot resolve the working directory: {e}"))?;
+    let resolved = candidate
+        .canonicalize()
+        .map_err(|_| format!("path not found: {}", requested.display()))?;
+    if !resolved.starts_with(root) {
+        return Err("path is outside the working directory.".into());
+    }
+    Ok(resolved)
+}
+
 pub(crate) fn resolve_work_path_for_write(
     work_dir: &Path,
     requested: &str,
@@ -279,8 +301,7 @@ pub(super) fn write_many(arguments: &str, work_dir: Option<&Path>) -> Result<Str
         })
         .collect::<Result<Vec<_>, String>>()?;
 
-    let mut written_count = 0;
-    for (file, path) in &targets {
+    for (written_count, (file, path)) in targets.iter().enumerate() {
         if let Err(error) = crate::document_storage::atomic_write_text_file(path, &file.content) {
             for ((_, written_path), original) in targets.iter().zip(&originals).take(written_count)
             {
@@ -296,7 +317,6 @@ pub(super) fn write_many(arguments: &str, work_dir: Option<&Path>) -> Result<Str
             }
             return Err(error.to_string());
         }
-        written_count += 1;
     }
 
     let files = targets
