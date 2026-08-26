@@ -4,16 +4,21 @@ import styles from './Settings.module.css';
 import { SettingsProps } from '@/types/settings';
 import { open } from '@tauri-apps/plugin-dialog';
 import {
+  LuCheck,
+  LuChevronDown,
   LuEye,
   LuEyeOff,
   LuFolderOpen,
   LuMonitor,
   LuMoon,
+  LuPlus,
   LuSettings,
   LuSun,
+  LuTrash2,
   LuX,
 } from 'react-icons/lu';
 import { useI18n } from '@/locales/useI18n';
+import { getActiveAgentProfile, type AgentProfile } from '@/types/agent';
 
 const Settings: React.FC<SettingsProps> = ({
   theme,
@@ -40,14 +45,14 @@ const Settings: React.FC<SettingsProps> = ({
   const modalRef = useRef<HTMLDivElement | null>(null);
   const [isOpenLocal, setIsOpenLocal] = useState<boolean>(false);
   const [showApiKey, setShowApiKey] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const profileMenuRef = useRef<HTMLDivElement | null>(null);
 
   const updateAgentSettings = (
     key:
       | 'panelVisible'
       | 'enabled'
-      | 'endpoint'
-      | 'model'
-      | 'apiKey'
+      | 'activeProfileId'
       | 'instructions'
       | 'maxSteps'
       | 'autoApply'
@@ -55,6 +60,59 @@ const Settings: React.FC<SettingsProps> = ({
     value: boolean | string | number,
   ) => {
     setAgentSettings({ ...agentSettings, [key]: value });
+  };
+
+  const activeProfile = getActiveAgentProfile(agentSettings);
+  const updateActiveProfile = (changes: Partial<Omit<AgentProfile, 'id'>>) => {
+    setAgentSettings({
+      ...agentSettings,
+      profiles: agentSettings.profiles.map((profile) =>
+        profile.id === activeProfile.id ? { ...profile, ...changes } : profile,
+      ),
+    });
+  };
+  const addProfile = () => {
+    const id =
+      typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : `profile-${Date.now()}`;
+    const profile: AgentProfile = {
+      id,
+      name: t('settings.agentNewProfile'),
+      endpoint: activeProfile.endpoint,
+      model: '',
+      apiKey: activeProfile.apiKey,
+    };
+    setShowApiKey(false);
+    setAgentSettings({
+      ...agentSettings,
+      profiles: [...agentSettings.profiles, profile],
+      activeProfileId: id,
+    });
+  };
+  const deleteActiveProfile = () => {
+    if (agentSettings.profiles.length <= 1) return;
+    if (!window.confirm(t('settings.agentDeleteProfileConfirm', { name: activeProfile.name }))) {
+      return;
+    }
+    const profiles = agentSettings.profiles.filter((profile) => profile.id !== activeProfile.id);
+    setShowApiKey(false);
+    setAgentSettings({ ...agentSettings, profiles, activeProfileId: profiles[0].id });
+  };
+
+  useEffect(() => {
+    if (!profileMenuOpen) return;
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      if (!profileMenuRef.current?.contains(event.target as Node)) setProfileMenuOpen(false);
+    };
+    window.addEventListener('pointerdown', closeOnOutsideClick);
+    return () => window.removeEventListener('pointerdown', closeOnOutsideClick);
+  }, [profileMenuOpen]);
+
+  const selectProfile = (profileId: string) => {
+    setShowApiKey(false);
+    setProfileMenuOpen(false);
+    updateAgentSettings('activeProfileId', profileId);
   };
 
   useEffect(() => {
@@ -287,6 +345,99 @@ const Settings: React.FC<SettingsProps> = ({
             </label>
           </div>
           <div className={styles.agentFields}>
+            <label className={styles.fieldLabel} htmlFor="agentProfile">
+              {t('settings.agentProfile')}
+            </label>
+            <div className={styles.profileSelectorRow}>
+              <div className={styles.profileSelectControl} ref={profileMenuRef}>
+                <button
+                  id="agentProfile"
+                  type="button"
+                  className={`${styles.profileSelectButton} ${profileMenuOpen ? styles.profileSelectButtonOpen : ''}`}
+                  aria-haspopup="listbox"
+                  aria-expanded={profileMenuOpen}
+                  onClick={() => setProfileMenuOpen((open) => !open)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Escape') setProfileMenuOpen(false);
+                    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                      event.preventDefault();
+                      setProfileMenuOpen(true);
+                    }
+                  }}
+                >
+                  <span>{activeProfile.name || activeProfile.model || t('settings.agentUnnamedProfile')}</span>
+                  <LuChevronDown aria-hidden="true" />
+                </button>
+                {profileMenuOpen && (
+                  <div
+                    className={styles.profileMenu}
+                    role="listbox"
+                    aria-label={t('settings.agentProfile')}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Escape') {
+                        setProfileMenuOpen(false);
+                        return;
+                      }
+                      if (!['ArrowDown', 'ArrowUp'].includes(event.key)) return;
+                      event.preventDefault();
+                      const options = Array.from(
+                        event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="option"]'),
+                      );
+                      const current = options.indexOf(document.activeElement as HTMLButtonElement);
+                      const offset = event.key === 'ArrowDown' ? 1 : -1;
+                      options[(current + offset + options.length) % options.length]?.focus();
+                    }}
+                  >
+                    {agentSettings.profiles.map((profile) => {
+                      const selected = profile.id === activeProfile.id;
+                      return (
+                        <button
+                          key={profile.id}
+                          type="button"
+                          role="option"
+                          aria-selected={selected}
+                          className={`${styles.profileOption} ${selected ? styles.profileOptionSelected : ''}`}
+                          onClick={() => selectProfile(profile.id)}
+                        >
+                          <span>{profile.name || profile.model || t('settings.agentUnnamedProfile')}</span>
+                          {selected && <LuCheck aria-hidden="true" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                className={styles.profileIconButton}
+                onClick={addProfile}
+                title={t('settings.agentAddProfile')}
+                aria-label={t('settings.agentAddProfile')}
+              >
+                <LuPlus />
+              </button>
+              <button
+                type="button"
+                className={`${styles.profileIconButton} ${styles.profileDeleteButton}`}
+                onClick={deleteActiveProfile}
+                disabled={agentSettings.profiles.length <= 1}
+                title={t('settings.agentDeleteProfile')}
+                aria-label={t('settings.agentDeleteProfile')}
+              >
+                <LuTrash2 />
+              </button>
+            </div>
+            <label className={styles.fieldLabel} htmlFor="agentProfileName">
+              {t('settings.agentProfileName')}
+            </label>
+            <input
+              id="agentProfileName"
+              type="text"
+              value={activeProfile.name}
+              onChange={(event) => updateActiveProfile({ name: event.target.value })}
+              className={styles.textInput}
+              placeholder={t('settings.agentProfileNamePlaceholder')}
+            />
             <label className={styles.fieldLabel} htmlFor="agentEndpoint">
               {t('settings.agentEndpoint')}
             </label>
@@ -294,8 +445,8 @@ const Settings: React.FC<SettingsProps> = ({
               id="agentEndpoint"
               type="url"
               inputMode="url"
-              value={agentSettings.endpoint}
-              onChange={(event) => updateAgentSettings('endpoint', event.target.value)}
+              value={activeProfile.endpoint}
+              onChange={(event) => updateActiveProfile({ endpoint: event.target.value })}
               className={styles.textInput}
               placeholder="https://api.openai.com/v1/chat/completions"
               spellCheck={false}
@@ -306,8 +457,8 @@ const Settings: React.FC<SettingsProps> = ({
             <input
               id="agentModel"
               type="text"
-              value={agentSettings.model}
-              onChange={(event) => updateAgentSettings('model', event.target.value)}
+              value={activeProfile.model}
+              onChange={(event) => updateActiveProfile({ model: event.target.value })}
               className={styles.textInput}
               placeholder="gpt-4o-mini"
               spellCheck={false}
@@ -319,8 +470,8 @@ const Settings: React.FC<SettingsProps> = ({
               <input
                 id="agentApiKey"
                 type={showApiKey ? 'text' : 'password'}
-                value={agentSettings.apiKey}
-                onChange={(event) => updateAgentSettings('apiKey', event.target.value)}
+                value={activeProfile.apiKey}
+                onChange={(event) => updateActiveProfile({ apiKey: event.target.value })}
                 className={styles.textInput}
                 placeholder="sk-…"
                 autoComplete="off"

@@ -35,7 +35,11 @@ function createProvider(): Monaco.languages.InlineCompletionsProvider {
   } as unknown as typeof Monaco;
   registerAgentCompletionProvider(
     monaco,
-    () => ({ ...DEFAULT_AGENT_SETTINGS, enabled: true, apiKey: 'secret' }),
+    () => ({
+      ...DEFAULT_AGENT_SETTINGS,
+      enabled: true,
+      profiles: [{ ...DEFAULT_AGENT_SETTINGS.profiles[0], apiKey: 'secret' }],
+    }),
     0,
   );
   if (!provider) throw new Error('Inline completion provider was not registered');
@@ -112,9 +116,16 @@ describe('agent completion', () => {
     const settings = {
       ...DEFAULT_AGENT_SETTINGS,
       enabled: true,
-      apiKey: '  secret  ',
-      endpoint: '  https://example.com/v1/chat/completions  ',
-      model: '  example-model  ',
+      profiles: [
+        {
+          id: 'custom',
+          name: 'Custom',
+          apiKey: '  secret  ',
+          endpoint: '  https://example.com/v1/chat/completions  ',
+          model: '  example-model  ',
+        },
+      ],
+      activeProfileId: 'custom',
     };
 
     await expect(

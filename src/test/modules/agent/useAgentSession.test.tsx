@@ -29,7 +29,12 @@ vi.mock('@/modules/agent/agentSessionStore', () => ({
 }));
 
 function configuredSettings(overrides: Partial<AgentSettings> = {}): AgentSettings {
-  return { ...DEFAULT_AGENT_SETTINGS, enabled: true, apiKey: 'secret', ...overrides };
+  return {
+    ...DEFAULT_AGENT_SETTINGS,
+    enabled: true,
+    profiles: [{ ...DEFAULT_AGENT_SETTINGS.profiles[0], apiKey: 'secret' }],
+    ...overrides,
+  };
 }
 
 interface RunAgentTurnArgs {

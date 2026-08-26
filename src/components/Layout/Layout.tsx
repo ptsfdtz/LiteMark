@@ -21,7 +21,7 @@ import {
 import { useI18n } from '@/locales/useI18n';
 import { loadTheme, saveTheme } from '@/utils/themeStore';
 import { loadAgentSettings, saveAgentSettings } from '@/utils/agentSettingsStore';
-import { DEFAULT_AGENT_SETTINGS, type AgentSettings } from '@/types/agent';
+import { DEFAULT_AGENT_SETTINGS, getActiveAgentProfile, type AgentSettings } from '@/types/agent';
 import AgentPanel from '@/components/AgentPanel/AgentPanel';
 import FileExplorer, { type FileExplorerRoot } from '@/components/FileExplorer/FileExplorer';
 import { useAgentSession } from '@/modules/agent/useAgentSession';
@@ -328,11 +328,12 @@ const Layout: React.FC = () => {
         activeViewKind !== 'pdf' &&
         activeViewKind !== 'unsupported';
 
+  const activeAgentProfile = getActiveAgentProfile(agentSettings);
   const agentConfigured = Boolean(
     agentSettings.enabled &&
-    agentSettings.endpoint.trim() &&
-    agentSettings.model.trim() &&
-    agentSettings.apiKey.trim(),
+    activeAgentProfile.endpoint.trim() &&
+    activeAgentProfile.model.trim() &&
+    activeAgentProfile.apiKey.trim(),
   );
   const activeWorkspaceDirectory =
     workspaceRoots.find((root) => pathBelongsToDirectory(activeFilePath, root.path))?.path ??
@@ -1381,7 +1382,7 @@ const Layout: React.FC = () => {
                 .run();
             }}
             isConfigured={agentConfigured}
-            modelName={agentSettings.model}
+            modelName={activeAgentProfile.model}
             onClose={() => setAgentSettings({ ...agentSettings, panelVisible: false })}
             closing={!agentSettings.panelVisible}
             onCloseComplete={() => setAgentPanelRendered(false)}

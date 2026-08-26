@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import type * as Monaco from 'monaco-editor/esm/vs/editor/editor.api.js';
-import type { AgentSettings } from '@/types/agent';
+import { getActiveAgentProfile, type AgentSettings } from '@/types/agent';
 
 const PREFIX_LIMIT = 6000;
 const SUFFIX_LIMIT = 1500;
@@ -55,21 +55,23 @@ export async function requestAgentCompletion(
   settings: AgentSettings,
   context: CompletionContext,
 ): Promise<string> {
+  const profile = getActiveAgentProfile(settings);
   return await invoke<string>('request_agent_completion', {
-    endpoint: settings.endpoint.trim(),
-    apiKey: settings.apiKey.trim(),
-    model: settings.model.trim(),
+    endpoint: profile.endpoint.trim(),
+    apiKey: profile.apiKey.trim(),
+    model: profile.model.trim(),
     prefix: context.prefix,
     suffix: context.suffix,
   });
 }
 
 function isConfigured(settings: AgentSettings): boolean {
+  const profile = getActiveAgentProfile(settings);
   return (
     settings.enabled &&
-    settings.endpoint.trim().length > 0 &&
-    settings.model.trim().length > 0 &&
-    settings.apiKey.trim().length > 0
+    profile.endpoint.trim().length > 0 &&
+    profile.model.trim().length > 0 &&
+    profile.apiKey.trim().length > 0
   );
 }
 

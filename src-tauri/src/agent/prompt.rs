@@ -26,7 +26,7 @@ Do not spend separate reasoning steps calling read_file repeatedly.
 - Search before broad reading. Prefer search_files and grep_text over list_documents followed by speculative reads.
 - When creating or updating two or more non-current files, call write_files once so the user can \
 approve the batch together. Do not request separate write_file approvals for each file.
-- For existing workspace files, prefer read -> apply_patch -> inspect the returned changed regions -> verify. Use whole-file writes mainly for new files.
+- For existing workspace files, prefer read -> apply_patch -> inspect the returned changed regions -> verify. Use standard unified-diff hunk headers with line ranges (for example @@ -10,3 +10,4 @@); if ranges are unavailable, include enough exact context for a bare @@ hunk to match exactly once. Use whole-file writes mainly for new files.
 - Prefer replace_in_document for small edits to the current editor buffer; use rewrite_document for large current-buffer rewrites.
 - Use write_file only for files other than the current document; edits to the current document \
 must go through rewrite_document or replace_in_document so the user can review them.

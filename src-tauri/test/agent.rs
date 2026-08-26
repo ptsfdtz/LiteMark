@@ -185,6 +185,51 @@ fn applies_a_validated_patch_and_rejects_bad_context() {
 }
 
 #[test]
+fn applies_bare_hunks_only_when_context_is_unique() {
+    let directory = tempfile::tempdir().expect("temporary directory");
+    let path = directory.path().join("outline.md");
+    fs::write(&path, "# Outline\n\n## Old section\nold text\n\n## End\n").expect("seed outline");
+    let mut document = String::new();
+    let patch = "--- a/outline.md\n+++ b/outline.md\n@@\n ## Old section\n-old text\n+new text\n@@\n-## End\n+## New end";
+    execute_tool(
+        "apply_patch",
+        &json!({ "patch": patch }).to_string(),
+        &mut document,
+        Some(directory.path()),
+    )
+    .expect("apply uniquely located bare hunk");
+    assert_eq!(
+        fs::read_to_string(&path).unwrap(),
+        "# Outline\n\n## Old section\nnew text\n\n## New end\n"
+    );
+
+    fs::write(&path, "repeat\nold\nrepeat\nold\n").expect("seed ambiguous outline");
+    let ambiguous = "--- a/outline.md\n+++ b/outline.md\n@@\n repeat\n-old\n+new";
+    let error = execute_tool(
+        "apply_patch",
+        &json!({ "patch": ambiguous }).to_string(),
+        &mut document,
+        Some(directory.path()),
+    )
+    .expect_err("reject ambiguous bare hunk");
+    assert!(error.contains("ambiguous"));
+
+    let missing = "--- a/outline.md\n+++ b/outline.md\n@@\n-missing\n+new";
+    let error = execute_tool(
+        "apply_patch",
+        &json!({ "patch": missing }).to_string(),
+        &mut document,
+        Some(directory.path()),
+    )
+    .expect_err("reject missing bare hunk context");
+    assert!(error.contains("not found"));
+    assert_eq!(
+        fs::read_to_string(&path).unwrap(),
+        "repeat\nold\nrepeat\nold\n"
+    );
+}
+
+#[test]
 fn markdown_verification_reports_broken_references() {
     let directory = tempfile::tempdir().expect("temporary directory");
     fs::write(

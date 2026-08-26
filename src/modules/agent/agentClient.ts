@@ -1,5 +1,6 @@
 import { invoke, Channel } from '@tauri-apps/api/core';
 import type { AgentSettings } from '@/types/agent';
+import { getActiveAgentProfile } from '@/types/agent';
 import type { AgentEvent, ChatMessage } from './types';
 
 export interface RunAgentTurnParams {
@@ -25,13 +26,14 @@ export async function runAgentTurn({
   onEvent,
   runId,
 }: RunAgentTurnParams): Promise<void> {
+  const profile = getActiveAgentProfile(settings);
   const channel = new Channel<AgentEvent>();
   channel.onmessage = onEvent;
   await invoke('run_agent_turn', {
     runId,
-    endpoint: settings.endpoint.trim(),
-    apiKey: settings.apiKey.trim(),
-    model: settings.model.trim(),
+    endpoint: profile.endpoint.trim(),
+    apiKey: profile.apiKey.trim(),
+    model: profile.model.trim(),
     document,
     messages,
     instructions: settings.instructions.trim() || null,

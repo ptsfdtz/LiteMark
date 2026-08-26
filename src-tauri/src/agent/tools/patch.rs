@@ -26,7 +26,7 @@ struct FilePatch {
     hunks: Vec<Hunk>,
 }
 struct Hunk {
-    old_start: usize,
+    old_start: Option<usize>,
     lines: Vec<PatchLine>,
 }
 enum PatchLine {
@@ -87,14 +87,22 @@ fn parse(input: &str) -> Result<Vec<FilePatch>, String> {
         i += 1;
         let mut hunks = Vec::new();
         while i < lines.len() && !lines[i].starts_with("--- ") {
-            if !lines[i].starts_with("@@ ") {
+            if lines[i] != "@@" && !lines[i].starts_with("@@ ") {
                 i += 1;
                 continue;
             }
-            let old_start = parse_range(lines[i])?;
+            let old_start = if lines[i] == "@@" {
+                None
+            } else {
+                Some(parse_range(lines[i])?)
+            };
             i += 1;
             let mut patch_lines = Vec::new();
-            while i < lines.len() && !lines[i].starts_with("@@ ") && !lines[i].starts_with("--- ") {
+            while i < lines.len()
+                && lines[i] != "@@"
+                && !lines[i].starts_with("@@ ")
+                && !lines[i].starts_with("--- ")
+            {
                 let line = lines[i];
                 if line == "\\ No newline at end of file" {
                     i += 1;
@@ -132,6 +140,44 @@ fn parse(input: &str) -> Result<Vec<FilePatch>, String> {
     Ok(files)
 }
 
+fn locate_context_hunk(
+    source: &[String],
+    lines: &[PatchLine],
+    path: &str,
+) -> Result<usize, String> {
+    let expected: Vec<&str> = lines
+        .iter()
+        .filter_map(|line| match line {
+            PatchLine::Context(value) | PatchLine::Remove(value) => Some(value.as_str()),
+            PatchLine::Add(_) => None,
+        })
+        .collect();
+    if expected.is_empty() {
+        return Err(format!(
+            "cannot locate context-free hunk in {path}; include context or line numbers"
+        ));
+    }
+
+    let matches: Vec<usize> = source
+        .windows(expected.len())
+        .enumerate()
+        .filter_map(|(index, window)| {
+            window
+                .iter()
+                .map(String::as_str)
+                .eq(expected.iter().copied())
+                .then_some(index)
+        })
+        .collect();
+    match matches.as_slice() {
+        [index] => Ok(*index),
+        [] => Err(format!("patch context was not found in {path}")),
+        _ => Err(format!(
+            "patch context is ambiguous in {path}; include more context or line numbers"
+        )),
+    }
+}
+
 fn apply_hunks(
     content: &str,
     hunks: &[Hunk],
@@ -144,11 +190,14 @@ fn apply_hunks(
     let mut removed = 0;
     let mut verification = Vec::new();
     for hunk in hunks {
-        let index = (hunk.old_start.saturating_sub(1) as isize + offset) as usize;
+        let index = match hunk.old_start {
+            Some(old_start) => (old_start.saturating_sub(1) as isize + offset) as usize,
+            None => locate_context_hunk(&source, &hunk.lines, path)?,
+        };
         if index > source.len() {
             return Err(format!(
                 "patch context is outside {path} at old line {}",
-                hunk.old_start
+                hunk.old_start.unwrap_or_default()
             ));
         }
         let mut cursor = index;

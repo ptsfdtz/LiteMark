@@ -78,7 +78,7 @@ pub(crate) fn tool_definitions() -> Value {
             "type": "function",
             "function": {
                 "name": "apply_patch",
-                "description": "Apply a validated unified diff to one or more Markdown/text files in the workspace. Include file headers (--- a/path and +++ b/path) and exact context. After applying, the tool re-reads changed regions and reports them.",
+                "description": "Apply a validated unified diff to one or more Markdown/text files in the workspace. Include file headers (--- a/path and +++ b/path), standard line-numbered hunk headers, and exact context. A bare @@ header is accepted only when its context uniquely identifies one location. After applying, the tool re-reads changed regions and reports them.",
                 "parameters": {
                     "type": "object",
                     "properties": { "patch": { "type": "string", "description": "Unified diff text." } },
