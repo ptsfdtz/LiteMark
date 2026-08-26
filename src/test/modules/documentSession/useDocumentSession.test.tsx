@@ -347,6 +347,27 @@ describe('Document Session', () => {
     expect(deps.recentDocuments.save).toHaveBeenCalledWith(result.current.recentDocuments);
   });
 
+  it('deduplicates normal and extended Windows paths in Recent Documents', async () => {
+    const normalPath = 'C:\\notes\\matlab\\guide.md';
+    const extendedPath = '\\\\?\\C:\\notes\\matlab\\guide.md';
+    const existing: RecentDocument = {
+      name: 'guide.md',
+      path: normalPath,
+      modified: new Date('2026-07-14T00:00:00.000Z'),
+    };
+    const deps = dependencies(async () => [existing]);
+    vi.mocked(deps.storage.read).mockResolvedValue('# Guide\n');
+    const { result } = renderHook(() => useDocumentSession(deps));
+    await waitFor(() => expect(result.current.ready).toBe(true));
+
+    await act(async () => {
+      await result.current.openDocument(extendedPath);
+    });
+
+    expect(result.current.recentDocuments).toHaveLength(1);
+    expect(result.current.recentDocuments[0]?.path).toBe(extendedPath);
+  });
+
   it('keeps a successful open successful when Recent persistence fails', async () => {
     const deps = dependencies(async () => []);
     vi.mocked(deps.storage.read).mockResolvedValue('# Existing\n');

@@ -1,20 +1,14 @@
 import { invoke } from '@tauri-apps/api/core';
 import type { DirectoryEntries, FileTreeNode } from '@/types/fileTree';
-
-function normalizePath(path: string): string {
-  return path
-    .replace(/[\\/]+$/, '')
-    .replace(/\\/g, '/')
-    .toLocaleLowerCase();
-}
+import { normalizeWorkspacePath } from './workspacePath';
 
 export function mergeDirectoryEntries(
   existing: FileTreeNode[],
   incoming: FileTreeNode[],
 ): FileTreeNode[] {
-  const existingByPath = new Map(existing.map((node) => [normalizePath(node.path), node]));
+  const existingByPath = new Map(existing.map((node) => [normalizeWorkspacePath(node.path), node]));
   return incoming.map((node) => {
-    const previous = existingByPath.get(normalizePath(node.path));
+    const previous = existingByPath.get(normalizeWorkspacePath(node.path));
     if (!node.is_directory || !previous?.is_directory || !previous.children_loaded) return node;
     return {
       ...node,
@@ -32,7 +26,7 @@ export function replaceDirectoryChildren(
   truncated: boolean,
 ): FileTreeNode[] {
   return nodes.map((node) => {
-    if (normalizePath(node.path) === normalizePath(directory)) {
+    if (normalizeWorkspacePath(node.path) === normalizeWorkspacePath(directory)) {
       return {
         ...node,
         children: mergeDirectoryEntries(node.children, children),

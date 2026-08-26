@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { normalizeWorkspacePath } from '@/modules/workspacePath';
 
 export interface DocumentReference {
   name: string;
@@ -65,8 +66,9 @@ function mergeRecentDocuments(
   const seen = new Set<string>();
   return [...primary, ...secondary]
     .filter((document) => {
-      if (seen.has(document.path)) return false;
-      seen.add(document.path);
+      const normalizedPath = normalizeWorkspacePath(document.path);
+      if (seen.has(normalizedPath)) return false;
+      seen.add(normalizedPath);
       return true;
     })
     .slice(0, 50);
@@ -147,7 +149,12 @@ export default function useDocumentSession(
         await enqueueRecentDocumentsMutation((documents) =>
           [
             document,
-            ...documents.filter((recent) => recent.path !== path && recent.path !== replacesPath),
+            ...documents.filter(
+              (recent) =>
+                normalizeWorkspacePath(recent.path) !== normalizeWorkspacePath(path) &&
+                (!replacesPath ||
+                  normalizeWorkspacePath(recent.path) !== normalizeWorkspacePath(replacesPath)),
+            ),
           ].slice(0, 50),
         );
       } catch (error) {

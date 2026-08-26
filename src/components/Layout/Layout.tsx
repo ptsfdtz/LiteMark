@@ -61,27 +61,11 @@ import OpenTabs from '@/components/OpenTabs/OpenTabs';
 import { LuPanelLeftOpen, LuPanelRightOpen } from 'react-icons/lu';
 import { LuFolderTree, LuMessageSquare, LuSettings } from 'react-icons/lu';
 import ContextMenu from '@/components/ContextMenu/ContextMenu';
-
-function normalizePath(path: string): string {
-  return path
-    .replace(/[\\/]+$/, '')
-    .replace(/\\/g, '/')
-    .toLocaleLowerCase();
-}
-
-function pathBelongsToDirectory(path: string | null, directory: string): boolean {
-  if (!path) return false;
-  const normalizedPath = normalizePath(path);
-  const normalizedDirectory = normalizePath(directory);
-  return (
-    normalizedPath === normalizedDirectory || normalizedPath.startsWith(`${normalizedDirectory}/`)
-  );
-}
-
-function parentDirectory(path: string): string {
-  const separatorIndex = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
-  return separatorIndex > 0 ? path.slice(0, separatorIndex) : path;
-}
+import {
+  normalizeWorkspacePath,
+  parentDirectory,
+  pathBelongsToDirectory,
+} from '@/modules/workspacePath';
 
 const AGENT_FILE_TREE_LINE_LIMIT = 200;
 const EXPLORER_DEFAULT_WIDTH = 252;
@@ -368,7 +352,9 @@ const Layout: React.FC = () => {
     getFileTree: () => {
       if (!activeWorkspaceDirectory) return null;
       const root = workspaceRoots.find(
-        (candidate) => normalizePath(candidate.path) === normalizePath(activeWorkspaceDirectory),
+        (candidate) =>
+          normalizeWorkspacePath(candidate.path) ===
+          normalizeWorkspacePath(activeWorkspaceDirectory),
       );
       return root ? serializeFileTree(root.nodes) : null;
     },
@@ -512,7 +498,7 @@ const Layout: React.FC = () => {
       const result = await listDirectoryEntries(directory);
       setWorkspaceRoots((current) => {
         const existingIndex = current.findIndex(
-          (root) => normalizePath(root.path) === normalizePath(directory),
+          (root) => normalizeWorkspacePath(root.path) === normalizeWorkspacePath(directory),
         );
         const next = [...current];
         const root = { path: directory, nodes: result.entries, truncated: result.truncated };
@@ -536,7 +522,7 @@ const Layout: React.FC = () => {
         const result = await listDirectoryEntries(directory);
         setWorkspaceRoots((current) =>
           current.map((root) => {
-            if (normalizePath(root.path) === normalizePath(directory)) {
+            if (normalizeWorkspacePath(root.path) === normalizeWorkspacePath(directory)) {
               return {
                 ...root,
                 nodes: mergeDirectoryEntries(root.nodes, result.entries),
@@ -564,7 +550,7 @@ const Layout: React.FC = () => {
 
   const loadWorkspaceDirectory = useCallback(
     async (directory: string) => {
-      const normalized = normalizePath(directory);
+      const normalized = normalizeWorkspacePath(directory);
       const version = (directoryLoadVersionsRef.current.get(normalized) ?? 0) + 1;
       directoryLoadVersionsRef.current.set(normalized, version);
       try {
@@ -609,7 +595,9 @@ const Layout: React.FC = () => {
 
   const removeWorkspaceDirectory = (directory: string) => {
     setWorkspaceRoots((current) => {
-      const next = current.filter((root) => normalizePath(root.path) !== normalizePath(directory));
+      const next = current.filter(
+        (root) => normalizeWorkspacePath(root.path) !== normalizeWorkspacePath(directory),
+      );
       void saveWorkspaceDirectories(next.map((root) => root.path)).catch((error) => {
         void showDocumentError(error, 'dialog.settingsSaveFailed');
       });
@@ -624,15 +612,18 @@ const Layout: React.FC = () => {
   ) => {
     setWorkspaceRoots((current) => {
       const sourceIndex = current.findIndex(
-        (root) => normalizePath(root.path) === normalizePath(sourcePath),
+        (root) => normalizeWorkspacePath(root.path) === normalizeWorkspacePath(sourcePath),
       );
-      if (sourceIndex < 0 || normalizePath(sourcePath) === normalizePath(targetPath))
+      if (
+        sourceIndex < 0 ||
+        normalizeWorkspacePath(sourcePath) === normalizeWorkspacePath(targetPath)
+      )
         return current;
 
       const next = [...current];
       const [source] = next.splice(sourceIndex, 1);
       const targetIndex = next.findIndex(
-        (root) => normalizePath(root.path) === normalizePath(targetPath),
+        (root) => normalizeWorkspacePath(root.path) === normalizeWorkspacePath(targetPath),
       );
       if (!source || targetIndex < 0) return current;
 
@@ -687,7 +678,9 @@ const Layout: React.FC = () => {
       const created = await handleCreateDocument(directory);
       if (
         created &&
-        workspaceRoots.some((root) => normalizePath(root.path) === normalizePath(directory))
+        workspaceRoots.some(
+          (root) => normalizeWorkspacePath(root.path) === normalizeWorkspacePath(directory),
+        )
       ) {
         await refreshWorkspaceTree(directory);
       }
@@ -814,7 +807,7 @@ const Layout: React.FC = () => {
         pathBelongsToDirectory(directory, candidate.path),
       );
       if (root) {
-        if (normalizePath(directory) === normalizePath(root.path)) {
+        if (normalizeWorkspacePath(directory) === normalizeWorkspacePath(root.path)) {
           await refreshWorkspaceTree(root.path);
         } else {
           await loadWorkspaceDirectory(directory);
@@ -834,7 +827,7 @@ const Layout: React.FC = () => {
       const parent = path.slice(0, separatorIndex);
       const root = workspaceRoots.find((candidate) => pathBelongsToDirectory(path, candidate.path));
       if (root) {
-        if (normalizePath(parent) === normalizePath(root.path))
+        if (normalizeWorkspacePath(parent) === normalizeWorkspacePath(root.path))
           await refreshWorkspaceTree(root.path);
         else await loadWorkspaceDirectory(parent);
       }
@@ -873,7 +866,7 @@ const Layout: React.FC = () => {
       }
 
       const isWorkspaceRoot = workspaceRoots.some(
-        (root) => normalizePath(root.path) === normalizePath(directory),
+        (root) => normalizeWorkspacePath(root.path) === normalizeWorkspacePath(directory),
       );
       if (isWorkspaceRoot) removeWorkspaceDirectory(directory);
       else {
