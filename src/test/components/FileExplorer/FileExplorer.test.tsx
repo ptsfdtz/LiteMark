@@ -41,6 +41,39 @@ const secondTree: FileTreeNode[] = [
 ];
 
 describe('FileExplorer', () => {
+  it('allows collapsing the directory that contains the current file', async () => {
+    const user = userEvent.setup();
+    render(
+      <I18nProvider>
+        <FileExplorer
+          roots={[{ path: 'C:\\workspace', nodes: tree }]}
+          standaloneFiles={[]}
+          currentPath={'C:\\workspace\\docs\\guide.md'}
+          onOpenFile={vi.fn()}
+          onChooseDirectory={vi.fn()}
+          onRefresh={vi.fn()}
+          onRemoveDirectory={vi.fn()}
+          onReorderDirectory={vi.fn()}
+          onDeleteFile={vi.fn().mockResolvedValue(true)}
+          onCreateFile={vi.fn().mockResolvedValue(true)}
+          onCreateDirectory={vi.fn().mockResolvedValue(null)}
+          onRenameDirectory={vi.fn().mockResolvedValue(null)}
+          onDeleteDirectory={vi.fn().mockResolvedValue(true)}
+          onRemoveStandaloneFile={vi.fn()}
+          onClose={vi.fn()}
+        />
+      </I18nProvider>,
+    );
+
+    const docsButton = await screen.findByRole('button', { name: 'docs' });
+    const docsItem = docsButton.closest('[role="treeitem"]');
+    expect(docsItem).toHaveAttribute('aria-expanded', 'true');
+    await user.click(docsButton);
+
+    expect(docsItem).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('button', { name: 'guide.md' })).not.toBeInTheDocument();
+  });
+
   it('manages multiple collapsible folder roots and opens supported files', async () => {
     window.localStorage.setItem('litemark.locale', 'en');
     window.localStorage.removeItem('litemark.explorerWidth');

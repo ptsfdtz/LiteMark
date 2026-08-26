@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   LuBraces,
   LuChevronsUp,
@@ -426,6 +426,7 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
   const [entered, setEntered] = useState(false);
   const closeCompleteRef = useRef(false);
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(() => new Set());
+  const revealedCurrentPathRef = useRef<string | null>(null);
   const [loadingPaths, setLoadingPaths] = useState<Set<string>>(() => new Set());
   const [collapsedRoots, setCollapsedRoots] = useState<Set<string>>(() => new Set());
   const [confirmingRoot, setConfirmingRoot] = useState<string | null>(null);
@@ -483,8 +484,12 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
 
   const panelWidth = closing || !entered ? 0 : width;
 
-  const visibleExpandedPaths = useMemo(() => {
-    if (!currentPath) return expandedPaths;
+  useEffect(() => {
+    if (!currentPath) {
+      revealedCurrentPathRef.current = null;
+      return;
+    }
+    if (revealedCurrentPathRef.current === currentPath) return;
     const ancestors: string[] = [];
     const findCurrentPath = (items: FileTreeNode[]): boolean => {
       for (const item of items) {
@@ -496,9 +501,10 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
       }
       return false;
     };
-    if (!roots.some((root) => findCurrentPath(root.nodes))) return expandedPaths;
-    return new Set([...expandedPaths, ...ancestors]);
-  }, [currentPath, expandedPaths, roots]);
+    if (!roots.some((root) => findCurrentPath(root.nodes))) return;
+    revealedCurrentPathRef.current = currentPath;
+    setExpandedPaths((current) => new Set([...current, ...ancestors]));
+  }, [currentPath, roots]);
 
   const togglePath = (path: string) => {
     setExpandedPaths((current) => {
@@ -783,7 +789,7 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
                         node={node}
                         depth={0}
                         currentPath={currentPath}
-                        expandedPaths={visibleExpandedPaths}
+                        expandedPaths={expandedPaths}
                         selectedFilePath={selectedFile?.path ?? null}
                         onToggle={togglePath}
                         onSelectFile={setSelectedFile}

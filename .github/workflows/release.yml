@@ -69,22 +69,23 @@ jobs:
           tagName: v__VERSION__
           releaseName: 'LiteMark v__VERSION__'
           releaseBody: |
-            LiteMark v__VERSION__ adds signed over-the-air updates and preserves sidebar states across app restarts.
+            LiteMark v__VERSION__ improves Agent recovery and makes project file-tree updates reliable.
 
             ## Fixes and improvements
-            - Checks for signed updates at startup and installs them with download progress and a restart.
-            - Protects unsaved documents before installing an update.
-            - Restores the File Explorer and Agent sidebar open or closed states on later launches.
+            - Repairs interrupted Agent tool-call history before the next request, preventing invalid-message 400 errors.
+            - Keeps Agent-created project files in the project explorer instead of replacing the active document.
+            - Allows directories containing the active file to be collapsed after the initial automatic reveal.
+            - Preserves loaded folder contents when project entries are refreshed, created, deleted, or renamed.
 
             ## Validation
-            - Added regression coverage for updater behavior and File Explorer visibility.
+            - Added regression coverage for interrupted Agent calls and incremental directory-tree updates.
             - Builds remain available for Windows, Linux, Intel Mac, and Apple Silicon Mac.
 
             Full bilingual release notes: https://github.com/ptsfdtz/LiteMark/blob/v__VERSION__/RELEASE_NOTES.md
 
             ---
 
-            LiteMark v__VERSION__ 新增带签名的 OTA 自动更新，可显示下载进度并在安装后重启；同时会在后续启动时恢复文件栏和 Agent 侧边栏的展开或关闭状态。
+            LiteMark v__VERSION__ 改进 Agent 中断恢复，并修复项目文件树在刷新、新建、删除或重命名后内容消失的问题；当前文件所在目录也可以随时折叠。
 
             请在下方 Assets 区域下载对应平台的安装包或压缩包。完整中英文说明请查看上方链接。
           releaseDraft: false

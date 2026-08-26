@@ -1,6 +1,6 @@
 [package]
 name = "litemark"
-version = "2.1.8"
+version = "2.1.9"
 description = "editor for markdown"
 authors = ["PTSFDTZ pitousanfadetuzi@gmail.com"]
 edition = "2021"

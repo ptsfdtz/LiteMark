@@ -46,7 +46,9 @@ import {
   deleteWorkspaceDirectory,
   deleteWorkspaceFile,
   listDirectoryEntries,
+  mergeDirectoryEntries,
   renameWorkspaceDirectory,
+  replaceDirectoryChildren,
 } from '@/modules/directoryTree';
 import { getFileViewKind, type FileTreeNode } from '@/types/fileTree';
 import {
@@ -76,22 +78,9 @@ function pathBelongsToDirectory(path: string | null, directory: string): boolean
   );
 }
 
-function replaceDirectoryChildren(
-  nodes: FileTreeNode[],
-  directory: string,
-  children: FileTreeNode[],
-  truncated: boolean,
-): FileTreeNode[] {
-  return nodes.map((node) => {
-    if (normalizePath(node.path) === normalizePath(directory)) {
-      return { ...node, children, children_loaded: true, truncated };
-    }
-    if (node.children.length === 0) return node;
-    return {
-      ...node,
-      children: replaceDirectoryChildren(node.children, directory, children, truncated),
-    };
-  });
+function parentDirectory(path: string): string {
+  const separatorIndex = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
+  return separatorIndex > 0 ? path.slice(0, separatorIndex) : path;
 }
 
 const AGENT_FILE_TREE_LINE_LIMIT = 200;
@@ -546,11 +535,25 @@ const Layout: React.FC = () => {
       try {
         const result = await listDirectoryEntries(directory);
         setWorkspaceRoots((current) =>
-          current.map((root) =>
-            normalizePath(root.path) === normalizePath(directory)
-              ? { ...root, nodes: result.entries, truncated: result.truncated }
-              : root,
-          ),
+          current.map((root) => {
+            if (normalizePath(root.path) === normalizePath(directory)) {
+              return {
+                ...root,
+                nodes: mergeDirectoryEntries(root.nodes, result.entries),
+                truncated: result.truncated,
+              };
+            }
+            if (!pathBelongsToDirectory(directory, root.path)) return root;
+            return {
+              ...root,
+              nodes: replaceDirectoryChildren(
+                root.nodes,
+                directory,
+                result.entries,
+                result.truncated,
+              ),
+            };
+          }),
         );
       } catch (error) {
         await showDocumentError(error, 'dialog.openFolderFailed');
@@ -593,7 +596,7 @@ const Layout: React.FC = () => {
   agentFileWrittenRef.current = (path: string) => {
     void (async () => {
       const root = workspaceRoots.find((candidate) => pathBelongsToDirectory(path, candidate.path));
-      if (root) await refreshWorkspaceTree(root.path);
+      if (root) await refreshWorkspaceTree(parentDirectory(path));
       if (path === currentFilePath) {
         // Reload the buffer so the editor reflects the agent's write.
         if (!isDirty) await documentSession.openDocument(path);
@@ -783,7 +786,7 @@ const Layout: React.FC = () => {
       }
 
       const root = workspaceRoots.find((candidate) => pathBelongsToDirectory(path, candidate.path));
-      if (root) await refreshWorkspaceTree(root.path);
+      if (root) await refreshWorkspaceTree(parentDirectory(path));
       return true;
     } catch (error) {
       await showDocumentError(error, 'dialog.fileMissing');
@@ -797,7 +800,7 @@ const Layout: React.FC = () => {
     const root = workspaceRoots.find((candidate) =>
       pathBelongsToDirectory(directory, candidate.path),
     );
-    if (root) await refreshWorkspaceTree(root.path);
+    if (root) await refreshWorkspaceTree(directory);
     return true;
   };
 
@@ -877,7 +880,7 @@ const Layout: React.FC = () => {
         const root = workspaceRoots.find((candidate) =>
           pathBelongsToDirectory(directory, candidate.path),
         );
-        if (root) await refreshWorkspaceTree(root.path);
+        if (root) await refreshWorkspaceTree(parentDirectory(directory));
       }
       return true;
     } catch (error) {
@@ -1143,7 +1146,7 @@ const Layout: React.FC = () => {
                   setActiveFilePath(nextPath);
                 }
                 if (renamed && activeWorkspaceDirectory) {
-                  await refreshWorkspaceTree(activeWorkspaceDirectory);
+                  await refreshWorkspaceTree(parentDirectory(previousPath));
                 }
                 return renamed;
               }}
