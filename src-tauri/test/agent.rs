@@ -1,8 +1,8 @@
 use super::{
     cancellation_registry, execute_tool, normalize_tool_call_ids, record_tool_failure,
-    register_permission_request, resolve_agent_permission, take_sse_block, validate_plan,
-    AgentPlanStep, ChatMessage, FunctionCall, PlanStepStatus, RunRegistration, ToolCall,
-    WorkspaceWriteGuard, WriteJournal, MAX_READ_CHARS,
+    register_permission_request, resolve_agent_permission, take_sse_block,
+    validate_document_target, validate_plan, AgentPlanStep, ChatMessage, FunctionCall,
+    PlanStepStatus, RunRegistration, ToolCall, WorkspaceWriteGuard, WriteJournal, MAX_READ_CHARS,
 };
 use serde_json::json;
 use std::collections::HashMap;
@@ -165,6 +165,54 @@ fn writes_a_file_within_the_working_directory() {
     assert!(
         document.is_empty(),
         "write_file must not touch the current document"
+    );
+}
+
+#[test]
+fn rejects_document_edits_targeting_a_different_project_file() {
+    let directory = tempfile::tempdir().expect("temporary directory");
+    let current = directory.path().join("matlab").join("01_basics.md");
+    let requested = directory.path().join("matlab").join("02_simulink.md");
+    fs::create_dir_all(current.parent().expect("matlab directory")).expect("create directory");
+    fs::write(&current, "# basics").expect("seed current document");
+    fs::write(&requested, "# simulink").expect("seed requested document");
+
+    let arguments = json!({
+        "path": "matlab/02_simulink.md",
+        "content": "# changed"
+    })
+    .to_string();
+    let result = validate_document_target(
+        &arguments,
+        Some(current.to_string_lossy().as_ref()),
+        Some(directory.path()),
+    );
+
+    assert!(result.is_err());
+    assert_eq!(
+        fs::read_to_string(&current).expect("read current"),
+        "# basics"
+    );
+    assert_eq!(
+        fs::read_to_string(&requested).expect("read requested"),
+        "# simulink"
+    );
+}
+
+#[test]
+fn accepts_the_current_document_target_without_a_project_workspace() {
+    let directory = tempfile::tempdir().expect("temporary directory");
+    let current = directory.path().join("standalone.md");
+    fs::write(&current, "# standalone").expect("seed current document");
+    let arguments = json!({
+        "path": current,
+        "content": "# changed"
+    })
+    .to_string();
+
+    assert!(
+        validate_document_target(&arguments, Some(current.to_string_lossy().as_ref()), None,)
+            .is_ok()
     );
 }
 

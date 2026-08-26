@@ -17,6 +17,14 @@ export function pathBelongsToDirectory(path: string | null, directory: string): 
   );
 }
 
+export function workspacePathsEqual(
+  left: string | null | undefined,
+  right: string | null | undefined,
+): boolean {
+  if (left == null || right == null) return left == null && right == null;
+  return normalizeWorkspacePath(left) === normalizeWorkspacePath(right);
+}
+
 export function parentDirectory(path: string): string {
   const separatorIndex = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
   return separatorIndex > 0 ? path.slice(0, separatorIndex) : path;

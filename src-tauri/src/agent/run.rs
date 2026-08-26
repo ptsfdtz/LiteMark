@@ -1,3 +1,4 @@
+use serde::Deserialize;
 use serde_json::{json, Value};
 use std::path::PathBuf;
 use std::time::Duration;
@@ -11,9 +12,40 @@ use super::prompt::AGENT_SYSTEM_PROMPT;
 use super::protocol::{AgentEvent, ChatMessage, PlanStepStatus};
 use super::state_machine::AgentRunState;
 use super::tools::execute_tool;
-use super::tools::filesystem::{resolve_work_path_for_write, WriteFileArgs};
+use super::tools::filesystem::{resolve_work_path, resolve_work_path_for_write, WriteFileArgs};
 use super::validator::{normalize_tool_call_ids, record_tool_failure};
 use crate::agent_completion::validate_endpoint;
+
+#[derive(Deserialize)]
+struct DocumentTargetArgs {
+    path: String,
+}
+
+pub(crate) fn validate_document_target(
+    arguments: &str,
+    current_file: Option<&str>,
+    work_dir: Option<&std::path::Path>,
+) -> Result<(), String> {
+    let args: DocumentTargetArgs =
+        serde_json::from_str(arguments).map_err(|error| format!("invalid arguments: {error}"))?;
+    let current = current_file.ok_or_else(|| "no current document is open".to_string())?;
+    let target = match work_dir {
+        Some(directory) => resolve_work_path(directory, &args.path)?,
+        None => std::path::Path::new(&args.path)
+            .canonicalize()
+            .map_err(|error| format!("cannot resolve the target document: {error}"))?,
+    };
+    let current = std::path::Path::new(current)
+        .canonicalize()
+        .map_err(|error| format!("cannot resolve the current document: {error}"))?;
+    if target != current {
+        return Err(
+            "document tools can only edit the current document; use write_file for the requested project file"
+                .to_string(),
+        );
+    }
+    Ok(())
+}
 
 pub(crate) struct AgentRunRequest {
     pub(crate) run_id: String,
@@ -296,12 +328,33 @@ pub(crate) async fn run_agent_turn(request: AgentRunRequest) -> Result<(), Strin
                 state.write_journal.capture(&path)?;
             }
 
-            match execute_tool(
-                &call.function.name,
-                &call.function.arguments,
-                &mut document,
-                work_dir_path.as_deref(),
+            let tool_result = if matches!(
+                call.function.name.as_str(),
+                "rewrite_document" | "replace_in_document"
             ) {
+                validate_document_target(
+                    &call.function.arguments,
+                    current_file,
+                    work_dir_path.as_deref(),
+                )
+                .and_then(|_| {
+                    execute_tool(
+                        &call.function.name,
+                        &call.function.arguments,
+                        &mut document,
+                        work_dir_path.as_deref(),
+                    )
+                })
+            } else {
+                execute_tool(
+                    &call.function.name,
+                    &call.function.arguments,
+                    &mut document,
+                    work_dir_path.as_deref(),
+                )
+            };
+
+            match tool_result {
                 Ok(result) => {
                     on_event
                         .send(AgentEvent::ToolCallEnd {

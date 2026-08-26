@@ -79,6 +79,28 @@ describe('OpenTabs', () => {
     expect(onCloseAll).toHaveBeenCalledOnce();
   });
 
+  it('matches active and dirty tabs across Windows path representations', () => {
+    const normalPath = 'C:\\notes\\matlab\\guide.md';
+    const extendedPath = '\\\\?\\C:\\notes\\matlab\\guide.md';
+    render(
+      <I18nProvider>
+        <OpenTabs
+          paths={[normalPath]}
+          activePath={extendedPath}
+          dirtyPath={extendedPath}
+          onActivate={vi.fn()}
+          onClose={vi.fn()}
+          onCloseAll={vi.fn()}
+          onCloseOthers={vi.fn()}
+          onDelete={vi.fn().mockResolvedValue(true)}
+        />
+      </I18nProvider>,
+    );
+
+    expect(screen.getByRole('tab')).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByTitle('Unsaved changes')).toBeInTheDocument();
+  });
+
   it('keeps closing tabs in place until their exit animation completes', () => {
     vi.useFakeTimers();
     const firstPath = 'C:\\notes\\first.md';

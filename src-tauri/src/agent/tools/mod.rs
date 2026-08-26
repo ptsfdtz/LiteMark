@@ -52,9 +52,10 @@ pub(crate) fn tool_definitions() -> Value {
                 "parameters": {
                     "type": "object",
                     "properties": {
+                        "path": { "type": "string", "description": "The current document path shown in the project context. This tool cannot edit another file." },
                         "content": { "type": "string", "description": "The complete new document text." }
                     },
-                    "required": ["content"],
+                    "required": ["path", "content"],
                     "additionalProperties": false
                 }
             }
@@ -67,10 +68,11 @@ pub(crate) fn tool_definitions() -> Value {
                 "parameters": {
                     "type": "object",
                     "properties": {
+                        "path": { "type": "string", "description": "The current document path shown in the project context. This tool cannot edit another file." },
                         "old_string": { "type": "string", "description": "The exact text to replace." },
                         "new_string": { "type": "string", "description": "The replacement text." }
                     },
-                    "required": ["old_string", "new_string"],
+                    "required": ["path", "old_string", "new_string"],
                     "additionalProperties": false
                 }
             }

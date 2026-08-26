@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeWorkspacePath, pathBelongsToDirectory } from '@/modules/workspacePath';
+import {
+  normalizeWorkspacePath,
+  pathBelongsToDirectory,
+  workspacePathsEqual,
+} from '@/modules/workspacePath';
 
 describe('workspace paths', () => {
   it('treats Windows extended-length paths as their normal drive paths', () => {
@@ -10,6 +14,12 @@ describe('workspace paths', () => {
       pathBelongsToDirectory(
         '\\\\?\\C:\\Users\\user\\Documents\\notes\\matlab\\01_基础语法.md',
         'C:\\Users\\user\\Documents\\notes',
+      ),
+    ).toBe(true);
+    expect(
+      workspacePathsEqual(
+        '\\\\?\\C:\\Users\\user\\Documents\\notes\\matlab\\01_基础语法.md',
+        'C:\\Users\\user\\Documents\\notes\\matlab\\01_基础语法.md',
       ),
     ).toBe(true);
   });

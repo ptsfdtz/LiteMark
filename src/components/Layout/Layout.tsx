@@ -65,6 +65,7 @@ import {
   normalizeWorkspacePath,
   parentDirectory,
   pathBelongsToDirectory,
+  workspacePathsEqual,
 } from '@/modules/workspacePath';
 
 const AGENT_FILE_TREE_LINE_LIMIT = 200;
@@ -296,7 +297,11 @@ const Layout: React.FC = () => {
   } = documentSession;
 
   const rememberTab = useCallback((path: string) => {
-    setOpenTabs((current) => (current.includes(path) ? current : [...current, path]));
+    setOpenTabs((current) =>
+      current.some((candidate) => workspacePathsEqual(candidate, path))
+        ? current
+        : [...current, path],
+    );
     setActiveFilePath(path);
   }, []);
 
@@ -312,7 +317,7 @@ const Layout: React.FC = () => {
   const activeTextDocument =
     activeFilePath === null
       ? currentFilePath === null
-      : activeFilePath === currentFilePath &&
+      : workspacePathsEqual(activeFilePath, currentFilePath) &&
         activeViewKind !== 'image' &&
         activeViewKind !== 'pdf' &&
         activeViewKind !== 'unsupported';
@@ -409,10 +414,14 @@ const Layout: React.FC = () => {
       if (saved) {
         if (currentFilePath) {
           setOpenTabs((current) =>
-            current.map((path) => (path === currentFilePath ? selected : path)),
+            current.map((path) => (workspacePathsEqual(path, currentFilePath) ? selected : path)),
           );
         } else {
-          setOpenTabs((current) => (current.includes(selected) ? current : [...current, selected]));
+          setOpenTabs((current) =>
+            current.some((path) => workspacePathsEqual(path, selected))
+              ? current
+              : [...current, selected],
+          );
         }
         setActiveFilePath(selected);
         showSaveSuccess();
@@ -462,7 +471,7 @@ const Layout: React.FC = () => {
       rememberTab(path);
       return true;
     }
-    if (path === currentFilePath) {
+    if (workspacePathsEqual(path, currentFilePath)) {
       rememberTab(path);
       return true;
     }
@@ -583,7 +592,7 @@ const Layout: React.FC = () => {
     void (async () => {
       const root = workspaceRoots.find((candidate) => pathBelongsToDirectory(path, candidate.path));
       if (root) await refreshWorkspaceTree(parentDirectory(path));
-      if (path === currentFilePath) {
+      if (workspacePathsEqual(path, currentFilePath)) {
         // Reload the buffer so the editor reflects the agent's write.
         if (!isDirty) await documentSession.openDocument(path);
         return;
@@ -703,44 +712,50 @@ const Layout: React.FC = () => {
   }, []);
 
   const handleActivateTab = async (path: string) => {
-    if (path === activeFilePath) return;
+    if (workspacePathsEqual(path, activeFilePath)) return;
     const previousPath = activeFilePath;
     setActiveFilePath(path);
     const opened = await handleOpenDocument(path);
     if (!opened) {
-      setActiveFilePath((current) => (current === path ? previousPath : current));
+      setActiveFilePath((current) => (workspacePathsEqual(current, path) ? previousPath : current));
     }
   };
 
   const handleCloseTab = async (path: string) => {
-    if (path === currentFilePath && isDirty) {
+    if (workspacePathsEqual(path, currentFilePath) && isDirty) {
       if (!(await confirmDiscard())) return;
       documentSession.discardChanges();
     }
 
-    const closingIndex = openTabs.indexOf(path);
-    const nextTabs = openTabs.filter((tabPath) => tabPath !== path);
+    const closingIndex = openTabs.findIndex((tabPath) => workspacePathsEqual(tabPath, path));
+    const nextTabs = openTabs.filter((tabPath) => !workspacePathsEqual(tabPath, path));
     setOpenTabs(nextTabs);
-    if (activeFilePath !== path) return;
+    if (!workspacePathsEqual(activeFilePath, path)) return;
 
     const nextPath = nextTabs[Math.min(closingIndex, nextTabs.length - 1)] ?? null;
     setActiveFilePath(null);
     if (nextPath) await handleActivateTab(nextPath);
-    else if (path === currentFilePath) documentSession.closeDocument();
+    else if (workspacePathsEqual(path, currentFilePath)) documentSession.closeDocument();
   };
 
   const handleCloseTabs = async (pathsToClose: string[]) => {
     const tabsToClose = openTabs.filter((path) => pathsToClose.includes(path));
     if (tabsToClose.length === 0) return;
 
-    const closesCurrentDocument = currentFilePath !== null && tabsToClose.includes(currentFilePath);
+    const closesCurrentDocument =
+      currentFilePath !== null &&
+      tabsToClose.some((path) => workspacePathsEqual(path, currentFilePath));
     if (closesCurrentDocument && isDirty) {
       if (!(await confirmDiscard())) return;
       documentSession.discardChanges();
     }
 
-    const closingIndex = activeFilePath ? openTabs.indexOf(activeFilePath) : -1;
-    const closesActiveTab = activeFilePath !== null && tabsToClose.includes(activeFilePath);
+    const closingIndex = activeFilePath
+      ? openTabs.findIndex((path) => workspacePathsEqual(path, activeFilePath))
+      : -1;
+    const closesActiveTab =
+      activeFilePath !== null &&
+      tabsToClose.some((path) => workspacePathsEqual(path, activeFilePath));
     const nextTabs = openTabs.filter((path) => !tabsToClose.includes(path));
     setOpenTabs(nextTabs);
 
@@ -758,7 +773,7 @@ const Layout: React.FC = () => {
     handleCloseTabs(openTabs.filter((tabPath) => tabPath !== path));
 
   const handleDeleteWorkspaceFile = async (path: string) => {
-    const deletingCurrentDocument = path === currentFilePath;
+    const deletingCurrentDocument = workspacePathsEqual(path, currentFilePath);
     if (deletingCurrentDocument && isDirty && !(await confirmDiscard())) return false;
 
     try {
@@ -767,12 +782,12 @@ const Layout: React.FC = () => {
         void showDocumentError(error, 'dialog.recentSaveFailed');
       });
 
-      const closingIndex = openTabs.indexOf(path);
-      const nextTabs = openTabs.filter((tabPath) => tabPath !== path);
+      const closingIndex = openTabs.findIndex((tabPath) => workspacePathsEqual(tabPath, path));
+      const nextTabs = openTabs.filter((tabPath) => !workspacePathsEqual(tabPath, path));
       setOpenTabs(nextTabs);
       if (deletingCurrentDocument) documentSession.closeDocument();
 
-      if (activeFilePath === path) {
+      if (workspacePathsEqual(activeFilePath, path)) {
         const nextPath = nextTabs[Math.min(closingIndex, nextTabs.length - 1)] ?? null;
         setActiveFilePath(null);
         if (nextPath) await handleActivateTab(nextPath);
@@ -1134,7 +1149,9 @@ const Layout: React.FC = () => {
                   );
                   const nextPath = `${previousPath.slice(0, separatorIndex + 1)}${newName}`;
                   setOpenTabs((current) =>
-                    current.map((path) => (path === previousPath ? nextPath : path)),
+                    current.map((path) =>
+                      workspacePathsEqual(path, previousPath) ? nextPath : path,
+                    ),
                   );
                   setActiveFilePath(nextPath);
                 }

@@ -26,6 +26,8 @@ use protocol::{AgentPlanStep, ChatMessage, FunctionCall, PlanStepStatus, ToolCal
 #[cfg(test)]
 use repository::WriteJournal;
 #[cfg(test)]
+use run::validate_document_target;
+#[cfg(test)]
 use tools::{execute_tool, MAX_READ_CHARS};
 #[cfg(test)]
 use validator::{normalize_tool_call_ids, record_tool_failure};

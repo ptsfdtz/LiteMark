@@ -15,6 +15,7 @@ import { getFileViewKind } from '@/types/fileTree';
 import styles from './OpenTabs.module.css';
 import ContextMenu from '@/components/ContextMenu/ContextMenu';
 import { LuFilePlus2, LuRotateCcw } from 'react-icons/lu';
+import { workspacePathsEqual } from '@/modules/workspacePath';
 
 interface OpenTabsProps {
   paths: string[];
@@ -180,8 +181,8 @@ const OpenTabs: React.FC<OpenTabsProps> = ({
         aria-label={t('tabs.openFiles')}
       >
         {renderedPaths.map((path) => {
-          const active = path === activePath;
-          const dirty = path === dirtyPath;
+          const active = workspacePathsEqual(path, activePath);
+          const dirty = workspacePathsEqual(path, dirtyPath);
           const closing = closingPaths.includes(path);
           const kind = getFileViewKind(path);
           const Icon =
