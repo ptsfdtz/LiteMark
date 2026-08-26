@@ -12,7 +12,7 @@ export type ChatMessage =
 
 export type AgentEvent =
   | { type: 'text_delta'; text: string }
-  | { type: 'tool_call_start'; id: string; name: string }
+  | { type: 'tool_call_start'; id: string; name: string; arguments?: string }
   | { type: 'tool_call_end'; id: string; name: string; result: string }
   | { type: 'tool_call_error'; id: string; name: string; error: string }
   | { type: 'permission_request'; id: number; name: string; arguments: string }
@@ -43,12 +43,14 @@ export interface DiffLine {
 export type AgentItem =
   | { id: string; role: 'user'; content: string }
   | { id: string; role: 'assistant'; content: string }
-  | { id: string; role: 'tool'; name: string; result?: string; error?: string }
+  | { id: string; role: 'tool'; name: string; arguments?: string; result?: string; error?: string }
+  | { id: string; role: 'plan'; steps: AgentPlanStep[] }
   | {
       id: string;
       role: 'permission';
       requestId: number;
       name: string;
+      arguments?: string;
       pending: boolean;
       decision?: 'allow' | 'deny';
     }

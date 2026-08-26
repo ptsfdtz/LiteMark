@@ -12,7 +12,9 @@ use super::prompt::AGENT_SYSTEM_PROMPT;
 use super::protocol::{AgentEvent, ChatMessage, PlanStepStatus};
 use super::state_machine::AgentRunState;
 use super::tools::execute_tool;
-use super::tools::filesystem::{resolve_work_path, resolve_work_path_for_write, WriteFileArgs};
+use super::tools::filesystem::{
+    resolve_work_path, resolve_work_path_for_write, WriteFileArgs, WriteFilesArgs,
+};
 use super::validator::{normalize_tool_call_ids, record_tool_failure};
 use crate::agent_completion::validate_endpoint;
 
@@ -200,6 +202,7 @@ pub(crate) async fn run_agent_turn(request: AgentRunRequest) -> Result<(), Strin
                     .send(AgentEvent::ToolCallStart {
                         id: call.id.clone(),
                         name: name.clone(),
+                        arguments: call.function.arguments.clone(),
                     })
                     .map_err(|error| error.to_string())?;
                 on_event
@@ -221,6 +224,7 @@ pub(crate) async fn run_agent_turn(request: AgentRunRequest) -> Result<(), Strin
                     .send(AgentEvent::ToolCallStart {
                         id: call.id.clone(),
                         name: call.function.name.clone(),
+                        arguments: call.function.arguments.clone(),
                     })
                     .map_err(|error| error.to_string())?;
                 let result = match serde_json::from_str::<UpdatePlanArgs>(&call.function.arguments)
@@ -260,7 +264,7 @@ pub(crate) async fn run_agent_turn(request: AgentRunRequest) -> Result<(), Strin
             let requires_approval = confirm_writes
                 && matches!(
                     call.function.name.as_str(),
-                    "rewrite_document" | "replace_in_document" | "write_file"
+                    "rewrite_document" | "replace_in_document" | "write_file" | "write_files"
                 );
             if requires_approval {
                 let (request_id, receiver) = register_permission_request();
@@ -282,6 +286,7 @@ pub(crate) async fn run_agent_turn(request: AgentRunRequest) -> Result<(), Strin
                         .send(AgentEvent::ToolCallStart {
                             id: call.id.clone(),
                             name: call.function.name.clone(),
+                            arguments: call.function.arguments.clone(),
                         })
                         .map_err(|error| error.to_string())?;
                     on_event
@@ -302,7 +307,7 @@ pub(crate) async fn run_agent_turn(request: AgentRunRequest) -> Result<(), Strin
 
             let is_write = matches!(
                 call.function.name.as_str(),
-                "rewrite_document" | "replace_in_document" | "write_file"
+                "rewrite_document" | "replace_in_document" | "write_file" | "write_files"
             );
             if is_write && state.workspace_write_guard.is_none() {
                 if let Some(directory) = work_dir_path.as_deref() {
@@ -315,6 +320,7 @@ pub(crate) async fn run_agent_turn(request: AgentRunRequest) -> Result<(), Strin
                 .send(AgentEvent::ToolCallStart {
                     id: call.id.clone(),
                     name: call.function.name.clone(),
+                    arguments: call.function.arguments.clone(),
                 })
                 .map_err(|error| error.to_string())?;
 
@@ -326,6 +332,16 @@ pub(crate) async fn run_agent_turn(request: AgentRunRequest) -> Result<(), Strin
                     .ok_or_else(|| "no working directory is set".to_string())?;
                 let path = resolve_work_path_for_write(directory, &args.path)?;
                 state.write_journal.capture(&path)?;
+            } else if call.function.name == "write_files" {
+                let args: WriteFilesArgs = serde_json::from_str(&call.function.arguments)
+                    .map_err(|error| format!("invalid arguments: {error}"))?;
+                let directory = work_dir_path
+                    .as_deref()
+                    .ok_or_else(|| "no working directory is set".to_string())?;
+                for file in args.files {
+                    let path = resolve_work_path_for_write(directory, &file.path)?;
+                    state.write_journal.capture(&path)?;
+                }
             }
 
             let tool_result = if matches!(
@@ -375,6 +391,23 @@ pub(crate) async fn run_agent_turn(request: AgentRunRequest) -> Result<(), Strin
                                         path: resolved.to_string_lossy().to_string(),
                                     })
                                     .map_err(|error| error.to_string())?;
+                            }
+                        }
+                    } else if call.function.name == "write_files" {
+                        if let (Ok(args), Some(directory)) = (
+                            serde_json::from_str::<WriteFilesArgs>(&call.function.arguments),
+                            work_dir_path.as_deref(),
+                        ) {
+                            for file in args.files {
+                                if let Ok(resolved) =
+                                    resolve_work_path_for_write(directory, &file.path)
+                                {
+                                    on_event
+                                        .send(AgentEvent::FileWritten {
+                                            path: resolved.to_string_lossy().to_string(),
+                                        })
+                                        .map_err(|error| error.to_string())?;
+                                }
                             }
                         }
                     }

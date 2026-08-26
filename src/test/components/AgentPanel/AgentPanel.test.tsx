@@ -18,6 +18,183 @@ const session: AgentSession = {
 };
 
 describe('AgentPanel conversations', () => {
+  it('groups completed file write approvals and results', async () => {
+    window.localStorage.setItem('litemark.locale', 'en');
+    const firstArgs = '{"path":"notes/a.md","content":"alpha"}';
+    const secondArgs = '{"path":"notes/b.md","content":"beta"}';
+
+    render(
+      <I18nProvider>
+        <AgentPanel
+          session={{
+            ...session,
+            items: [
+              {
+                id: 'permission-1',
+                role: 'permission',
+                requestId: 1,
+                name: 'write_file',
+                arguments: firstArgs,
+                pending: false,
+                decision: 'allow',
+              },
+              {
+                id: 'write-1',
+                role: 'tool',
+                name: 'write_file',
+                arguments: firstArgs,
+                result: 'File written.',
+              },
+              {
+                id: 'permission-2',
+                role: 'permission',
+                requestId: 2,
+                name: 'write_file',
+                arguments: secondArgs,
+                pending: false,
+                decision: 'allow',
+              },
+              {
+                id: 'write-2',
+                role: 'tool',
+                name: 'write_file',
+                arguments: secondArgs,
+                result: 'File written.',
+              },
+            ],
+          }}
+          conversations={[]}
+          activeConversationId="first"
+          scopeKind="project"
+          onCreateConversation={vi.fn()}
+          onSelectConversation={vi.fn()}
+          onRenameConversation={vi.fn()}
+          onDeleteConversation={vi.fn()}
+          isConfigured
+          modelName="gpt-4o-mini"
+          onClose={vi.fn()}
+        />
+      </I18nProvider>,
+    );
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Start a new chat' }));
+    const group = screen.getByRole('button', { name: 'Write files, Completed' });
+    expect(group).toBeVisible();
+    expect(screen.getByText('2 files')).toBeVisible();
+    expect(screen.queryByText('Permission required')).not.toBeInTheDocument();
+    await user.click(group);
+    expect(screen.getByText('notes/a.md')).toBeVisible();
+    await user.click(screen.getByText('notes/b.md'));
+    expect(screen.getByText('beta')).toBeVisible();
+  });
+
+  it('groups consecutive file reads into one compact status card', async () => {
+    window.localStorage.setItem('litemark.locale', 'en');
+
+    render(
+      <I18nProvider>
+        <AgentPanel
+          session={{
+            ...session,
+            items: [
+              {
+                id: 'read-1',
+                role: 'tool',
+                name: 'read_file',
+                arguments: '{"path":"notes/a.md"}',
+                result: 'alpha',
+              },
+              {
+                id: 'read-2',
+                role: 'tool',
+                name: 'read_file',
+                arguments: '{"path":"notes/b.md"}',
+                result: 'beta',
+              },
+              {
+                id: 'read-3',
+                role: 'tool',
+                name: 'read_files',
+                arguments: '{"paths":["notes/c.md","notes/d.md"]}',
+                result: JSON.stringify({
+                  files: [
+                    { path: 'notes/c.md', content: 'charlie', truncated: false },
+                    { path: 'notes/d.md', content: 'delta', truncated: false },
+                  ],
+                  truncated: false,
+                }),
+              },
+            ],
+          }}
+          conversations={[]}
+          activeConversationId="first"
+          scopeKind="project"
+          onCreateConversation={vi.fn()}
+          onSelectConversation={vi.fn()}
+          onRenameConversation={vi.fn()}
+          onDeleteConversation={vi.fn()}
+          isConfigured
+          modelName="gpt-4o-mini"
+          onClose={vi.fn()}
+        />
+      </I18nProvider>,
+    );
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Start a new chat' }));
+    const group = screen.getByRole('button', { name: 'Read files, Completed' });
+    expect(group).toBeVisible();
+    expect(screen.getByText('4 files')).toBeVisible();
+    expect(screen.getAllByText('Read files')).toHaveLength(1);
+    await user.click(group);
+    expect(screen.getByText('notes/a.md')).toBeVisible();
+    expect(screen.getByText('notes/d.md')).toBeVisible();
+    await user.click(screen.getByText('notes/c.md'));
+    expect(screen.getByText('charlie')).toBeVisible();
+  });
+
+  it('renders agent plans as dedicated task progress', async () => {
+    window.localStorage.setItem('litemark.locale', 'en');
+
+    render(
+      <I18nProvider>
+        <AgentPanel
+          session={{
+            ...session,
+            items: [
+              {
+                id: 'plan-1',
+                role: 'plan',
+                steps: [
+                  { id: 'inspect', description: 'Inspect the document', status: 'completed' },
+                  { id: 'edit', description: 'Apply the changes', status: 'in_progress' },
+                  { id: 'verify', description: 'Verify the result', status: 'pending' },
+                ],
+              },
+            ],
+          }}
+          conversations={[]}
+          activeConversationId="first"
+          scopeKind="project"
+          onCreateConversation={vi.fn()}
+          onSelectConversation={vi.fn()}
+          onRenameConversation={vi.fn()}
+          onDeleteConversation={vi.fn()}
+          isConfigured
+          modelName="gpt-4o-mini"
+          onClose={vi.fn()}
+        />
+      </I18nProvider>,
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'Start a new chat' }));
+    expect(screen.getByRole('region', { name: 'Task progress' })).toBeVisible();
+    expect(screen.getByText('1/3 completed')).toBeVisible();
+    expect(screen.getByText('Apply the changes')).toBeVisible();
+    expect(screen.queryByText('update_plan')).not.toBeInTheDocument();
+  });
+
   it('offers to resume an interrupted run', async () => {
     window.localStorage.setItem('litemark.locale', 'en');
     const user = userEvent.setup();

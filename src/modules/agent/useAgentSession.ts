@@ -85,11 +85,13 @@ function repairInterruptedHistory(history: ChatMessage[]): ChatMessage[] {
 }
 
 function repairInterruptedItems(items: AgentItem[]): AgentItem[] {
-  return items.map((item) =>
-    item.role === 'permission' && item.pending
-      ? { ...item, pending: false, decision: 'deny' as const }
-      : item,
-  );
+  return items
+    .filter((item) => item.role !== 'tool' || item.name !== 'update_plan')
+    .map((item) =>
+      item.role === 'permission' && item.pending
+        ? { ...item, pending: false, decision: 'deny' as const }
+        : item,
+    );
 }
 
 export function useAgentSession({
@@ -223,6 +225,7 @@ export function useAgentSession({
     historyRef.current.push({ role: 'user', content: trimmed });
     const userItem: AgentItem = { id: nextId('user'), role: 'user', content: trimmed };
     const assistantId = nextId('assistant');
+    const planItemId = nextId('plan');
     const assistantItem: AgentItem = { id: assistantId, role: 'assistant', content: '' };
     setItems((current) => [...current, userItem, assistantItem]);
 
@@ -257,9 +260,18 @@ export function useAgentSession({
             };
           }
           const callId = event.id || nextId('call');
+          if (event.name === 'update_plan') break;
           const toolId = nextId('tool');
           toolItemIdByCallId.set(callId, toolId);
-          setItems((current) => [...current, { id: toolId, role: 'tool', name: event.name }]);
+          setItems((current) => [
+            ...current,
+            {
+              id: toolId,
+              role: 'tool',
+              name: event.name,
+              ...(event.arguments ? { arguments: event.arguments } : {}),
+            },
+          ]);
           break;
         }
         case 'tool_call_end': {
@@ -316,6 +328,7 @@ export function useAgentSession({
                 role: 'permission',
                 requestId: event.id,
                 name: event.name,
+                arguments: event.arguments,
                 pending: false,
                 decision: 'allow',
               },
@@ -329,6 +342,7 @@ export function useAgentSession({
                 role: 'permission',
                 requestId: event.id,
                 name: event.name,
+                arguments: event.arguments,
                 pending: true,
               },
             ]);
@@ -372,6 +386,15 @@ export function useAgentSession({
               updatedAt: Date.now(),
             };
           }
+          setItems((current) => {
+            const existing = current.findIndex((item) => item.id === planItemId);
+            if (existing === -1) {
+              return [...current, { id: planItemId, role: 'plan', steps: event.steps }];
+            }
+            return current.map((item, index) =>
+              index === existing && item.role === 'plan' ? { ...item, steps: event.steps } : item,
+            );
+          });
           setCheckpointRevision((current) => current + 1);
           break;
         case 'done':

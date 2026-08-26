@@ -115,6 +115,56 @@ fn reads_a_file_within_the_working_directory() {
 }
 
 #[test]
+fn reads_multiple_files_in_one_tool_call() {
+    let directory = tempfile::tempdir().expect("temporary directory");
+    fs::write(directory.path().join("a.md"), "# alpha").expect("seed a.md");
+    fs::write(directory.path().join("b.txt"), "beta").expect("seed b.txt");
+
+    let mut document = String::new();
+    let result = execute_tool(
+        "read_files",
+        r#"{"paths":["a.md","b.txt","missing.md"]}"#,
+        &mut document,
+        Some(directory.path()),
+    )
+    .expect("batch read");
+    let parsed: serde_json::Value = serde_json::from_str(&result).expect("JSON result");
+
+    assert_eq!(parsed["files"][0]["content"], "# alpha");
+    assert_eq!(parsed["files"][1]["content"], "beta");
+    assert!(parsed["files"][2]["error"]
+        .as_str()
+        .expect("missing file error")
+        .contains("file not found"));
+    assert_eq!(parsed["truncated"], false);
+}
+
+#[test]
+fn caps_the_combined_batch_read_output() {
+    let directory = tempfile::tempdir().expect("temporary directory");
+    fs::write(
+        directory.path().join("a.md"),
+        "a".repeat(MAX_READ_CHARS - 10),
+    )
+    .expect("seed a.md");
+    fs::write(directory.path().join("b.md"), "b".repeat(20)).expect("seed b.md");
+
+    let mut document = String::new();
+    let result = execute_tool(
+        "read_files",
+        r#"{"paths":["a.md","b.md"]}"#,
+        &mut document,
+        Some(directory.path()),
+    )
+    .expect("batch read");
+    let parsed: serde_json::Value = serde_json::from_str(&result).expect("JSON result");
+
+    assert_eq!(parsed["files"][1]["content"].as_str().unwrap().len(), 10);
+    assert_eq!(parsed["files"][1]["truncated"], true);
+    assert_eq!(parsed["truncated"], true);
+}
+
+#[test]
 fn rejects_paths_outside_the_working_directory() {
     let directory = tempfile::tempdir().expect("temporary directory");
     let outside = tempfile::tempdir().expect("outside directory");
@@ -137,9 +187,17 @@ fn requires_a_working_directory_for_directory_tools() {
     let mut document = String::new();
     assert!(execute_tool("list_documents", "{}", &mut document, None).is_err());
     assert!(execute_tool("read_file", r#"{"path":"a.md"}"#, &mut document, None).is_err());
+    assert!(execute_tool("read_files", r#"{"paths":["a.md"]}"#, &mut document, None).is_err());
     assert!(execute_tool(
         "write_file",
         r#"{"path":"a.md","content":"x"}"#,
+        &mut document,
+        None
+    )
+    .is_err());
+    assert!(execute_tool(
+        "write_files",
+        r#"{"files":[{"path":"a.md","content":"x"}]}"#,
         &mut document,
         None
     )
@@ -166,6 +224,48 @@ fn writes_a_file_within_the_working_directory() {
         document.is_empty(),
         "write_file must not touch the current document"
     );
+}
+
+#[test]
+fn writes_multiple_files_in_one_tool_call() {
+    let directory = tempfile::tempdir().expect("temporary directory");
+    let mut document = String::new();
+    let result = execute_tool(
+        "write_files",
+        r##"{"files":[{"path":"notes/a.md","content":"# alpha"},{"path":"notes/b.md","content":"beta"}]}"##,
+        &mut document,
+        Some(directory.path()),
+    )
+    .expect("batch write");
+    let parsed: serde_json::Value = serde_json::from_str(&result).expect("JSON result");
+
+    assert_eq!(
+        fs::read_to_string(directory.path().join("notes/a.md")).expect("read a.md"),
+        "# alpha"
+    );
+    assert_eq!(
+        fs::read_to_string(directory.path().join("notes/b.md")).expect("read b.md"),
+        "beta"
+    );
+    assert_eq!(parsed["files"][0]["characters"], 7);
+    assert_eq!(parsed["files"][1]["characters"], 4);
+}
+
+#[test]
+fn rejects_duplicate_paths_in_a_batch_write() {
+    let directory = tempfile::tempdir().expect("temporary directory");
+    let mut document = String::new();
+    let result = execute_tool(
+        "write_files",
+        r#"{"files":[{"path":"same.md","content":"one"},{"path":"same.md","content":"two"}]}"#,
+        &mut document,
+        Some(directory.path()),
+    );
+
+    assert!(result
+        .expect_err("duplicate must fail")
+        .contains("duplicate path"));
+    assert!(!directory.path().join("same.md").exists());
 }
 
 #[test]

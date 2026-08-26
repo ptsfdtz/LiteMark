@@ -712,6 +712,97 @@
   overflow: hidden;
 }
 
+.planCard {
+  width: 100%;
+  color: var(--text-color);
+  background: color-mix(in srgb, var(--accent-color) 4%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-color) 25%, var(--hairline-color));
+  border-radius: 4px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.planHeader {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 36px;
+  padding: 0 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--accent-color) 16%, var(--hairline-color));
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.planHeader > svg {
+  width: 15px;
+  height: 15px;
+  color: var(--accent-color);
+  stroke-width: 1.8;
+}
+
+.planCount {
+  margin-left: auto;
+  color: var(--muted-text);
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.planSteps {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 5px 10px 6px;
+  list-style: none;
+}
+
+.planStep {
+  display: grid;
+  grid-template-columns: 16px calc(100% - 23px);
+  align-items: start;
+  gap: 7px;
+  padding: 5px 0;
+  color: var(--muted-text);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.planStep > svg {
+  width: 14px;
+  height: 14px;
+  margin-top: 2px;
+  stroke-width: 1.8;
+}
+
+.planStep-in_progress {
+  color: var(--text-color);
+  font-weight: 500;
+}
+
+.planStep-in_progress > svg,
+.planStep-completed > svg {
+  color: var(--accent-color);
+}
+
+.planStep-completed > span:first-of-type {
+  color: var(--muted-text);
+}
+
+.planStep-failed,
+.planStep-failed > svg {
+  color: var(--danger-color);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
 .toolSummary {
   display: flex;
   align-items: center;
@@ -719,6 +810,7 @@
   width: 100%;
   min-height: 34px;
   padding: 0 9px;
+  box-sizing: border-box;
   font: inherit;
   color: var(--text-color);
   background: transparent;
@@ -753,6 +845,86 @@ button.toolSummary:focus-visible {
 
 .toolState.failed {
   color: var(--error-color, #d32f2f);
+}
+
+.readGroupIcon {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  color: var(--accent-color);
+  stroke-width: 1.8;
+}
+
+.toolCount {
+  flex: none;
+  max-width: 42%;
+  overflow: hidden;
+  color: var(--muted-text);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.readGroupResult {
+  max-height: 320px;
+  padding: 4px 10px 7px;
+  overflow: auto;
+  border-top: 1px dashed var(--editor-border, #ccc);
+}
+
+.readFileDetails {
+  border-bottom: 1px solid color-mix(in srgb, var(--hairline-color) 72%, transparent);
+}
+
+.readFileDetails:last-child {
+  border-bottom: 0;
+}
+
+.readFileDetails summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 2px;
+  overflow: hidden;
+  color: var(--text-color);
+  font-family: var(--monospace-font);
+  font-size: 11px;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.readFileDetails summary > span:first-child {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.writtenCharacters {
+  flex: none;
+  color: var(--muted-text);
+  font-family: inherit;
+  font-size: 10px;
+}
+
+.readFileDetails pre {
+  max-height: 180px;
+  margin: 0 0 7px;
+  padding: 8px;
+  overflow: auto;
+  color: var(--muted-text);
+  background: var(--background-color);
+  border-radius: 3px;
+  font-family: var(--monospace-font);
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.readFileDetails .readFileError {
+  color: var(--danger-color);
 }
 
 .toolChevron {

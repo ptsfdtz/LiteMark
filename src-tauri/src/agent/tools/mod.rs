@@ -5,6 +5,8 @@ use serde_json::{json, Value};
 use std::path::Path;
 
 pub(crate) const MAX_READ_CHARS: usize = 50_000;
+pub(crate) const MAX_BATCH_READ_FILES: usize = 20;
+pub(crate) const MAX_BATCH_WRITE_FILES: usize = 20;
 
 pub(crate) fn tool_definitions() -> Value {
     json!([
@@ -89,7 +91,7 @@ pub(crate) fn tool_definitions() -> Value {
             "type": "function",
             "function": {
                 "name": "read_file",
-                "description": "Read a Markdown/text file from the project directory.",
+                "description": "Read one Markdown/text file from the project directory. Use read_files instead when two or more files are needed.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -103,8 +105,30 @@ pub(crate) fn tool_definitions() -> Value {
         {
             "type": "function",
             "function": {
+                "name": "read_files",
+                "description": "Read multiple Markdown/text files from the project directory in one call. Prefer this over repeated read_file calls whenever two or more files are needed.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "paths": {
+                            "type": "array",
+                            "description": "File names or relative paths within the project directory.",
+                            "minItems": 1,
+                            "maxItems": 20,
+                            "uniqueItems": true,
+                            "items": { "type": "string" }
+                        }
+                    },
+                    "required": ["paths"],
+                    "additionalProperties": false
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
                 "name": "write_file",
-                "description": "Create or overwrite a Markdown/text file in the project directory. Not for the current document.",
+                "description": "Create or overwrite one Markdown/text file in the project directory. Not for the current document. Use write_files when two or more files are needed.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -112,6 +136,34 @@ pub(crate) fn tool_definitions() -> Value {
                         "content": { "type": "string", "description": "The complete file content to write." }
                     },
                     "required": ["path", "content"],
+                    "additionalProperties": false
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "write_files",
+                "description": "Create or overwrite multiple Markdown/text files in one approved operation. Prefer this whenever two or more files need to be written. Not for the current document.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "files": {
+                            "type": "array",
+                            "minItems": 1,
+                            "maxItems": 20,
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "path": { "type": "string", "description": "The file name or relative path within the project directory." },
+                                    "content": { "type": "string", "description": "The complete file content to write." }
+                                },
+                                "required": ["path", "content"],
+                                "additionalProperties": false
+                            }
+                        }
+                    },
+                    "required": ["files"],
                     "additionalProperties": false
                 }
             }
@@ -131,7 +183,9 @@ pub(crate) fn execute_tool(
         "replace_in_document" => document::replace(arguments, document),
         "list_documents" => filesystem::list(work_dir),
         "read_file" => filesystem::read(arguments, work_dir),
+        "read_files" => filesystem::read_many(arguments, work_dir),
         "write_file" => filesystem::write(arguments, work_dir),
+        "write_files" => filesystem::write_many(arguments, work_dir),
         _ => Err(format!("unknown tool: {name}")),
     }
 }

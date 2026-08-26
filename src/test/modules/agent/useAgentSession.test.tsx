@@ -108,7 +108,7 @@ describe('Agent Session', () => {
   it('records tool calls with their results', async () => {
     const { result } = setup();
     emit(mocks.runAgentTurn, [
-      { type: 'tool_call_start', id: '1', name: 'read_document' },
+      { type: 'tool_call_start', id: '1', name: 'read_document', arguments: '{}' },
       { type: 'tool_call_end', id: '1', name: 'read_document', result: '# Hello' },
       { type: 'tool_call_start', id: '2', name: 'rewrite_document' },
       { type: 'tool_call_error', id: '2', name: 'rewrite_document', error: 'bad args' },
@@ -121,16 +121,27 @@ describe('Agent Session', () => {
 
     const tools = result.current.items.filter((item) => item.role === 'tool');
     expect(tools).toHaveLength(2);
-    expect(tools[0]).toMatchObject({ name: 'read_document', result: '# Hello' });
+    expect(tools[0]).toMatchObject({ name: 'read_document', arguments: '{}', result: '# Hello' });
     expect(tools[1]).toMatchObject({ name: 'rewrite_document', error: 'bad args' });
   });
 
   it('persists explicit plan updates and retry observations', async () => {
     const { result } = setup();
     emit(mocks.runAgentTurn, [
+      { type: 'tool_call_start', id: 'plan-call', name: 'update_plan' },
       {
         type: 'plan_updated',
         steps: [{ id: 'read', description: 'Read document', status: 'in_progress' }],
+      },
+      {
+        type: 'plan_updated',
+        steps: [{ id: 'read', description: 'Read document', status: 'completed' }],
+      },
+      {
+        type: 'tool_call_end',
+        id: 'plan-call',
+        name: 'update_plan',
+        result: 'Plan updated (1 steps).',
       },
       { type: 'tool_call_start', id: '1', name: 'read_document' },
       { type: 'tool_call_error', id: '1', name: 'read_document', error: 'temporary error' },
@@ -147,11 +158,19 @@ describe('Agent Session', () => {
         expect.objectContaining({
           activeRun: expect.objectContaining({
             retryCount: 1,
-            plan: [{ id: 'read', description: 'Read document', status: 'in_progress' }],
+            plan: [{ id: 'read', description: 'Read document', status: 'completed' }],
           }),
         }),
       ),
     );
+    expect(result.current.items.filter((item) => item.role === 'plan')).toEqual([
+      expect.objectContaining({
+        steps: [{ id: 'read', description: 'Read document', status: 'completed' }],
+      }),
+    ]);
+    expect(
+      result.current.items.some((item) => item.role === 'tool' && item.name === 'update_plan'),
+    ).toBe(false);
   });
 
   it('reconstructs tool calls and tool results into the history', async () => {
@@ -404,6 +423,12 @@ describe('Agent Session', () => {
     mocks.loadAgentSession.mockResolvedValue({
       items: [
         {
+          id: 'tool-old-plan',
+          role: 'tool',
+          name: 'update_plan',
+          result: 'Plan updated (3 steps).',
+        },
+        {
           id: 'permission-old',
           role: 'permission',
           requestId: 9,
@@ -457,6 +482,9 @@ describe('Agent Session', () => {
       ),
     );
     expect(result.current.activeRun?.status).toBe('interrupted');
+    expect(result.current.items).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: 'update_plan' })]),
+    );
     expect(result.current.items[0]).toMatchObject({ pending: false, decision: 'deny' });
 
     emit(mocks.runAgentTurn, [{ type: 'done' }]);

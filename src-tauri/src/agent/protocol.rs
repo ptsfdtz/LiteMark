@@ -62,6 +62,7 @@ pub enum AgentEvent {
     ToolCallStart {
         id: String,
         name: String,
+        arguments: String,
     },
     ToolCallEnd {
         id: String,

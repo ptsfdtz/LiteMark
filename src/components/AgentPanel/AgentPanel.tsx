@@ -4,10 +4,16 @@ import {
   LuArchiveRestore,
   LuArrowLeft,
   LuCheck,
+  LuCircle,
+  LuCircleCheck,
+  LuCircleDot,
+  LuCircleX,
   LuCopy,
   LuCode,
   LuChevronRight,
+  LuFiles,
   LuHistory,
+  LuListChecks,
   LuMessageSquare,
   LuPenLine,
   LuPlus,
@@ -27,6 +33,7 @@ import type { AgentSession } from '@/modules/agent/useAgentSession';
 import type { AgentConversationSummary } from '@/modules/agent/agentConversationStore';
 import { useI18n } from '@/locales/useI18n';
 import type { TranslationKey } from '@/locales/config';
+import type { AgentItem, AgentPlanStep } from '@/modules/agent/types';
 import { useResizablePanel } from '@/hooks/useResizablePanel';
 import ContextMenu from '@/components/ContextMenu/ContextMenu';
 
@@ -57,7 +64,9 @@ const toolNameKeys: Record<string, TranslationKey> = {
   replace_in_document: 'agent.tool.replaceDocument',
   list_documents: 'agent.tool.listDocuments',
   read_file: 'agent.tool.readFile',
+  read_files: 'agent.tool.readFiles',
   write_file: 'agent.tool.writeFile',
+  write_files: 'agent.tool.writeFiles',
 };
 
 const SYSTEM_URL_PATTERN = /^(?:https?:\/\/|mailto:|tel:)/i;
@@ -148,6 +157,298 @@ const ToolDisclosure: React.FC<ToolDisclosureProps> = ({
         </div>
       )}
     </div>
+  );
+};
+
+type ToolItem = Extract<AgentItem, { role: 'tool' }>;
+type PermissionItem = Extract<AgentItem, { role: 'permission' }>;
+type DisplayItem =
+  | AgentItem
+  | { id: string; role: 'read-group'; tools: ToolItem[] }
+  | { id: string; role: 'write-group'; tools: ToolItem[]; permissions: PermissionItem[] };
+type ReadEntry = { path?: string; content?: string; error?: string };
+type WriteEntry = { path?: string; content?: string; characters?: number; error?: string };
+
+const parseObject = (value?: string): Record<string, unknown> | undefined => {
+  if (!value) return undefined;
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+const readEntries = (tools: ToolItem[]): ReadEntry[] =>
+  tools.flatMap((tool) => {
+    const args = parseObject(tool.arguments);
+    if (tool.name === 'read_files') {
+      const result = parseObject(tool.result);
+      if (Array.isArray(result?.files)) {
+        return result.files.map((file): ReadEntry => {
+          const entry =
+            file !== null && typeof file === 'object' ? (file as Record<string, unknown>) : {};
+          return {
+            ...(typeof entry.path === 'string' ? { path: entry.path } : {}),
+            ...(typeof entry.content === 'string' ? { content: entry.content } : {}),
+            ...(typeof entry.error === 'string' ? { error: entry.error } : {}),
+          };
+        });
+      }
+      if (Array.isArray(args?.paths)) {
+        return args.paths.map((path) =>
+          typeof path === 'string' ? { path } : { error: tool.error ?? tool.result },
+        );
+      }
+    }
+
+    return [
+      {
+        ...(typeof args?.path === 'string' ? { path: args.path } : {}),
+        ...(tool.error ? { error: tool.error } : tool.result ? { content: tool.result } : {}),
+      },
+    ];
+  });
+
+const groupReadTools = (items: AgentItem[]): DisplayItem[] => {
+  const grouped: DisplayItem[] = [];
+  for (let index = 0; index < items.length; index += 1) {
+    const item = items[index];
+    if (item.role !== 'tool' || !['read_file', 'read_files'].includes(item.name)) {
+      grouped.push(item);
+      continue;
+    }
+
+    const tools = [item];
+    while (index + 1 < items.length) {
+      const next = items[index + 1];
+      if (next.role !== 'tool' || !['read_file', 'read_files'].includes(next.name)) break;
+      tools.push(next);
+      index += 1;
+    }
+    grouped.push(
+      tools.length === 1 && item.name === 'read_file'
+        ? item
+        : { id: `read-group-${item.id}`, role: 'read-group', tools },
+    );
+  }
+  return grouped;
+};
+
+const isWriteItem = (item: DisplayItem): item is ToolItem | PermissionItem =>
+  (item.role === 'tool' || item.role === 'permission') &&
+  ['write_file', 'write_files'].includes(item.name) &&
+  (item.role !== 'permission' || !item.pending);
+
+const groupWriteTools = (items: DisplayItem[]): DisplayItem[] => {
+  const grouped: DisplayItem[] = [];
+  for (let index = 0; index < items.length; index += 1) {
+    const item = items[index];
+    if (!isWriteItem(item)) {
+      grouped.push(item);
+      continue;
+    }
+
+    const segment: Array<ToolItem | PermissionItem> = [item];
+    while (index + 1 < items.length && isWriteItem(items[index + 1])) {
+      segment.push(items[index + 1] as ToolItem | PermissionItem);
+      index += 1;
+    }
+    const tools = segment.filter((entry): entry is ToolItem => entry.role === 'tool');
+    const permissions = segment.filter(
+      (entry): entry is PermissionItem => entry.role === 'permission',
+    );
+    if (tools.length > 1 || tools.some((tool) => tool.name === 'write_files')) {
+      grouped.push({ id: `write-group-${item.id}`, role: 'write-group', tools, permissions });
+    } else {
+      grouped.push(...segment);
+    }
+  }
+  return grouped;
+};
+
+const writeEntries = (tools: ToolItem[]): WriteEntry[] =>
+  tools.flatMap((tool) => {
+    const args = parseObject(tool.arguments);
+    if (tool.name === 'write_files' && Array.isArray(args?.files)) {
+      const result = parseObject(tool.result);
+      const resultFiles = Array.isArray(result?.files) ? result.files : [];
+      return args.files.map((file, index): WriteEntry => {
+        const input =
+          file !== null && typeof file === 'object' ? (file as Record<string, unknown>) : {};
+        const output =
+          resultFiles[index] !== null && typeof resultFiles[index] === 'object'
+            ? (resultFiles[index] as Record<string, unknown>)
+            : {};
+        return {
+          ...(typeof input.path === 'string' ? { path: input.path } : {}),
+          ...(typeof input.content === 'string' ? { content: input.content } : {}),
+          ...(typeof output.characters === 'number' ? { characters: output.characters } : {}),
+          ...(tool.error ? { error: tool.error } : {}),
+        };
+      });
+    }
+
+    const content = typeof args?.content === 'string' ? args.content : undefined;
+    return [
+      {
+        ...(typeof args?.path === 'string' ? { path: args.path } : {}),
+        ...(content !== undefined ? { content, characters: content.length } : {}),
+        ...(tool.error ? { error: tool.error } : {}),
+      },
+    ];
+  });
+
+const ReadToolGroup: React.FC<{ tools: ToolItem[] }> = ({ tools }) => {
+  const { t } = useI18n();
+  const [expanded, setExpanded] = useState(false);
+  const failed = tools.some((tool) => tool.error !== undefined);
+  const running = tools.some((tool) => tool.result === undefined && tool.error === undefined);
+  const entries = readEntries(tools);
+  const stateLabel = failed
+    ? t('agent.tool.failed')
+    : running
+      ? t('agent.tool.running')
+      : t('agent.tool.completed');
+
+  return (
+    <div className={styles.toolCard}>
+      <button
+        type="button"
+        className={styles.toolSummary}
+        aria-label={`${t('agent.tool.readFiles')}, ${stateLabel}`}
+        aria-expanded={expanded}
+        onClick={() => setExpanded((current) => !current)}
+      >
+        <LuFiles className={styles.readGroupIcon} aria-hidden="true" />
+        <span className={styles.toolName}>{t('agent.tool.readFiles')}</span>
+        <span className={styles.toolCount}>
+          {t('agent.tool.fileCount', { count: entries.length })}
+        </span>
+        {(failed || running) && (
+          <span className={`${styles.toolState} ${failed ? styles.failed : ''}`}>{stateLabel}</span>
+        )}
+        {running && (
+          <span className={styles.toolPending} aria-hidden="true">
+            …
+          </span>
+        )}
+        <LuChevronRight
+          className={`${styles.toolChevron} ${expanded ? styles.expanded : ''}`}
+          aria-hidden="true"
+        />
+      </button>
+      <div
+        className={`${styles.toolDisclosure} ${expanded ? styles.expanded : ''}`}
+        aria-hidden={!expanded}
+      >
+        <div className={styles.readGroupResult}>
+          {entries.map((entry, index) => (
+            <details key={`${entry.path ?? 'file'}-${index}`} className={styles.readFileDetails}>
+              <summary>{entry.path || t('agent.tool.unnamedFile', { index: index + 1 })}</summary>
+              <pre className={entry.error ? styles.readFileError : undefined}>
+                {entry.error || entry.content || t('agent.tool.noReadContent')}
+              </pre>
+            </details>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const WriteToolGroup: React.FC<{ tools: ToolItem[] }> = ({ tools }) => {
+  const { t } = useI18n();
+  const [expanded, setExpanded] = useState(false);
+  const failed = tools.some((tool) => tool.error !== undefined);
+  const running = tools.some((tool) => tool.result === undefined && tool.error === undefined);
+  const entries = writeEntries(tools);
+  const stateLabel = failed
+    ? t('agent.tool.failed')
+    : running
+      ? t('agent.tool.running')
+      : t('agent.tool.completed');
+
+  return (
+    <div className={styles.toolCard}>
+      <button
+        type="button"
+        className={styles.toolSummary}
+        aria-label={`${t('agent.tool.writeFiles')}, ${stateLabel}`}
+        aria-expanded={expanded}
+        onClick={() => setExpanded((current) => !current)}
+      >
+        <LuPenLine className={styles.readGroupIcon} aria-hidden="true" />
+        <span className={styles.toolName}>{t('agent.tool.writeFiles')}</span>
+        <span className={styles.toolCount}>
+          {t('agent.tool.fileCount', { count: entries.length })}
+        </span>
+        {(failed || running) && (
+          <span className={`${styles.toolState} ${failed ? styles.failed : ''}`}>{stateLabel}</span>
+        )}
+        <LuChevronRight
+          className={`${styles.toolChevron} ${expanded ? styles.expanded : ''}`}
+          aria-hidden="true"
+        />
+      </button>
+      <div
+        className={`${styles.toolDisclosure} ${expanded ? styles.expanded : ''}`}
+        aria-hidden={!expanded}
+      >
+        <div className={styles.readGroupResult}>
+          {entries.map((entry, index) => (
+            <details key={`${entry.path ?? 'file'}-${index}`} className={styles.readFileDetails}>
+              <summary>
+                <span>{entry.path || t('agent.tool.unnamedFile', { index: index + 1 })}</span>
+                {entry.characters !== undefined && (
+                  <span className={styles.writtenCharacters}>
+                    {t('agent.tool.writtenCharacters', { count: entry.characters })}
+                  </span>
+                )}
+              </summary>
+              <pre className={entry.error ? styles.readFileError : undefined}>
+                {entry.error || entry.content || t('agent.tool.noReadContent')}
+              </pre>
+            </details>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const PlanProgress: React.FC<{ steps: AgentPlanStep[] }> = ({ steps }) => {
+  const { t } = useI18n();
+  const completed = steps.filter((step) => step.status === 'completed').length;
+
+  const statusIcon = (status: AgentPlanStep['status']) => {
+    if (status === 'completed') return <LuCircleCheck aria-hidden="true" />;
+    if (status === 'in_progress') return <LuCircleDot aria-hidden="true" />;
+    if (status === 'failed') return <LuCircleX aria-hidden="true" />;
+    return <LuCircle aria-hidden="true" />;
+  };
+
+  return (
+    <section className={styles.planCard} aria-label={t('agent.plan.title')}>
+      <header className={styles.planHeader}>
+        <LuListChecks aria-hidden="true" />
+        <span>{t('agent.plan.title')}</span>
+        <span className={styles.planCount}>
+          {t('agent.plan.progress', { completed, total: steps.length })}
+        </span>
+      </header>
+      <ol className={styles.planSteps}>
+        {steps.map((step) => (
+          <li key={step.id} className={`${styles.planStep} ${styles[`planStep-${step.status}`]}`}>
+            {statusIcon(step.status)}
+            <span>{step.description}</span>
+            <span className={styles.srOnly}>{t(`agent.plan.${step.status}`)}</span>
+          </li>
+        ))}
+      </ol>
+    </section>
   );
 };
 
@@ -296,6 +597,7 @@ const AgentPanel: React.FC<AgentPanelProps> = ({
   const archivedConversations = conversations
     .filter((conversation) => conversation.archivedAt)
     .sort((left, right) => (right.archivedAt ?? 0) - (left.archivedAt ?? 0));
+  const displayItems = groupWriteTools(groupReadTools(items));
 
   const createConversation = () => {
     if (running) return;
@@ -541,7 +843,7 @@ const AgentPanel: React.FC<AgentPanelProps> = ({
             </button>
           </div>
         )}
-        {items.map((item) => {
+        {displayItems.map((item) => {
           switch (item.role) {
             case 'user':
               return (
@@ -596,6 +898,24 @@ const AgentPanel: React.FC<AgentPanelProps> = ({
                     failedLabel={t('agent.tool.failed')}
                     runningLabel={t('agent.tool.running')}
                   />
+                </div>
+              );
+            case 'read-group':
+              return (
+                <div key={item.id} className={styles.toolRow}>
+                  <ReadToolGroup tools={item.tools} />
+                </div>
+              );
+            case 'write-group':
+              return (
+                <div key={item.id} className={styles.toolRow}>
+                  <WriteToolGroup tools={item.tools} />
+                </div>
+              );
+            case 'plan':
+              return (
+                <div key={item.id} className={styles.toolRow}>
+                  <PlanProgress steps={item.steps} />
                 </div>
               );
             case 'permission':
