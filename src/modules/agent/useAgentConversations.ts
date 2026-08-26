@@ -16,6 +16,8 @@ export interface AgentConversations {
   conversations: AgentConversationSummary[];
   activeConversationId: string;
   activeSessionKey: string | null;
+  activeScopeKey: string | null;
+  activeScopeKind: 'project' | 'file';
   createConversation: () => void;
   selectConversation: (id: string) => void;
   renameConversation: (id: string, title: string) => void;
@@ -57,10 +59,21 @@ function titleFrom(items: AgentItem[]): string {
   return firstUserMessage.content.replace(/\s+/g, ' ').trim().slice(0, 56);
 }
 
-export function useAgentConversations(scopeKey: string | null): AgentConversations {
+export function useAgentConversations(
+  scopeKey: string | null,
+  scopeKind: 'project' | 'file' = 'project',
+): AgentConversations {
   const [state, setState] = useState<ConversationState>(() => initialState(scopeKey));
+  const [boundScopeKind, setBoundScopeKind] = useState(scopeKind);
   const stateRef = useRef(state);
+  const currentScopeRef = useRef({ key: scopeKey, kind: scopeKind });
+  const initialScopeRef = useRef({ key: scopeKey, kind: scopeKind });
   const revisionRef = useRef(0);
+  const switchingScopeRef = useRef(false);
+
+  useLayoutEffect(() => {
+    currentScopeRef.current = { key: scopeKey, kind: scopeKind };
+  }, [scopeKey, scopeKind]);
 
   const persist = useCallback((next: ConversationState) => {
     void saveConversationScope(next.scopeKey, {
@@ -85,11 +98,17 @@ export function useAgentConversations(scopeKey: string | null): AgentConversatio
 
   useLayoutEffect(() => {
     let active = true;
+    const initialScope = initialScopeRef.current;
     const revision = revisionRef.current;
-    void loadConversationScope(scopeKey).then((restored) => {
-      if (!active || revisionRef.current !== revision) return;
+    void loadConversationScope(initialScope.key).then((restored) => {
+      if (
+        !active ||
+        revisionRef.current !== revision ||
+        currentScopeRef.current.key !== initialScope.key
+      )
+        return;
       if (!restored?.conversations.length) {
-        setState(initialState(scopeKey));
+        setState(initialState(initialScope.key));
         return;
       }
       const conversations = restored.conversations.some((conversation) => !conversation.archivedAt)
@@ -101,12 +120,50 @@ export function useAgentConversations(scopeKey: string | null): AgentConversatio
       )
         ? restored.activeConversationId
         : conversations.find((conversation) => !conversation.archivedAt)!.id;
-      setState({ scopeKey, conversations, activeConversationId });
+      setState({ scopeKey: initialScope.key, conversations, activeConversationId });
+      setBoundScopeKind(initialScope.kind);
     });
     return () => {
       active = false;
     };
-  }, [scopeKey]);
+  }, []);
+
+  // Follow workspace restoration only while the initial conversation is still pristine.
+  // Once a conversation has content, its workspace binding remains stable until New Chat.
+  useEffect(() => {
+    const current = stateRef.current;
+    const pristine =
+      current.conversations.length === 1 &&
+      current.conversations[0].title === '' &&
+      current.activeConversationId === current.conversations[0].id;
+    if (!pristine || current.scopeKey === scopeKey || switchingScopeRef.current) return;
+    switchingScopeRef.current = true;
+    const revision = revisionRef.current;
+    void loadConversationScope(scopeKey).then((restored) => {
+      switchingScopeRef.current = false;
+      if (revisionRef.current !== revision || !restored?.conversations.length) {
+        if (revisionRef.current === revision) {
+          const next = initialState(scopeKey);
+          stateRef.current = next;
+          setState(next);
+          setBoundScopeKind(scopeKind);
+        }
+        return;
+      }
+      const conversations = restored.conversations.some((item) => !item.archivedAt)
+        ? restored.conversations
+        : [emptyConversation(nextId()), ...restored.conversations];
+      const activeConversationId = conversations.some(
+        (item) => item.id === restored.activeConversationId && !item.archivedAt,
+      )
+        ? restored.activeConversationId
+        : conversations.find((item) => !item.archivedAt)!.id;
+      const next = { scopeKey, conversations, activeConversationId };
+      stateRef.current = next;
+      setState(next);
+      setBoundScopeKind(scopeKind);
+    });
+  }, [scopeKey, scopeKind]);
 
   const selectConversation = useCallback(
     (id: string) => {
@@ -125,6 +182,25 @@ export function useAgentConversations(scopeKey: string | null): AgentConversatio
 
   const createConversation = useCallback(() => {
     const current = stateRef.current;
+    const target = currentScopeRef.current;
+    if (target.key !== current.scopeKey) {
+      if (switchingScopeRef.current) return;
+      switchingScopeRef.current = true;
+      const revision = revisionRef.current;
+      void loadConversationScope(target.key).then((restored) => {
+        switchingScopeRef.current = false;
+        if (revisionRef.current !== revision) return;
+        const conversation = emptyConversation(nextId());
+        const next = {
+          scopeKey: target.key,
+          conversations: [conversation, ...(restored?.conversations ?? [])],
+          activeConversationId: conversation.id,
+        };
+        setBoundScopeKind(target.kind);
+        commit(next);
+      });
+      return;
+    }
     const conversation = emptyConversation(nextId());
     const next = {
       ...current,
@@ -132,6 +208,7 @@ export function useAgentConversations(scopeKey: string | null): AgentConversatio
       activeConversationId: conversation.id,
     };
     commit(next);
+    setBoundScopeKind(target.kind);
   }, [commit]);
 
   const renameConversation = useCallback(
@@ -242,6 +319,8 @@ export function useAgentConversations(scopeKey: string | null): AgentConversatio
     conversations: state.conversations,
     activeConversationId: state.activeConversationId,
     activeSessionKey,
+    activeScopeKey: state.scopeKey,
+    activeScopeKind: boundScopeKind,
     createConversation,
     selectConversation,
     renameConversation,

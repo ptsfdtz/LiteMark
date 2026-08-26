@@ -60,7 +60,7 @@ const common = {
   'agent.permissionTitle': 'Requests to run',
   'agent.allow': 'Allow',
   'agent.deny': 'Deny',
-  'agent.alwaysAllow': 'Always allow',
+  'agent.alwaysAllow': 'Allow all in this chat',
   'agent.interruptedTitle': 'Task interrupted',
   'agent.resume': 'Resume',
   'agent.tool.readDocument': 'Read document',

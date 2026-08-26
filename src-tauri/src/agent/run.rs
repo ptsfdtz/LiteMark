@@ -496,7 +496,10 @@ pub(crate) async fn run_agent_turn(request: AgentRunRequest) -> Result<(), Strin
 
     if document != original_document {
         on_event
-            .send(AgentEvent::Edit { content: document })
+            .send(AgentEvent::Edit {
+                content: document,
+                path: current_file.map(str::to_string),
+            })
             .map_err(|error| error.to_string())?;
     }
     if let Some(directory) = work_dir_path.as_deref() {

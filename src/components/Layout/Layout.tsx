@@ -91,6 +91,12 @@ function serializeFileTree(nodes: FileTreeNode[]): string {
   return lines.join('\n');
 }
 
+function workspaceDisplayName(path: string | null): string | undefined {
+  if (!path) return undefined;
+  const segments = path.split(/[\\/]/).filter(Boolean);
+  return segments[segments.length - 1];
+}
+
 const Layout: React.FC = () => {
   const { t } = useI18n();
   const [showSettings, setShowSettings] = useState(false);
@@ -342,24 +348,49 @@ const Layout: React.FC = () => {
   const agentFileWrittenRef = useRef<(path: string) => void>(() => {});
   const agentScopeKey = activeWorkspaceDirectory || (activeTextDocument ? currentFilePath : null);
   const agentScopeKind = activeWorkspaceDirectory ? 'project' : 'file';
-  const agentConversations = useAgentConversations(agentScopeKey);
+  const agentConversations = useAgentConversations(agentScopeKey, agentScopeKind);
   const { syncActiveConversation } = agentConversations;
   const agentSession = useAgentSession({
     getSettings: () => agentSettings,
-    getDocument: () => (activeTextDocument ? markdown : ''),
-    applyDocument: (content) => {
-      if (activeTextDocument) setMarkdown(content);
+    getDocument: () => {
+      if (!activeTextDocument) return '';
+      const scope = agentConversations.activeScopeKey;
+      const belongsToAgentScope =
+        agentConversations.activeScopeKind === 'project'
+          ? pathBelongsToDirectory(currentFilePath, scope || '')
+          : workspacePathsEqual(currentFilePath, scope);
+      return belongsToAgentScope ? markdown : '';
     },
-    // Directory tools are only available when the current document belongs to an open project.
-    getWorkDir: () => activeWorkspaceDirectory || '',
+    applyDocument: (content, targetPath) => {
+      if (!activeTextDocument) return;
+      if (!workspacePathsEqual(currentFilePath, targetPath)) return;
+      const scope = agentConversations.activeScopeKey;
+      const belongsToAgentScope =
+        agentConversations.activeScopeKind === 'project'
+          ? pathBelongsToDirectory(currentFilePath, scope || '')
+          : workspacePathsEqual(currentFilePath, scope);
+      if (belongsToAgentScope) setMarkdown(content);
+    },
+    getWorkDir: () =>
+      agentConversations.activeScopeKind === 'project'
+        ? agentConversations.activeScopeKey || ''
+        : '',
     sessionKey: agentConversations.activeSessionKey,
-    getCurrentFilePath: () => (activeTextDocument ? currentFilePath : null),
+    getCurrentFilePath: () => {
+      if (!activeTextDocument) return null;
+      const scope = agentConversations.activeScopeKey;
+      const belongsToAgentScope =
+        agentConversations.activeScopeKind === 'project'
+          ? pathBelongsToDirectory(currentFilePath, scope || '')
+          : workspacePathsEqual(currentFilePath, scope);
+      return belongsToAgentScope ? currentFilePath : null;
+    },
     getFileTree: () => {
-      if (!activeWorkspaceDirectory) return null;
+      if (agentConversations.activeScopeKind !== 'project') return null;
       const root = workspaceRoots.find(
         (candidate) =>
           normalizeWorkspacePath(candidate.path) ===
-          normalizeWorkspacePath(activeWorkspaceDirectory),
+          normalizeWorkspacePath(agentConversations.activeScopeKey || ''),
       );
       return root ? serializeFileTree(root.nodes) : null;
     },
@@ -1334,7 +1365,8 @@ const Layout: React.FC = () => {
             session={agentSession}
             conversations={agentConversations.conversations}
             activeConversationId={agentConversations.activeConversationId}
-            scopeKind={agentScopeKind}
+            scopeKind={agentConversations.activeScopeKind}
+            scopeName={workspaceDisplayName(agentConversations.activeScopeKey)}
             onCreateConversation={agentConversations.createConversation}
             onSelectConversation={agentConversations.selectConversation}
             onRenameConversation={agentConversations.renameConversation}

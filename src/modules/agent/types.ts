@@ -17,9 +17,15 @@ export type AgentEvent =
   | { type: 'tool_call_error'; id: string; name: string; error: string }
   | { type: 'permission_request'; id: number; name: string; arguments: string }
   | { type: 'assistant_message'; content: string; tool_calls: ToolCall[] }
-  | { type: 'edit'; content: string }
+  | { type: 'edit'; content: string; path?: string | null }
   | { type: 'file_written'; path: string }
-  | { type: 'task_changes'; checkpoint_id: string; files: FileChange[]; added: number; removed: number }
+  | {
+      type: 'task_changes';
+      checkpoint_id: string;
+      files: FileChange[];
+      added: number;
+      removed: number;
+    }
   | { type: 'plan_updated'; steps: AgentPlanStep[] }
   | { type: 'done' };
 
@@ -70,6 +76,7 @@ export type AgentItem =
       summary: DiffSummary;
       diff: DiffLine[];
       content: string;
+      targetPath?: string | null;
       applied: boolean;
     }
   | {

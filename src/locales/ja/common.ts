@@ -60,7 +60,7 @@ const common = {
   'agent.permissionTitle': '実行を要求',
   'agent.allow': '許可',
   'agent.deny': '拒否',
-  'agent.alwaysAllow': '常に許可',
+  'agent.alwaysAllow': 'このチャットではすべて許可',
   'agent.interruptedTitle': 'タスクが中断されました',
   'agent.resume': '再開',
   'agent.tool.readDocument': 'ドキュメントを読む',

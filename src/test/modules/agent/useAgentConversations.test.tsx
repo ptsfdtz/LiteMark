@@ -101,6 +101,29 @@ describe('Agent conversations', () => {
     expect(result.current.conversations[0].title).toBe('Refactor the project file tree please');
   });
 
+  it('keeps the active agent bound when folders switch until a new chat is created', async () => {
+    const { result, rerender } = renderHook(
+      ({ scope }) => useAgentConversations(scope),
+      { initialProps: { scope: 'C:\\notes' } },
+    );
+    await waitFor(() => expect(mocks.loadConversationScope).toHaveBeenCalledWith('C:\\notes'));
+    act(() => {
+      result.current.syncActiveConversation([
+        { id: 'user-1', role: 'user', content: 'Keep working in notes' },
+      ]);
+    });
+
+    rerender({ scope: 'D:\\novel' });
+    expect(result.current.activeScopeKey).toBe('C:\\notes');
+    expect(result.current.activeSessionKey).toBe('C:\\notes');
+    expect(result.current.conversations[0].title).toBe('Keep working in notes');
+
+    act(() => result.current.createConversation());
+    await waitFor(() => expect(result.current.activeScopeKey).toBe('D:\\novel'));
+    expect(result.current.activeSessionKey).toContain('D:\\novel::');
+    expect(result.current.conversations[0].title).toBe('');
+  });
+
   it('keeps a user-defined title when later messages arrive', async () => {
     const { result } = renderHook(() => useAgentConversations('C:\\notes'));
     await waitFor(() => expect(result.current.conversations).toHaveLength(1));

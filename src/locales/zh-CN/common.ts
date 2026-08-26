@@ -59,7 +59,7 @@ const common = {
   'agent.permissionTitle': '请求执行',
   'agent.allow': '允许',
   'agent.deny': '拒绝',
-  'agent.alwaysAllow': '总是允许',
+  'agent.alwaysAllow': '本次对话全部允许',
   'agent.interruptedTitle': '任务已中断',
   'agent.resume': '继续',
   'agent.tool.readDocument': '读取文档',

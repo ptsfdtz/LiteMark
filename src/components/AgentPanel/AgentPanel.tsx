@@ -44,6 +44,7 @@ interface AgentPanelProps {
   conversations: AgentConversationSummary[];
   activeConversationId: string;
   scopeKind: 'project' | 'file';
+  scopeName?: string;
   onCreateConversation: () => void;
   onSelectConversation: (id: string) => void;
   onRenameConversation: (id: string, title: string) => void;
@@ -467,6 +468,7 @@ const AgentPanel: React.FC<AgentPanelProps> = ({
   conversations,
   activeConversationId,
   scopeKind,
+  scopeName,
   onCreateConversation,
   onSelectConversation,
   onRenameConversation,
@@ -551,7 +553,8 @@ const AgentPanel: React.FC<AgentPanelProps> = ({
     session;
   const running = status === 'running';
   const panelTitle = isConfigured && modelName.trim() ? modelName.trim() : t('agent.title');
-  const scopeLabel = scopeKind === 'project' ? t('agent.scope.project') : t('agent.scope.file');
+  const scopeLabel =
+    scopeName?.trim() || (scopeKind === 'project' ? t('agent.scope.project') : t('agent.scope.file'));
 
   useEffect(() => {
     const list = listRef.current;

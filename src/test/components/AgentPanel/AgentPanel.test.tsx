@@ -527,7 +527,7 @@ describe('AgentPanel conversations', () => {
 
     await user.click(screen.getByRole('button', { name: 'Start a new chat' }));
     await user.click(screen.getByRole('button', { name: 'Allow' }));
-    await user.click(screen.getByRole('button', { name: 'Always allow' }));
+    await user.click(screen.getByRole('button', { name: 'Allow all in this chat' }));
     await user.click(screen.getByRole('button', { name: 'Deny' }));
 
     expect(respondPermission).toHaveBeenNthCalledWith(1, 12, true);

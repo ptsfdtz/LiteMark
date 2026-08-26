@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { workspacePathsEqual } from '@/modules/workspacePath';
 import type { AgentSettings } from '@/types/agent';
-import { acceptAgentCheckpoint, cancelAgentTurn, resolveAgentPermission, revertAgentCheckpoint, runAgentTurn } from './agentClient';
+import {
+  acceptAgentCheckpoint,
+  cancelAgentTurn,
+  resolveAgentPermission,
+  revertAgentCheckpoint,
+  runAgentTurn,
+} from './agentClient';
 import { loadAgentSession, saveAgentSession } from './agentSessionStore';
 import { diffLines, summarizeDiff } from './diff';
 import type { AgentEvent, AgentItem, AgentStatus, ChatMessage, PersistedAgentRun } from './types';
@@ -8,7 +15,7 @@ import type { AgentEvent, AgentItem, AgentStatus, ChatMessage, PersistedAgentRun
 export interface AgentSessionOptions {
   getSettings: () => AgentSettings;
   getDocument: () => string;
-  applyDocument: (content: string) => void;
+  applyDocument: (content: string, targetPath: string) => void;
   getWorkDir: () => string;
   /** Scope the conversation is persisted under: the project directory. */
   sessionKey: string | null;
@@ -47,10 +54,17 @@ function isCancellation(reason: unknown): boolean {
   return message.toLowerCase().includes('cancelled') || message.toLowerCase().includes('canceled');
 }
 
-function rebuildPendingEdits(items: AgentItem[]): Map<string, string> {
-  const pending = new Map<string, string>();
+interface PendingEdit {
+  content: string;
+  targetPath: string | null;
+}
+
+function rebuildPendingEdits(items: AgentItem[]): Map<string, PendingEdit> {
+  const pending = new Map<string, PendingEdit>();
   for (const item of items) {
-    if (item.role === 'edit' && !item.applied) pending.set(item.id, item.content);
+    if (item.role === 'edit' && !item.applied) {
+      pending.set(item.id, { content: item.content, targetPath: item.targetPath ?? null });
+    }
   }
   return pending;
 }
@@ -128,8 +142,8 @@ export function useAgentSession({
   const historyRef = useRef<ChatMessage[]>([]);
   const activeRunRef = useRef<PersistedAgentRun | undefined>(undefined);
   const runningRef = useRef(false);
-  const pendingEditsRef = useRef(new Map<string, string>());
-  const alwaysAllowRef = useRef(new Set<string>());
+  const pendingEditsRef = useRef(new Map<string, PendingEdit>());
+  const allowAllWritesRef = useRef(false);
   const pendingPermissionsRef = useRef(new Map<number, string>());
   const itemsRef = useRef<AgentItem[]>([]);
   itemsRef.current = items;
@@ -143,6 +157,7 @@ export function useAgentSession({
     scopeRef.current = sessionKey;
 
     if (previousScope !== sessionKey) {
+      allowAllWritesRef.current = false;
       void saveAgentSession(previousScope, {
         items: itemsRef.current,
         history: [...historyRef.current],
@@ -221,6 +236,7 @@ export function useAgentSession({
     setError(null);
     setStatus('running');
     const initialDocument = getDocumentRef.current();
+    const initialFilePath = getCurrentFilePathRef.current();
 
     historyRef.current = repairInterruptedHistory(historyRef.current);
     historyRef.current.push({ role: 'user', content: trimmed });
@@ -320,7 +336,7 @@ export function useAgentSession({
             };
           }
           const permissionId = nextId('permission');
-          if (alwaysAllowRef.current.has(event.name)) {
+          if (allowAllWritesRef.current) {
             void resolveAgentPermission(event.id, true);
             setItems((current) => [
               ...current,
@@ -352,17 +368,28 @@ export function useAgentSession({
         }
         case 'edit': {
           const before = getDocumentRef.current();
+          const targetPath = event.path ?? initialFilePath;
+          const currentFilePath = getCurrentFilePathRef.current();
           const summary = summarizeDiff(before, event.content);
           const hasVersionConflict = before !== initialDocument;
-          const autoApply = getSettingsRef.current().autoApply !== false && !hasVersionConflict;
-          if (autoApply) applyDocumentRef.current(event.content);
-          if (hasVersionConflict) {
+          const hasTargetConflict =
+            !targetPath || !workspacePathsEqual(currentFilePath, targetPath);
+          const autoApply =
+            getSettingsRef.current().autoApply !== false &&
+            !hasVersionConflict &&
+            !hasTargetConflict;
+          if (autoApply) applyDocumentRef.current(event.content, targetPath);
+          if (hasTargetConflict) {
+            setError(
+              'The active document changed while the agent was running. Return to the target file before applying the edit.',
+            );
+          } else if (hasVersionConflict) {
             setError(
               'The document changed while the agent was running. Review the edit before applying it.',
             );
           }
           const editId = nextId('edit');
-          pendingEditsRef.current.set(editId, event.content);
+          pendingEditsRef.current.set(editId, { content: event.content, targetPath });
           setItems((current) => [
             ...current,
             {
@@ -371,6 +398,7 @@ export function useAgentSession({
               summary,
               diff: diffLines(before, event.content),
               content: event.content,
+              targetPath,
               applied: autoApply,
             },
           ]);
@@ -432,7 +460,7 @@ export function useAgentSession({
         document: initialDocument,
         messages: [...historyRef.current],
         workDir: getWorkDirRef.current(),
-        currentFilePath: getCurrentFilePathRef.current(),
+        currentFilePath: initialFilePath,
         fileTree: getFileTreeRef.current(),
         confirmWrites: getSettingsRef.current().confirmWrites !== false,
         onEvent,
@@ -487,14 +515,20 @@ export function useAgentSession({
     historyRef.current = [];
     activeRunRef.current = undefined;
     pendingEditsRef.current.clear();
+    allowAllWritesRef.current = false;
     setItems([]);
     setError(null);
   }, []);
 
   const applyEdit = useCallback((id: string) => {
-    const content = pendingEditsRef.current.get(id);
-    if (content === undefined) return;
-    applyDocumentRef.current(content);
+    const edit = pendingEditsRef.current.get(id);
+    if (edit === undefined) return;
+    const currentFilePath = getCurrentFilePathRef.current();
+    if (!edit.targetPath || !workspacePathsEqual(currentFilePath, edit.targetPath)) {
+      setError('Open the original target document before applying this edit.');
+      return;
+    }
+    applyDocumentRef.current(edit.content, edit.targetPath);
     pendingEditsRef.current.delete(id);
     setItems((current) =>
       current.map((item) =>
@@ -508,7 +542,7 @@ export function useAgentSession({
     if (name === undefined) return;
     pendingPermissionsRef.current.delete(requestId);
     if (remember && allow) {
-      alwaysAllowRef.current.add(name);
+      allowAllWritesRef.current = true;
     }
     void resolveAgentPermission(requestId, allow);
     if (activeRunRef.current) {
@@ -529,7 +563,9 @@ export function useAgentSession({
   }, []);
 
   const resolveTaskChanges = useCallback(async (id: string, action: 'accept' | 'revert') => {
-    const item = itemsRef.current.find((candidate) => candidate.id === id && candidate.role === 'task-changes');
+    const item = itemsRef.current.find(
+      (candidate) => candidate.id === id && candidate.role === 'task-changes',
+    );
     if (!item || item.role !== 'task-changes' || item.resolution !== 'pending') return;
     try {
       if (action === 'accept') await acceptAgentCheckpoint(item.checkpointId);
@@ -537,7 +573,13 @@ export function useAgentSession({
         const restored = await revertAgentCheckpoint(item.checkpointId);
         restored.forEach((path) => onFileWrittenRef.current?.(path));
       }
-      setItems((current) => current.map((candidate) => candidate.id === id && candidate.role === 'task-changes' ? { ...candidate, resolution: action === 'accept' ? 'accepted' : 'reverted' } : candidate));
+      setItems((current) =>
+        current.map((candidate) =>
+          candidate.id === id && candidate.role === 'task-changes'
+            ? { ...candidate, resolution: action === 'accept' ? 'accepted' : 'reverted' }
+            : candidate,
+        ),
+      );
       setError(null);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason));

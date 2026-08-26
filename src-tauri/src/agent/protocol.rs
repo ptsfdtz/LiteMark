@@ -85,6 +85,7 @@ pub enum AgentEvent {
     },
     Edit {
         content: String,
+        path: Option<String>,
     },
     FileWritten {
         path: String,

@@ -63,7 +63,15 @@ function setup(settings: AgentSettings = configuredSettings()) {
       onFileWritten,
     }),
   );
-  return { result, getSettings, getDocument, applyDocument, getWorkDir, onFileWritten };
+  return {
+    result,
+    getSettings,
+    getDocument,
+    applyDocument,
+    getWorkDir,
+    getCurrentFilePath,
+    onFileWritten,
+  };
 }
 
 function emit(mock: ReturnType<typeof vi.fn>, events: AgentEvent[]) {
@@ -236,7 +244,7 @@ describe('Agent Session', () => {
     expect(resolved).toMatchObject({ pending: false, decision: 'allow' });
   });
 
-  it('auto-approves tools marked as always allow', async () => {
+  it('auto-approves every later write tool after allowing all for the chat', async () => {
     const { result } = setup();
     emit(mocks.runAgentTurn, [
       { type: 'permission_request', id: 1, name: 'replace_in_document', arguments: '{}' },
@@ -250,7 +258,7 @@ describe('Agent Session', () => {
     });
 
     emit(mocks.runAgentTurn, [
-      { type: 'permission_request', id: 2, name: 'replace_in_document', arguments: '{}' },
+      { type: 'permission_request', id: 2, name: 'apply_patch', arguments: '{}' },
     ]);
     await act(async () => {
       await result.current.send('again');
@@ -269,7 +277,7 @@ describe('Agent Session', () => {
       await result.current.send('rewrite it');
     });
 
-    expect(applyDocument).toHaveBeenCalledWith('# Hi\n\nNew text');
+    expect(applyDocument).toHaveBeenCalledWith('# Hi\n\nNew text', 'C:\\notes\\doc.md');
     const edit = result.current.items.find((item) => item.role === 'edit');
     expect(edit).toMatchObject({ applied: true });
   });
@@ -290,7 +298,7 @@ describe('Agent Session', () => {
       result.current.applyEdit(edit!.id);
     });
 
-    expect(applyDocument).toHaveBeenCalledWith('# New');
+    expect(applyDocument).toHaveBeenCalledWith('# New', 'C:\\notes\\doc.md');
     const applied = result.current.items.find((item) => item.role === 'edit');
     expect(applied).toMatchObject({ applied: true });
   });
@@ -309,6 +317,51 @@ describe('Agent Session', () => {
     expect(result.current.items.find((item) => item.role === 'edit')).toMatchObject({
       applied: false,
       content: '# Agent edit',
+    });
+  });
+
+  it('does not apply an edit to a different document opened during the run', async () => {
+    const { result, applyDocument, getCurrentFilePath } = setup();
+    getCurrentFilePath.mockReturnValueOnce('C:\\notes\\a.md').mockReturnValue('C:\\notes\\b.md');
+    emit(mocks.runAgentTurn, [
+      { type: 'edit', content: '# Agent edit', path: 'C:\\notes\\a.md' },
+      { type: 'done' },
+    ]);
+
+    await act(async () => {
+      await result.current.send('edit A');
+    });
+
+    expect(applyDocument).not.toHaveBeenCalled();
+    expect(result.current.error).toContain('active document changed');
+    expect(result.current.items.find((item) => item.role === 'edit')).toMatchObject({
+      targetPath: 'C:\\notes\\a.md',
+      applied: false,
+    });
+  });
+
+  it('requires the original target document before manually applying an edit', async () => {
+    const { result, applyDocument, getCurrentFilePath } = setup(
+      configuredSettings({ autoApply: false }),
+    );
+    getCurrentFilePath.mockReturnValue('C:\\notes\\a.md');
+    emit(mocks.runAgentTurn, [
+      { type: 'edit', content: '# Agent edit', path: 'C:\\notes\\a.md' },
+      { type: 'done' },
+    ]);
+
+    await act(async () => {
+      await result.current.send('edit A');
+    });
+    const edit = result.current.items.find((item) => item.role === 'edit');
+    getCurrentFilePath.mockReturnValue('C:\\notes\\b.md');
+
+    act(() => result.current.applyEdit(edit!.id));
+
+    expect(applyDocument).not.toHaveBeenCalled();
+    expect(result.current.error).toContain('original target document');
+    expect(result.current.items.find((item) => item.id === edit!.id)).toMatchObject({
+      applied: false,
     });
   });
 
